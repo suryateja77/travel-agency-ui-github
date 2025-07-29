@@ -1,0 +1,26 @@
+@import '~/src/sass/style';
+
+.confirmation-popup {
+  padding: $space-default;
+  background-color: $white;
+  &__title {
+    margin-bottom: $space-default;
+  }
+  &__subTitle {
+    margin-bottom: $space-large;
+  }
+  &__button-container {
+    margin-top: $space-small;
+    display: flex;
+    justify-content: space-between;
+    gap: $space-default;
+  }
+  &__confirmation-button {
+    flex: 1;
+  }
+}
+
+@include large-up {
+  .confirmation-popup {
+  }
+}

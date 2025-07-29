@@ -1,0 +1,15 @@
+@import '~/src/sass/style';
+
+.checkbox-group {
+  &__star {
+    color: $error;
+  }
+  &__label-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  &__label {
+    display: block;
+    padding-bottom: 5px;
+  }
+}

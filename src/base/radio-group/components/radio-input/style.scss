@@ -1,0 +1,61 @@
+@import '~/src/sass/style';
+
+.radio-input {
+    margin-bottom: 5px;
+    padding-right: 15px;
+  &__label {
+    min-width: 20px;
+    min-height: 20px;
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    padding-left: 25px;
+
+    &:before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      content: '';
+      width: 20px;
+      height: 20px;
+      border: 1px solid $success;
+      border-radius: 50%;
+    }
+
+    &:after {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      content: '';
+      width: 0;
+      height: 0;
+      background: $success;
+      border-radius: 50%;
+      transition: all linear 0.2s;
+    }
+  }
+
+  &__input {
+    display: none;
+    &:checked + label {
+      &:after {
+        top: 4px;
+        left: 4px;
+        width: 12px;
+        height: 12px;
+      }
+    }
+
+    &:disabled + label {
+      cursor: not-allowed;
+
+      &:before {
+        border-color: $gray-light;
+      }
+
+      &:after {
+        background: $gray-light;
+      }
+    }
+  }
+}

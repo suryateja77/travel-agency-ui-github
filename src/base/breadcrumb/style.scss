@@ -1,0 +1,32 @@
+@import '~/src/sass/style';
+
+.breadcrumb {
+  display: none;
+  ul {
+    display: flex;
+  }
+  li {
+    position: relative;
+    padding: 0px 10px;
+    &:first-of-type {
+      padding-left: 0;
+    }
+
+    &:last-of-type {
+      padding-right: 0;
+    }
+
+    &:not(:first-child):before {
+      content: '\00BB';
+      position: absolute;
+      top: 0;
+      left: -4px;
+    }
+  }
+}
+
+@include large-up {
+  .breadcrumb {
+    display: block;
+  }
+}

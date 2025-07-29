@@ -1,0 +1,96 @@
+@import '~/src/sass/style';
+
+.check-box {
+  margin-bottom: 5px;
+  &__control {
+    position: absolute;
+    width: 100%;
+    left: 0px;
+    top: 0;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    display: none;
+  }
+  &__label {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    padding-left: 25px;
+    min-width: 20px;
+    min-height: 20px;
+
+    &--small {
+      &::before {
+        width: 15px;
+        height: 15px;
+        top: 15%;
+        left: 5%;
+      }
+    }
+
+    &--medium {
+      &::before {
+        width: 20px;
+        height: 20px;
+        top: 0;
+        left: 0;
+      }
+    }
+
+    &--large {
+      &::before {
+        width: 25px;
+        height: 25px;
+        top: -5%;
+        left: -5%;
+      }
+    }
+
+    &:before {
+      position: absolute;
+      content: '';
+      border: 1px solid $success;
+      border-radius: 2px;
+    }
+
+    &:after {
+      position: absolute;
+      top: 0;
+      left: 7px;
+      content: '';
+      width: 7px;
+      height: 14px;
+      border-width: 2px;
+      border-style: solid;
+      border-color: transparent $white $white transparent;
+      transform: rotate(42deg);
+      display: none;
+    }
+  }
+
+  &__control:checked + &__label {
+    &::before {
+      background: $success;
+      transition: background linear 0.2s;
+    }
+
+    &::after {
+      display: block;
+    }
+  }
+
+  &__control:disabled + &__label {
+    cursor: not-allowed;
+
+    &::before {
+      border-color: $gray-light;
+    }
+  }
+
+  &__control:disabled:checked + &__label {
+    &::before {
+      background: $gray-light;
+    }
+  }
+}

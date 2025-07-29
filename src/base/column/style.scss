@@ -1,0 +1,14 @@
+@import '~/src/sass/style';
+
+.column {
+  padding-left: $space-default;
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+@include large-up {
+  .column {
+    padding-left: $space-default;
+    @include grid-col-model();
+  }
+}

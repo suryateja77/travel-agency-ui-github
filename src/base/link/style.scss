@@ -1,0 +1,17 @@
+@import '~/src/sass/style';
+
+.link {
+  background: none;
+  border: none;
+  text-decoration: none;
+  color: $primary;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  &--underline {
+    text-decoration: underline;
+  }
+  &:hover {
+    text-decoration: underline;
+  }
+}

@@ -1,0 +1,15 @@
+@import '~/src/sass/style';
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid $gray-light;
+  align-items: center;
+  padding: $space-small $space-default;
+  flex-shrink: 0;
+  &__close-button {
+    font-size: 24;
+    cursor: pointer;
+    color: $gray;
+  }
+}

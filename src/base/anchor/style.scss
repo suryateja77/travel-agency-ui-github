@@ -1,0 +1,59 @@
+@import '~/src/sass/style.scss';
+
+.anchor {
+  &--asButton {
+    border: none;
+    padding: 0px;
+    text-decoration: underline;
+    background: none;
+    height: auto;
+  }
+  &--noUnderline {
+    text-decoration: none;
+  }
+  &--block {
+    display: block;
+  }
+  &--primary {
+    color: $primary;
+    &:hover {
+      color: $primary-light;
+    }
+  }
+  &--default {
+    color: $default;
+    &:hover {
+      color: $default-light;
+    }
+  }
+  &--success {
+    color: $success;
+    &:hover {
+      color: $success-light;
+    }
+  }
+  &--error {
+    color: $error;
+    &:hover {
+      color: $error-light;
+    }
+  }
+  &--info {
+    color: $info;
+    &:hover {
+      color: $info-light;
+    }
+  }
+  &--warning {
+    color: $warning;
+    &:hover {
+      color: $warning-light;
+    }
+  }
+  &--gray {
+    color: $gray;
+    &:hover {
+      color: $gray-darker;
+    }
+  }
+}

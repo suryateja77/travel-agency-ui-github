@@ -1,0 +1,25 @@
+@import '~/src/sass/style.scss';
+
+.table {
+  background-color: $white;
+  &__loading{
+    text-align: center;
+    padding: 40px 0px !important;
+  }
+  &__no-record{
+    text-align: center;
+    padding: 10px 0px;
+    color: $gray;
+  }
+  &--hover {
+    tbody {
+      tr:hover:not(.hidden-row):not(.filter-row) {
+        background-color: $gray-lighter;
+      }
+      td {
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+    }
+  }
+}

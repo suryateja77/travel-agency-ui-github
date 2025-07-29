@@ -1,0 +1,83 @@
+@import '~/src/sass/style';
+
+.select-input {
+  position: relative;
+  &:after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    bottom: 11px;
+    width: 0;
+    height: 0;
+    border: 5px solid transparent;
+    border-top-color: $gray-dark;
+    z-index: 1;
+  }
+
+  &--disabled {
+    opacity: 0.5;
+    &:after {
+      border-top-color: $gray-light;
+    }
+  }
+
+  &__select {
+    width: 100%;
+    min-width: 100px;
+    background-color: $white;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    font-size: 14px;
+    transition: border-color ease-in-out 0.2s;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    height: 40px;
+    &--rounded {
+      border-radius: 20px;
+    }
+    &--disabled {
+      color: $gray;
+    }
+    &--validity {
+      border: 1px solid $gray-light;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    &--valid {
+      border: 1px solid $success;
+      padding-left: 10px;
+      padding-right: 30px;
+    }
+    &--invalid {
+      border: 1px solid $error;
+      padding-left: 10px;
+      padding-right: 30px;
+    }
+    &--small {
+      height: 30px;
+    }
+    &--large {
+      height: 50px;
+    }
+    &:focus {
+      border-color: $primary;
+      outline: 0;
+    }
+  }
+  &__spinner {
+    position: absolute;
+    bottom: 7px;
+    right: 3px;
+  }
+  &__star{
+    color: $error;
+  }
+  &__label-container{
+    display: flex;
+    justify-content: space-between;
+  }
+  &__label{
+    display: block;
+    padding-bottom: 5px;
+  }
+}

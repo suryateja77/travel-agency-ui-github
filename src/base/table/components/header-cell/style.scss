@@ -1,0 +1,13 @@
+@import '~/src/sass/style.scss';
+
+.header-cell {
+  position: sticky;
+  top: 0px;
+  background-color: $white;
+  font-size: 12px;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 10px 15px;
+  border-bottom: 1px solid $gray-light;
+  border-width: 2px;
+}

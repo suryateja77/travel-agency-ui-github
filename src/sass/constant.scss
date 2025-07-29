@@ -1,0 +1,59 @@
+$body-bg: #edf1f5;
+
+$black: #000000;
+$gray-darker: #555556;
+$gray-dark: #666666;
+$gray: #878787;
+$gray-light: #dddddd;
+$gray-lighter: #f7f7f9;
+$gray-lightest: #fafafa;
+$white: #ffffff;
+$slate-gray: #2a3e4c;
+
+$default: $gray-light;
+$default-light: #dfdfdf;
+
+$success: #2ecd99;
+$success-light: #4bd2a6;
+
+$error: #ed6f56;
+$error-light: #ed836d;
+
+$primary: #4e9de6;
+$primary-light: #67aae7;
+
+$info: #5bc0de;
+$info-light: #31b0d5;
+
+$warning: #f0c541;
+$warning-light: #f0cb5c;
+
+$theme: #2a3e4c;
+$theme-light: #364854;
+
+// Spacings
+$space-default: 15px;
+$space-small: 10px;
+$space-large: 20px;
+
+// Constants
+$header-height: 66px;
+$side-nav-width: 255px;
+
+$extra-extra-large: '(min-width: 1400px)';
+$extra-extra-large-down: '(min-width: 1399.98px)';
+
+$extra-large: '(min-width: 1200px)';
+$extra-large-only: '(min-width: 1200px) and (max-width: 1399.98px)';
+$extra-large-down: '(min-width: 1199.98px)';
+
+$large: '(min-width: 992px)';
+$large-only: '(min-width: 992px) and (max-width: 1199.98px)';
+$large-down: '(max-width: 991.98px)';
+
+$medium: '(min-width: 768px)';
+$medium-only: '(min-width: 768px) and (max-width: 991.98px)';
+$medium-down: '(max-width: 767.98px)';
+
+$small: '(min-width: 576px)';
+$small-only: '(min-width: 576px) and (max-width: 767.98px)';

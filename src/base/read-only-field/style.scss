@@ -1,0 +1,10 @@
+@import '~/src/sass/style';
+
+.read-only-field {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  &__value {
+    padding-left: $space-small;
+  }
+}

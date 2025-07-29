@@ -1,0 +1,68 @@
+@import 'constant.scss';
+
+@mixin extra-large {
+  @media #{$extra-large} {
+    @content;
+  }
+}
+
+@mixin large-up {
+  @media #{$large} {
+    @content;
+  }
+}
+
+@mixin large-down {
+  @media #{$large-down} {
+    @content;
+  }
+}
+
+@mixin medium-up {
+  @media #{$medium} {
+    @content;
+  }
+}
+
+@mixin medium-only {
+  @media #{$medium-only} {
+    @content;
+  }
+}
+
+@mixin medium-down {
+  @media #{$medium-down} {
+    @content;
+  }
+}
+
+@mixin small-only {
+  @media #{$small-only} {
+    @content;
+  }
+}
+
+@mixin small-up {
+  @media #{$small} {
+    @content;
+  }
+}
+
+@mixin extra-small-only {
+  @media #{$extra-small-only} {
+    @content;
+  }
+}
+
+@mixin grid-col($i) {
+  &--#{$i} {
+    flex: 0 0 percentage(calc($i / 12));
+    max-width: percentage(calc($i / 12));
+  }
+}
+
+@mixin grid-col-model() {
+  @for $i from 1 to 13 {
+    @include grid-col($i);
+  }
+}

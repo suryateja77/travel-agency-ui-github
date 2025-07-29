@@ -1,0 +1,27 @@
+@import '~/src/sass/style';
+
+.alert {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  color: $white;
+  border-radius: 2px;
+  &__text{
+    margin-left: 4px;
+  }
+  &__icon {
+    margin-right: 10px;
+  }
+  &--success {
+    background-color: $success;
+  }
+  &--info {
+    background-color: $info;
+  }
+  &--warning {
+    background-color: $warning;
+  }
+  &--error {
+    background-color: $error;
+  }
+}

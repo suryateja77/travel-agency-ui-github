@@ -1,0 +1,41 @@
+@import '~/src/sass/style';
+
+.icon {
+  vertical-align: middle;
+  &--primary {
+    color: $primary;
+  }
+  &--white {
+    color: $white;
+  }
+  &--default {
+    color: $default;
+  }
+  &--success {
+    color: $success;
+  }
+  &--error {
+    color: $error;
+  }
+  &--info {
+    color: $info;
+  }
+  &--warning {
+    color: $warning;
+  }
+  &--8 {
+    font-size: 8px;
+  }
+  &--14 {
+    font-size: 14px;
+  }
+  &--16 {
+    font-size: 16px;
+  }
+  &--22 {
+    font-size: 22px;
+  }
+  &--30 {
+    font-size: 30px;
+  }
+}

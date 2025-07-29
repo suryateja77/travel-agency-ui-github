@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2022",                     // Targets modern syntax without async helpers like __generator
+    "module": "esnext",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "sourceMap": true,                      // Ensure full source maps are emitted
+    "inlineSources": true,                  // Embed TS source content directly into sourcemap for DevTools
+    "outDir": "./dist",
+    "removeComments": false,                // Preserve comments in compiled output
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,                   // Speeds up build; skip type checks on .d.ts
+    "baseUrl": "./",
+    "paths": {
+      "@*": ["./src/*"]
+    }
+  },
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

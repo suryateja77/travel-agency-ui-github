@@ -1,0 +1,29 @@
+@import '~/src/sass/style';
+
+.page-detail {
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+  }
+  &__field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: $space-default;
+  }
+  &__field-value {
+    word-wrap: break-word
+  }
+  &__field-row {
+    border-bottom: 1px solid $gray-light;
+    margin-bottom: $space-default;
+
+    &:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+  }
+}

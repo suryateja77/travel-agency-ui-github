@@ -1,0 +1,29 @@
+@import '~/src/sass/style.scss';
+
+.page-container {
+  margin: 0 auto;
+  padding: 0 25px;
+  &--fluid {
+    padding: 0 30px;
+  }
+}
+
+@include large-up {
+  .page-container {
+    padding: 0 15px;
+    &--fluid {
+      padding: 0 100px;
+    }
+    &:not(&--fluid) {
+      width: 970px;
+    }
+  }
+}
+
+@include extra-large {
+  .page-container {
+    &:not(&--fluid) {
+      width: 1170px;
+    }
+  }
+}
