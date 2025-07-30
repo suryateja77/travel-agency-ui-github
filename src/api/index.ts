@@ -45,4 +45,4 @@ const generateAPIMethods = (url: string) => {
   }
 }
 
-export {generateAPIMethods}
+export {generateAPIMethods, get, post, put, patch, remove}
