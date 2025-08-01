@@ -1,0 +1,9 @@
+@import '~/src/sass/style.scss';
+
+.auth-header {
+  background: $white;
+  display: flex;
+  align-items: center;
+  height: 66px;
+  padding: 0 $space-default;
+}

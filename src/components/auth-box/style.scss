@@ -1,0 +1,24 @@
+@import '~/src/sass/style';
+
+.auth-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: auto;
+  border-bottom: 1px solid $gray-light;
+  &__box {
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+    width: 90%;
+    padding: 20px;
+    box-shadow: 0 2px 15px $gray-light;
+    background-color: $white;
+    &--center {
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}

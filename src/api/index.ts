@@ -20,9 +20,6 @@ const API = axios.create({
 //   },
 // )
 
-API.defaults.headers.common['x-access-token'] = getStorageItem('session', 'token')
-
-
 type payload = Record<string, any>
 
 const get = async (URL: string, config?: payload) => await API.get(URL, config).then(response => response)

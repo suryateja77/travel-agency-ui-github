@@ -49,3 +49,16 @@ export const useVerifyEmailMutation = () => {
     },
   })
 }
+
+export const useLogoutMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      await post(`${API_BASE_URL}/logout`, {})
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}

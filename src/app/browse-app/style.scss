@@ -1,0 +1,66 @@
+@import '~/src/sass/style';
+
+.browse-app {
+  &__container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  &__navigation {
+    display: none;
+  }
+  &__content {
+    height: 100%;
+    width: 100vw;
+  }
+  &__page {
+    display: flex;
+    height: calc(100% - $header-height);
+    overflow-y: scroll;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+  }
+  &__page::-webkit-scrollbar {
+    display: none;
+  }
+  &__mobile-navigation {
+    display: block;
+    overflow: hidden;
+    transition: width 0.2s linear;
+    width: 0px;
+    &--expanded {
+      width: $side-nav-width;
+    }
+  }
+  &__page-content {
+    height: 100%;
+    transition: width 0.2s linear;
+    width: 100vw;
+    &--expanded {
+      width: calc(100vw - $side-nav-width);
+    }
+  }
+}
+
+@include large-up {
+  .browse-app {
+    &__navigation {
+      display: block;
+      transition: width 0.2s linear;
+      width: 45px;
+      &--expanded {
+        width: $side-nav-width;
+      }
+    }
+    &__content {
+      transition: width 0.2s linear;
+      width: calc(100vw - 45px);
+      &--expanded {
+        width: calc(100vw - $side-nav-width);
+      }
+    }
+    &__mobile-navigation {
+      display: none;
+    }
+  }
+}

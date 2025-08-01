@@ -1,0 +1,47 @@
+@import '~/src/sass/style';
+
+.sidenav-item {
+  &__nav-link {
+    background: none;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    text-wrap: nowrap;
+    padding: 15px;
+    &--hasSubRoutes {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+  &__nav-link-text {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  &__nav-img {
+    height: 15px;
+    width: 15px;
+    margin-right: 15px;
+  }
+  &__sub-menu {
+    transition: max-height 0.5s ease;
+    max-height: 0px;
+    overflow: hidden;
+    &--expanded {
+      max-height: 400px;
+    }
+  }
+  &__sub-nav-link {
+    text-decoration: none;
+    cursor: pointer;
+  }
+  &__sub-nav-text {
+    padding: 8px 45px;
+    &--selected {
+      background-color: $theme-light;
+    }
+  }
+}

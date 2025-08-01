@@ -1,0 +1,23 @@
+@import '~/src/sass/style.scss';
+
+.login {
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  &__margin-bottom{
+    margin-bottom: $space-default;
+  }
+  &__password-label{
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  &__forgot-password{
+    text-decoration: underline;
+    font-size: 12px;
+    font-weight: 500;
+    color: $primary-light;
+  }
+}

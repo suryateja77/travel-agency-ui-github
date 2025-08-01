@@ -1,0 +1,14 @@
+@import '~/src/sass/style';
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+}
