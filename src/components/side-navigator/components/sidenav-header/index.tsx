@@ -13,14 +13,14 @@ interface SideNavHeaderProps {
 const SideNavHeader: FunctionComponent<SideNavHeaderProps> = ({ isSideNavExpanded }) => {
   return (
     <div className={bemClass([blk])}>
-      <p className={bemClass([blk, 'company-initials'])}>T</p>
+      <p className={bemClass([blk, 'company-initials'])}>L</p>
       {isSideNavExpanded && (
         <Text
           tag="p"
           typography="xl"
           className={bemClass([blk, 'company-name'])}
         >
-          Travel Agency
+          Levart
         </Text>
       )}
     </div>

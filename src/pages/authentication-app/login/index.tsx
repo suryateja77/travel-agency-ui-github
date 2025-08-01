@@ -84,7 +84,7 @@ const Login = () => {
 
   return (
     <AuthenticationWrapper
-      title="Login to Travel Agency"
+      title="Login to Levart"
       subTitle="Enter your details below"
       errorMessage={errorMessage}
     >

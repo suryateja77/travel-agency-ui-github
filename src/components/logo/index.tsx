@@ -15,7 +15,7 @@ const Logo = () => {
       className={blk}
       id="logo"
     >
-      Travel Agency
+      Levart
     </Text>
   )
 }

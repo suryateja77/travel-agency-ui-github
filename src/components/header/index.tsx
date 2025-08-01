@@ -39,7 +39,7 @@ const Header: FunctionComponent<HeaderProps> = ({ isSideNavExpanded, isNavigatio
             typography="xl"
             className={bemClass([blk, 'company-name'])}
           >
-            Travel Agency
+            Levart
           </Text>
         </div>
       </>
