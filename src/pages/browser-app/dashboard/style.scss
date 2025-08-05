@@ -5,10 +5,33 @@
   flex-direction: column;
   height: 100%;
   padding: $space-default;
+  
   &__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: $space-default;
+  }
+  
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+  }
+  
+  &__section {
+    margin-bottom: $space-large;
+    
+    h2, h3 {
+      margin-bottom: $space-default;
+    }
+  }
+  
+  &__form-group {
+    margin-bottom: $space-default;
+    max-width: 400px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 }
