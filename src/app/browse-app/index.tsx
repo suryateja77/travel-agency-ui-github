@@ -5,6 +5,8 @@ import Header from '@components/header'
 import './style.scss'
 import { bemClass } from '@utils'
 import SideNavigator from '@components/side-navigator'
+import Requests from '@pages/browser-app/requests'
+import RegularRequests from '@pages/browser-app/requests/regular'
 
 const blk = 'browse-app'
 
@@ -67,14 +69,11 @@ const BrowseApp = () => {
           <section className={bemClass([blk, 'page-content', { expanded: expandNavigator }])}>
             <Suspense>
               <Routes>
-                <Route
-                  path="/dashboard"
-                  element={<Dashboard />}
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to="/dashboard" />}
-                />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/requests/*" element={<Requests />}>
+                  <Route path="regular/*" element={<RegularRequests />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>
             </Suspense>
           </section>

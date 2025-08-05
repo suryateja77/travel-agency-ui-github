@@ -1,6 +1,19 @@
 @import '~/src/sass/style';
 
 .radio-group {
+  &__options {
+    &--vertical {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    &--horizontal {
+      display: flex;
+      flex-direction: row;
+      gap: 4px;
+      align-items: center;
+    }
+  }
   &__star {
     color: $error;
   }

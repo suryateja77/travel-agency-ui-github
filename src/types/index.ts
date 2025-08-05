@@ -74,7 +74,111 @@ export const sampleBankingDetails: BankingDetailsType = {
 export const enum DetailFieldType {
   TEXT = 'text',
   NUMBER = 'number',
-  ARRAY = 'array'
+  ARRAY = 'array',
 }
 
 // --------------------------------------------------------------------------------------------------------
+
+export interface RegularRequestModel {
+  requestDetails: {
+    customerSelection: string
+    vehicleSelection: string
+    staffSelection: string
+    requestType: string
+    pickupLocation: string
+    dropLocation: string
+    pickupDateAndTime: Date | null
+    dropDateAndTime: Date | null
+    openingKm: number | null
+    closingKm: number | null
+    totalTime: number | null
+    totalDistance: number | null
+  }
+  customerDetails:
+    | {
+        // For EXISTING customer
+        customerId: string
+        customerCategory?: string
+        customerName?: never
+        customerEmail?: never
+        customerContact?: never
+      }
+    | {
+        // For NEW customer
+        customerId?: never
+        customerCategory?: never
+        customerName: string
+        customerEmail?: string
+        customerContact?: string
+      }
+  vehicleDetails:
+    | {
+        // For EXISTING vehicle
+        vehicleId: string
+        vehicleCategory?: string
+        ownerName?: never
+        ownerContact?: never
+        ownerEmail?: never
+        vehicleManufacturer?: never
+        vehicleName?: never
+        vehicleRegistrationNumber?: never
+      }
+    | {
+        // For NEW vehicle
+        vehicleId?: never
+        vehicleCategory?: never
+        ownerName: string
+        ownerContact: string
+        ownerEmail: string
+        vehicleManufacturer: string
+        vehicleName: string
+        vehicleRegistrationNumber: string
+      }
+  staffDetails:
+    | {
+        // For EXISTING staff
+        staffId: string
+        staffCategory?: string
+        staffName?: never
+        staffEmail?: never
+        staffLicense?: never
+      }
+    | {
+        // For NEW staff
+        staffId?: never
+        staffCategory?: never
+        staffName: string
+        staffEmail: string
+        staffLicense: string
+      }
+  otherCharges: {
+    tollCharges: {
+      charge: number
+      chargeableToCustomer: boolean
+    }
+    parking: {
+      charge: number
+      chargeableToCustomer: boolean
+    }
+    nightHalt: {
+      charge: number
+      chargeableToCustomer: boolean
+      includeInDriverSalary: boolean
+    }
+    driverAllowance: {
+      charge: number
+      chargeableToCustomer: boolean
+      includeInDriverSalary: boolean
+    }
+  }
+  advancePayment: {
+    advanceFromCustomer: number
+    advanceToDriver: number
+  }
+  paymentDetails: {
+    status: string
+    paymentMode: string
+    paymentDate: Date | null
+  }
+  comments: string
+}

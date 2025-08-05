@@ -15,9 +15,10 @@ interface RadioGroupProps {
   value: string
   required?: boolean
   errorMessage?: string
+  direction?: 'horizontal' | 'vertical'
 }
 
-const RadioGroup: FunctionComponent<RadioGroupProps> = ({ options, name, errorMessage, changeHandler, value, required, question }) => {
+const RadioGroup: FunctionComponent<RadioGroupProps> = ({ options, name, errorMessage, changeHandler, value, required, question, direction = 'vertical' }) => {
   return (
     <div className={bemClass([blk])}>
       <div className={bemClass([blk, 'label-container'])}>
@@ -29,18 +30,20 @@ const RadioGroup: FunctionComponent<RadioGroupProps> = ({ options, name, errorMe
         )}
         <Text color="error">{errorMessage}</Text>
       </div>
-      {options.map((option, index) => {
-        return (
-          <RadioInput
-            key={option.toString() + index + 'radio'}
-            id={option}
-            name={name}
-            changeHandler={changeHandler}
-            label={option}
-            value={value}
-          />
-        )
-      })}
+      <div className={bemClass([blk, 'options', { [direction]: true }])}>
+        {options.map((option, index) => {
+          return (
+            <RadioInput
+              key={option.toString() + index + 'radio'}
+              id={option}
+              name={name}
+              changeHandler={changeHandler}
+              label={option}
+              value={value}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
