@@ -85,7 +85,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             },
             {
               label: 'Regular Requests',
-              route: '/regular-requests',
+              route: '/requests/regular',
             },
             {
               label: 'New Regular Request',
