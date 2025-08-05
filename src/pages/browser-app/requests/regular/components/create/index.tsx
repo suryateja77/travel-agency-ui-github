@@ -12,7 +12,7 @@ interface CreateRegularRequestProps {}
 const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () => {
   const [regularRequest, setRegularRequest] = useState<RegularRequestModel>({
     requestDetails: {
-      customerSelection: 'Existing',
+      customerSelection: 'Existing Customer',
       vehicleSelection: 'Existing',
       staffSelection: 'Existing',
       requestType: '',
