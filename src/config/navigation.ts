@@ -1,18 +1,18 @@
-import DashboardIcon from '../images/icons/nav-dashboard.webp'
-// import SupplierIcon from '../images/icons/nav-supplier.webp'
-// import BuyerIcon from '../images/icons/nav-buyer.webp'
-// import ProductIcon from '../images/icons/nav-products.webp'
-// import SettingIcon from '../images/icons/nav-settings.webp'
-// import UserIcon from '../images/icons/nav-users.webp'
-// import OrderIcon from '../images/icons/nav-orders.webp'
+import DashboardIcon from '../images/icons/dashboard.webp'
+import RequestsIcon from '../images/icons/requests.webp'
+import PaymentsIcon from '../images/icons/payments.webp'
+import ReportsIcon from '../images/icons/report.webp'
+import AdvanceBooking from '../images/icons/advance-booking.webp'
+import AdvancePayment from '../images/icons/advance-payment.webp'
+import BusinessIcon from '../images/icons/business.webp'
 
-import DashboardIconSelected from '../images/icons/nav-dashboard-selected.webp'
-// import SupplierIconSelected from '../images/icons/nav-supplier-selected.webp'
-// import BuyerIconSelected from '../images/icons/nav-buyer-selected.webp'
-// import ProductIconSelected from '../images/icons/nav-products-selected.webp'
-// import SettingIconSelected from '../images/icons/nav-settings-selected.webp'
-// import UserIconSelected from '../images/icons/nav-users-selected.webp'
-// import OrderIconSelected from '../images/icons/nav-orders-selected.webp'
+import DashboardIconSelected from '../images/icons/dashboard-selected.webp'
+import RequestsIconSelected from '../images/icons/requests-selected.webp'
+import PaymentsIconSelected from '../images/icons/payments-selected.webp'
+import ReportsIconSelected from '../images/icons/report-selected.webp'
+import AdvanceBookingSelected from '../images/icons/advance-booking-selected.webp'
+import AdvancePaymentSelected from '../images/icons/advance-payment-selected.webp'
+import BusinessIconSelected from '../images/icons/business-selected.webp'
 
 type SubRoute = {
   path: string
@@ -46,98 +46,94 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
           unselected: DashboardIcon,
         },
       },
-      // {
-      //   path: '/products',
-      //   name: 'Products',
-      //   image: {
-      //     selected: ProductIconSelected,
-      //     unselected: ProductIcon,
-      //   },
-      // },
-      // {
-      //   path: '/freight-forwarders',
-      //   name: 'Freight forwarders',
-      //   image: {
-      //     selected: SupplierIconSelected,
-      //     unselected: SupplierIcon,
-      //   },
-      // },
-      // {
-      //   path: '/buyers',
-      //   name: 'Buyers',
-      //   image: {
-      //     selected: BuyerIconSelected,
-      //     unselected: BuyerIcon,
-      //   },
-      // },
-      // {
-      //   path: '/suppliers',
-      //   name: 'Suppliers',
-      //   image: {
-      //     selected: SupplierIconSelected,
-      //     unselected: SupplierIcon,
-      //   },
-      // },
-      // {
-      //   path: '/orders',
-      //   name: 'Orders',
-      //   image: {
-      //     selected: OrderIconSelected,
-      //     unselected: OrderIcon,
-      //   },
-      // },
-      // {
-      //   path: '/agents',
-      //   name: 'Agents',
-      //   image: {
-      //     selected: UserIconSelected,
-      //     unselected: UserIcon,
-      //   },
-      // },
-      // {
-      //   path: '/users',
-      //   name: 'Users',
-      //   image: {
-      //     selected: UserIconSelected,
-      //     unselected: UserIcon,
-      //   },
-      //   subRoutes: [
-      //     {
-      //       path: '/user-list',
-      //       name: 'User List',
-      //     },
-      //     {
-      //       path: '/user-groups',
-      //       name: 'User Groups',
-      //     },
-      //     {
-      //       path: '/user-roles',
-      //       name: 'User Roles',
-      //     },
-      //   ],
-      // },
-      // {
-      //   path: '/settings',
-      //   name: 'Settings',
-      //   image: {
-      //     selected: SettingIconSelected,
-      //     unselected: SettingIcon,
-      //   },
-      //   subRoutes: [
-      //     {
-      //       path: '/configuration',
-      //       name: 'Configuration',
-      //     },
-      //     {
-      //       path: '/profile',
-      //       name: 'Profile',
-      //     },
-      //     {
-      //       path: '/branches',
-      //       name: 'Branches',
-      //     },
-      //   ],
-      // },
+      {
+        path: '/requests',
+        name: 'Requests',
+        image: {
+          selected: RequestsIconSelected,
+          unselected: RequestsIcon,
+        },
+        subRoutes: [
+          {
+            path: '/regular',
+            name: 'Regular',
+          },
+          {
+            path: '/monthly-fixed',
+            name: 'Monthly Fixed',
+          },
+        ],
+      },
+      {
+        path: '/payments',
+        name: 'Payments',
+        image: {
+          selected: PaymentsIconSelected,
+          unselected: PaymentsIcon,
+        },
+        subRoutes: [
+          {
+            path: '/vehicle',
+            name: 'Vehicle',
+          },
+          {
+            path: '/staff',
+            name: 'Staff',
+          },
+        ],
+      },
+      {
+        path: '/Reports',
+        name: 'Reports',
+        image: {
+          selected: ReportsIconSelected,
+          unselected: ReportsIcon,
+        },
+        subRoutes: [
+          {
+            path: '/business',
+            name: 'Business',
+          },
+          {
+            path: '/vehicle',
+            name: 'Vehicle',
+          },
+        ],
+      },
+      {
+        path: '/advance-booking',
+        name: 'Advance Booking',
+        image: {
+          selected: AdvanceBookingSelected,
+          unselected: AdvanceBooking,
+        },
+      },
+      {
+        path: '/advance-payments',
+        name: 'Advance Payments',
+        image: {
+          selected: AdvancePaymentSelected,
+          unselected: AdvancePayment,
+        },
+      },
+      {
+        path: '/business',
+        name: 'Business',
+        image: {
+          selected: BusinessIconSelected,
+          unselected: BusinessIcon,
+        },
+        subRoutes: [
+          {
+            path: '/settings',
+            name: 'Settings',
+          },
+          {
+            path: '/profile',
+            name: 'Profile',
+          },
+        ],
+      },
     ],
   },
 ]
