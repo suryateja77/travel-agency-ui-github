@@ -96,7 +96,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       <div className={bemClass([blk, 'content'])}>
         <>
           <Panel
-            title="Agent Information"
+            title="Request Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
