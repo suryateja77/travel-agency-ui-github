@@ -16,6 +16,10 @@
     align-items: flex-end;
     margin-bottom: $space-default;
   }
+  &__custom-label{
+    display: flex;
+    justify-content: space-between;
+  }
   &__flex {
     flex: 1;
   }

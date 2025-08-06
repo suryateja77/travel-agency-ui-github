@@ -98,7 +98,7 @@ export interface RegularRequestModel {
     | {
         // For EXISTING customer
         customerId: string
-        customerCategory?: string
+        customerCategory: string
         customerName?: never
         customerEmail?: never
         customerContact?: never
@@ -108,8 +108,8 @@ export interface RegularRequestModel {
         customerId?: never
         customerCategory?: never
         customerName: string
-        customerEmail?: string
-        customerContact?: string
+        customerEmail: string
+        customerContact: string
       }
   vehicleDetails:
     | {
@@ -150,9 +150,13 @@ export interface RegularRequestModel {
         staffName: string
         staffEmail: string
         staffLicense: string
-      }
+      },
+  customerPackageDetails: {
+    packageCategory: string
+    packageId: string
+  }
   otherCharges: {
-    tollCharges: {
+    toll: {
       charge: number
       chargeableToCustomer: boolean
     }
