@@ -8,6 +8,7 @@ import SideNavigator from '@components/side-navigator'
 import Requests from '@pages/browser-app/requests'
 import RegularRequests from '@pages/browser-app/requests/regular'
 import MonthlyFixedRequests from '@pages/browser-app/requests/monthly-fixed'
+import AdvanceBookings from '@pages/browser-app/advance-booking'
 
 const blk = 'browse-app'
 
@@ -75,6 +76,7 @@ const BrowseApp = () => {
                   <Route path="regular/*" element={<RegularRequests />} />
                   <Route path="monthly-fixed/*" element={<MonthlyFixedRequests />} />
                 </Route>
+                <Route path="/advance-booking/*" element={<AdvanceBookings />} />
                 <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>
             </Suspense>
