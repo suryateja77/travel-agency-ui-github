@@ -72,10 +72,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     },
     comments: '',
   })
-  
+
   const navigateBack = () => {
     // Logic to navigate back to the previous page
-    window.history.back();
+    window.history.back()
   }
 
   return (
@@ -1257,6 +1257,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             className={bemClass([blk, 'margin-bottom'])}
           >
             <TextArea
+              className={bemClass([blk, 'margin-bottom'])}
               name="comments"
               value={regularRequest.comments}
               changeHandler={value => {

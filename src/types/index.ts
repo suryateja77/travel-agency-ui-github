@@ -265,3 +265,16 @@ export interface AdvanceBookingModel {
       }
   comments: string
 }
+//
+export interface AdvancePaymentModel {
+  staffDetails: {
+    staffCategory: string
+    staffId: string
+  },
+  paymentDetails: {
+    expenseDate: Date | null
+    paymentMode: string
+    amount: number
+  }
+  comments: string
+}

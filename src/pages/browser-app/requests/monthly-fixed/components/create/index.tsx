@@ -646,6 +646,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
             className={bemClass([blk, 'margin-bottom'])}
           >
             <TextArea
+              className={bemClass([blk, 'margin-bottom'])}
               name="comments"
               value={monthlyFixedRequest.comments}
               changeHandler={value => {

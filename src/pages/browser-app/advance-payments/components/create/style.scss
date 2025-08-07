@@ -1,0 +1,46 @@
+@import '~/src/sass/style';
+
+.create-advance-payment {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  &__multi-field {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: $space-default;
+  }
+  &__custom-label{
+    display: flex;
+    justify-content: space-between;
+  }
+  &__flex {
+    flex: 1;
+  }
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+  }
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  &__margin-right {
+    margin-right: $space-small;
+  }
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+  }
+}
+
+@include large-up {
+  .create-advance-payment {
+  }
+}

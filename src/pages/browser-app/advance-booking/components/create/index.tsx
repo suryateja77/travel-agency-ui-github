@@ -351,6 +351,7 @@ const CreateAdvanceBooking: FunctionComponent<Props> = () => {
           >
             <TextArea
               name="comments"
+              className={bemClass([blk, 'margin-bottom'])}
               value={advanceBooking.comments}
               changeHandler={value => {
                 setAdvanceBooking({
