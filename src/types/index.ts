@@ -150,7 +150,7 @@ export interface RegularRequestModel {
         staffName: string
         staffEmail: string
         staffLicense: string
-      },
+      }
   customerPackageDetails: {
     packageCategory: string
     packageId: string
@@ -183,6 +183,57 @@ export interface RegularRequestModel {
     status: string
     paymentMode: string
     paymentDate: Date | null
+  }
+  comments: string
+}
+
+//
+
+export interface MonthlyFixedRequestModel {
+  customerDetails: {
+    customerCategory: string
+    customerId: string
+  }
+  requestDetails: {
+    vehicleSelection: string
+    staffSelection: string
+    requestType: string
+    pickupLocation: string
+    dropLocation: string
+    pickupDateAndTime: Date | null
+    dropDateAndTime: Date | null
+    openingKm: number | null
+    closingKm: number | null
+  }
+  packageFromProvidedVehicle:
+    | undefined
+    | {
+        packageCategory: string
+        packageId: string
+      }
+  otherCharges: {
+    toll: {
+      charge: number
+      chargeableToCustomer: boolean
+    }
+    parking: {
+      charge: number
+      chargeableToCustomer: boolean
+    }
+    nightHalt: {
+      charge: number
+      chargeableToCustomer: boolean
+      includeInDriverSalary: boolean
+    }
+    driverAllowance: {
+      charge: number
+      chargeableToCustomer: boolean
+      includeInDriverSalary: boolean
+    }
+  }
+  advancePayment: {
+    advanceFromCustomer: number
+    advanceToDriver: number
   }
   comments: string
 }

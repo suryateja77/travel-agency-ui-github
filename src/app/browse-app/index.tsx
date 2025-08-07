@@ -7,6 +7,7 @@ import { bemClass } from '@utils'
 import SideNavigator from '@components/side-navigator'
 import Requests from '@pages/browser-app/requests'
 import RegularRequests from '@pages/browser-app/requests/regular'
+import MonthlyFixedRequests from '@pages/browser-app/requests/monthly-fixed'
 
 const blk = 'browse-app'
 
@@ -72,6 +73,7 @@ const BrowseApp = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/requests/*" element={<Requests />}>
                   <Route path="regular/*" element={<RegularRequests />} />
+                  <Route path="monthly-fixed/*" element={<MonthlyFixedRequests />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>
