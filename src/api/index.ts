@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { getStorageItem } from '@utils/storage'
 
 type requestBodyType = Record<string, any>
 

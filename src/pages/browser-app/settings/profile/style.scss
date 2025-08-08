@@ -1,0 +1,49 @@
+@import '~/src/sass/style';
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+  }
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  &__margin-right {
+    margin-right: $space-small;
+  }
+  &__multi-field {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: $space-default;
+  }
+  &__flex {
+    flex: 1;
+  }
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+  }
+  &__company-logo {
+    height: 200px;
+    width: 100%;
+    background-color: $gray-light;
+  }
+  &__company-details {
+    background-color: $white;
+    padding: 2px;
+    &--last{
+      margin-bottom: $space-default;
+    }
+  }
+}

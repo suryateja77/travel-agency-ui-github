@@ -1,0 +1,54 @@
+@import '~/src/sass/style';
+
+.settings-panel {
+  background-color: $white;
+  &__header {
+    border-bottom: 1px solid $gray-light;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  &__modal-content {
+    padding: $space-default;
+  }
+  &__modal-title {
+    margin-bottom: $space-small;
+  }
+  &__modal-button-container {
+    margin-top: $space-small;
+    display: flex;
+    justify-content: space-between;
+    gap: $space-default;
+  }
+  &__modal-button {
+    flex: 1;
+  }
+  &__name-input {
+    margin-bottom: $space-small;
+  }
+  &__table-action {
+    width: 80px;
+    text-align: center !important;
+  }
+  &__first-button {
+    margin-right: 0px;
+    margin-bottom: 5px;
+  }
+  &__margin-bottom{
+    margin-bottom: $space-default;
+  }
+}
+
+@include large-up {
+  .settings-panel {
+    &__table-action {
+      width: 165px;
+    }
+    &__first-button {
+      margin-bottom: 0px;
+      margin-right: 5px;
+    }
+  }
+}

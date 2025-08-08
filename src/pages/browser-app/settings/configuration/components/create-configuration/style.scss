@@ -1,0 +1,25 @@
+@import '~/src/sass/style';
+
+.create-configuration {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  &__margin-right{
+    margin-right: $space-small;
+  }
+  &__action-items{
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+  }
+}

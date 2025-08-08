@@ -1,0 +1,40 @@
+@import '~/src/sass/style';
+
+.configuration {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    flex-direction: column;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+  }
+  &__content::-webkit-scrollbar {
+    display: none;
+  }
+  &__config-panel{
+    padding: $space-default;
+    margin-bottom: $space-default;
+  }
+}
+@include large-up {
+  .configuration {
+    &__content {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: center;
+    }
+  }
+}
