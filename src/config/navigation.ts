@@ -1,6 +1,7 @@
 import DashboardIcon from '../images/icons/dashboard.webp'
 import RequestsIcon from '../images/icons/requests.webp'
 import PackagesIcon from '../images/icons/packages.webp'
+import VehiclesIcon from '../images/icons/vehicles.webp'
 import PaymentsIcon from '../images/icons/payments.webp'
 import ReportsIcon from '../images/icons/report.webp'
 import AdvanceBooking from '../images/icons/advance-booking.webp'
@@ -10,6 +11,7 @@ import SettingsIcon from '../images/icons/business.webp'
 import DashboardIconSelected from '../images/icons/dashboard-selected.webp'
 import RequestsIconSelected from '../images/icons/requests-selected.webp'
 import PackagesIconSelected from '../images/icons/packages-selected.webp'
+import VehiclesIconSelected from '../images/icons/vehicles-selected.webp'
 import PaymentsIconSelected from '../images/icons/payments-selected.webp'
 import ReportsIconSelected from '../images/icons/report-selected.webp'
 import AdvanceBookingSelected from '../images/icons/advance-booking-selected.webp'
@@ -77,6 +79,20 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
           {
             path: '/local',
             name: 'Local',
+          },
+        ],
+      },
+      {
+        path: '/vehicles',
+        name: 'Vehicles',
+        image: {
+          selected: VehiclesIconSelected,
+          unselected: VehiclesIcon,
+        },
+        subRoutes: [
+          {
+            path: '/own',
+            name: 'Own',
           },
         ],
       },

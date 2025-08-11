@@ -293,3 +293,40 @@ export interface PackageModel {
     isActive: boolean
   }
 }
+//
+export interface VehicleModel {
+  vehicleDetails: {
+    vehicleType: string
+    manufacturer: string
+    name: string
+    numberOfSeats: number
+    registrationNumber: string
+    isACRequired: boolean
+    isMonthlyFixed: boolean
+  }
+  monthlyFixedCustomerDetails:
+    | undefined
+    | {
+        customerCategory: string
+        customerId: string
+      }
+  monthlyFixedPackageDetails:
+    | undefined
+    | {
+        packageCategory: string
+        packageId: string
+      }
+  monthlyFixedStaffDetails:
+    | undefined
+    | {
+        staffCategory: string
+        staffId: string
+      }
+  monthlyFixedContractDetails:
+    | undefined
+    | {
+        contractStartDate: Date | null
+        contractEndDate: Date | null
+      }
+  comments: string
+}

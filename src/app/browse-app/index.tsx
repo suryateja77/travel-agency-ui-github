@@ -15,6 +15,8 @@ import Configuration from '@pages/browser-app/settings/configuration'
 import Profile from '@pages/browser-app/settings/profile'
 import Packages from '@pages/browser-app/packages'
 import LocalPackages from '@pages/browser-app/packages/local'
+import Vehicles from '@pages/browser-app/vehicles'
+import OwnVehicles from '@pages/browser-app/vehicles/own'
 
 const blk = 'browse-app'
 
@@ -77,21 +79,66 @@ const BrowseApp = () => {
           <section className={bemClass([blk, 'page-content', { expanded: expandNavigator }])}>
             <Suspense>
               <Routes>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/requests/*" element={<Requests />}>
-                  <Route path="regular/*" element={<RegularRequests />} />
-                  <Route path="monthly-fixed/*" element={<MonthlyFixedRequests />} />
+                <Route
+                  path="/dashboard"
+                  element={<Dashboard />}
+                />
+                <Route
+                  path="/requests/*"
+                  element={<Requests />}
+                >
+                  <Route
+                    path="regular/*"
+                    element={<RegularRequests />}
+                  />
+                  <Route
+                    path="monthly-fixed/*"
+                    element={<MonthlyFixedRequests />}
+                  />
                 </Route>
-                <Route path="/packages/*" element={<Packages />}>
-                  <Route path="local/*" element={<LocalPackages />} />
+                <Route
+                  path="/packages/*"
+                  element={<Packages />}
+                >
+                  <Route
+                    path="local/*"
+                    element={<LocalPackages />}
+                  />
                 </Route>
-                <Route path="/advance-booking/*" element={<AdvanceBookings />} />
-                <Route path="/advance-payments/*" element={<AdvancePayments />} />
-                <Route path="/settings/*" element={<Settings />}>
-                  <Route path="configurations/*" element={<Configuration />} />
-                  <Route path="profile/*" element={<Profile />} />
+                <Route
+                  path="/Vehicles/*"
+                  element={<Vehicles />}
+                >
+                  <Route
+                    path="own/*"
+                    element={<OwnVehicles />}
+                  />
                 </Route>
-                <Route path="*" element={<Navigate to="/dashboard" />} />
+                <Route
+                  path="/advance-booking/*"
+                  element={<AdvanceBookings />}
+                />
+                <Route
+                  path="/advance-payments/*"
+                  element={<AdvancePayments />}
+                />
+                <Route
+                  path="/settings/*"
+                  element={<Settings />}
+                >
+                  <Route
+                    path="configurations/*"
+                    element={<Configuration />}
+                  />
+                  <Route
+                    path="profile/*"
+                    element={<Profile />}
+                  />
+                </Route>
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" />}
+                />
               </Routes>
             </Suspense>
           </section>
