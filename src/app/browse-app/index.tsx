@@ -13,6 +13,8 @@ import AdvancePayments from '@pages/browser-app/advance-payments'
 import Settings from '@pages/browser-app/settings'
 import Configuration from '@pages/browser-app/settings/configuration'
 import Profile from '@pages/browser-app/settings/profile'
+import Packages from '@pages/browser-app/packages'
+import LocalPackages from '@pages/browser-app/packages/local'
 
 const blk = 'browse-app'
 
@@ -79,6 +81,9 @@ const BrowseApp = () => {
                 <Route path="/requests/*" element={<Requests />}>
                   <Route path="regular/*" element={<RegularRequests />} />
                   <Route path="monthly-fixed/*" element={<MonthlyFixedRequests />} />
+                </Route>
+                <Route path="/packages/*" element={<Packages />}>
+                  <Route path="local/*" element={<LocalPackages />} />
                 </Route>
                 <Route path="/advance-booking/*" element={<AdvanceBookings />} />
                 <Route path="/advance-payments/*" element={<AdvancePayments />} />

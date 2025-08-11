@@ -270,11 +270,26 @@ export interface AdvancePaymentModel {
   staffDetails: {
     staffCategory: string
     staffId: string
-  },
+  }
   paymentDetails: {
     expenseDate: Date | null
     paymentMode: string
     amount: number
   }
   comments: string
+}
+//
+export interface PackageModel {
+  packageDetails: {
+    packageCode: string
+    minimumKm: number
+    minimumHours: number
+    basicAmount: number
+    extraKmRate: number
+    extraHoursRate: number
+    comments: string
+  }
+  statusDetails: {
+    isActive: boolean
+  }
 }
