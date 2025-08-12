@@ -1,4 +1,4 @@
-import { Configuration } from "@types"
+import { Configuration } from '@types'
 
 type obj = Record<string, any>
 
@@ -95,13 +95,32 @@ const normalizeWhitespace = (str: string) => {
   return str.trim().replace(/\s+/g, '')
 }
 
-const transformConfigurations = (configurations: Configuration[]) => {
-  const result: { [key: string]: { key: string; value: string }[] } = {}
+const nameToPath = (name: string): string => {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric except space and dash
+    .replace(/\s+/g, '-') // Replace spaces with dash
+}
+
+const pathToName = (path: string): string => {
+  return path
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+    .trim()
+}
+
+const transformConfigurations = (configurations: Configuration[], type: 'input' | 'navigation' = 'input') => {
+  const result: { [key: string]: any } = {}
   configurations.forEach(configItem => {
-    result[configItem.name] = configItem.configurationItems.map(item => ({
-      key: item.name,
-      value: item.name,
-    }))
+    result[configItem.name] = configItem.configurationItems.map(item =>
+      type === 'input'
+        ? {
+            key: item.name,
+            value: item.name,
+          }
+        : { path: `/${nameToPath(item.name)}`, name: item.name },
+    )
   })
   return result
 }
@@ -116,4 +135,4 @@ const getValueByPath = (obj: Record<string, any>, path: string): any => {
   }, obj)
 }
 
-export { computeValue, bemClass, debounce, formatDate, validatePayload, chunkArray, normalizeWhitespace, transformConfigurations, getValueByPath }
+export { computeValue, bemClass, debounce, formatDate, validatePayload, chunkArray, normalizeWhitespace, transformConfigurations, getValueByPath, pathToName }

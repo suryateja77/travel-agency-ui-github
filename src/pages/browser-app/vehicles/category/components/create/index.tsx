@@ -1,15 +1,17 @@
 import React, { FunctionComponent, useState } from 'react'
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, SelectInput, TextArea } from '@base'
 import { VehicleModel } from '@types'
-import { bemClass } from '@utils'
+import { bemClass, pathToName } from '@utils'
 
 import './style.scss'
 
 const blk = 'create-vehicle'
 
-interface CreateVehicleProps {}
+interface CreateVehicleProps {
+  category?: string
+}
 
-const CreateVehicle: FunctionComponent<CreateVehicleProps> = () => {
+const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' }) => {
   const [vehicle, setVehicle] = useState<VehicleModel>({
     vehicleDetails: {
       vehicleType: '',
@@ -39,7 +41,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = () => {
           color="gray-darker"
           typography="l"
         >
-          New Vehicle
+          {`New ${pathToName(category)} Vehicle`}
         </Text>
         <Breadcrumb
           data={[
@@ -48,11 +50,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = () => {
               route: '/dashboard',
             },
             {
-              label: 'Vehicles',
-              route: '/vehicles/own',
+              label: `${pathToName(category)} Vehicles`,
+              route: `/vehicles/${category}`,
             },
             {
-              label: 'New Vehicle',
+              label: `New ${pathToName(category)} Vehicle`,
             },
           ]}
         />

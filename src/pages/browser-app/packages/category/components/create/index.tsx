@@ -1,15 +1,17 @@
 import React, { FunctionComponent, useState } from 'react'
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, TextArea } from '@base'
 import { PackageModel } from '@types'
-import { bemClass } from '@utils'
+import { bemClass, pathToName } from '@utils'
 
 import './style.scss'
 
 const blk = 'create-package'
 
-interface CreatePackageProps {}
+interface CreatePackageProps {
+  category?: string
+}
 
-const CreatePackage: FunctionComponent<CreatePackageProps> = () => {
+const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' }) => {
   const [packageData, setPackageData] = useState<PackageModel>({
     packageDetails: {
       packageCode: '',
@@ -37,9 +39,9 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = () => {
           color="gray-darker"
           typography="l"
         >
-          New Package
+          {`New ${pathToName(category)} Package`}
         </Text>
-        <Breadcrumb data={[{ label: 'Home', route: '/dashboard' }, { label: 'Packages', route: '/packages/local' }, { label: 'New Package' }]} />
+        <Breadcrumb data={[{ label: 'Home', route: '/dashboard' }, { label: `${pathToName(category)} Packages`, route: `/packages/${category}` }, { label: `New ${pathToName(category)} Package` }]} />
       </div>
       <div className={bemClass([blk, 'content'])}>
         <Panel

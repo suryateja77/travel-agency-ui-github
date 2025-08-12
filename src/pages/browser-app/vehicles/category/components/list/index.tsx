@@ -1,5 +1,5 @@
 import { Button, Text } from '@base'
-import { bemClass } from '@utils'
+import { bemClass, pathToName } from '@utils'
 import React, { FunctionComponent } from 'react'
 
 import './style.scss'
@@ -7,9 +7,11 @@ import { useLocation } from 'react-router-dom'
 
 const blk = 'vehicles-list'
 
-interface Props {}
+interface Props {
+  category?: string
+}
 
-const VehiclesList: FunctionComponent<Props> = () => {
+const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
   const location = useLocation()
   return (
     <div className={bemClass([blk])}>
@@ -18,7 +20,7 @@ const VehiclesList: FunctionComponent<Props> = () => {
           color="gray-darker"
           typography="l"
         >
-          Vehicles
+          {`${pathToName(category)} Vehicles`}
         </Text>
         <Button
           category="primary"
@@ -26,7 +28,7 @@ const VehiclesList: FunctionComponent<Props> = () => {
           href={`${location.pathname}/create`}
           size="medium"
         >
-          New Vehicle
+          {`New ${pathToName(category)} Vehicle`}
         </Button>
       </div>
     </div>

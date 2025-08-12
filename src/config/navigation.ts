@@ -2,6 +2,9 @@ import DashboardIcon from '../images/icons/dashboard.webp'
 import RequestsIcon from '../images/icons/requests.webp'
 import PackagesIcon from '../images/icons/packages.webp'
 import VehiclesIcon from '../images/icons/vehicles.webp'
+import StaffIcon from '../images/icons/staff.webp'
+import CustomerIcon from '../images/icons/customers.webp'
+import ExpensesIcon from '../images/icons/expenses.webp'
 import PaymentsIcon from '../images/icons/payments.webp'
 import ReportsIcon from '../images/icons/report.webp'
 import AdvanceBooking from '../images/icons/advance-booking.webp'
@@ -12,6 +15,9 @@ import DashboardIconSelected from '../images/icons/dashboard-selected.webp'
 import RequestsIconSelected from '../images/icons/requests-selected.webp'
 import PackagesIconSelected from '../images/icons/packages-selected.webp'
 import VehiclesIconSelected from '../images/icons/vehicles-selected.webp'
+import StaffIconSelected from '../images/icons/staff-selected.webp'
+import CustomerIconSelected from '../images/icons/customers-selected.webp'
+import ExpensesIconSelected from '../images/icons/expenses-selected.webp'
 import PaymentsIconSelected from '../images/icons/payments-selected.webp'
 import ReportsIconSelected from '../images/icons/report-selected.webp'
 import AdvanceBookingSelected from '../images/icons/advance-booking-selected.webp'
@@ -30,6 +36,8 @@ export type RouteData = {
     unselected: string
     selected: string
   }
+  configurable: boolean
+  configurationVariable?: string
   subRoutes?: Array<SubRoute>
 }
 
@@ -44,6 +52,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
     routes: [
       {
         path: '/dashboard',
+        configurable: false,
         name: 'Dashboard',
         image: {
           selected: DashboardIconSelected,
@@ -52,6 +61,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/requests',
+        configurable: false,
         name: 'Requests',
         image: {
           selected: RequestsIconSelected,
@@ -70,34 +80,66 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/packages',
+        configurable: true,
+        configurationVariable: 'Package category',
         name: 'Packages',
         image: {
           selected: PackagesIconSelected,
           unselected: PackagesIcon,
         },
-        subRoutes: [
-          {
-            path: '/local',
-            name: 'Local',
-          },
-        ],
+        subRoutes: [],
       },
       {
         path: '/vehicles',
+        configurable: true,
+        configurationVariable: 'Vehicle category',
         name: 'Vehicles',
         image: {
           selected: VehiclesIconSelected,
           unselected: VehiclesIcon,
         },
         subRoutes: [
-          {
-            path: '/own',
-            name: 'Own',
-          },
+        ],
+      },
+      {
+        path: '/staff',
+        configurable: true,
+        configurationVariable: 'Staff category',
+        name: 'Staff',
+        image: {
+          selected: StaffIconSelected,
+          unselected: StaffIcon,
+        },
+        subRoutes: [
+        ],
+      },
+      {
+        path: '/customers',
+        configurable: true,
+        configurationVariable: 'Customer category',
+        name: 'Customers',
+        image: {
+          selected: CustomerIconSelected,
+          unselected: CustomerIcon,
+        },
+        subRoutes: [
+        ],
+      },
+      {
+        path: '/expenses',
+        configurable: true,
+        configurationVariable: 'Expense category',
+        name: 'Expenses',
+        image: {
+          selected: ExpensesIconSelected,
+          unselected: ExpensesIcon,
+        },
+        subRoutes: [
         ],
       },
       {
         path: '/payments',
+        configurable: false,
         name: 'Payments',
         image: {
           selected: PaymentsIconSelected,
@@ -116,6 +158,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/reports',
+        configurable: false,
         name: 'Reports',
         image: {
           selected: ReportsIconSelected,
@@ -134,6 +177,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/advance-booking',
+        configurable: false,
         name: 'Advance Booking',
         image: {
           selected: AdvanceBookingSelected,
@@ -142,6 +186,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/advance-payments',
+        configurable: false,
         name: 'Advance Payments',
         image: {
           selected: AdvancePaymentSelected,
@@ -150,6 +195,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
       },
       {
         path: '/settings',
+        configurable: false,
         name: 'Settings',
         image: {
           selected: SettingsIconSelected,

@@ -1,11 +1,13 @@
-import React, { Dispatch, FunctionComponent, SetStateAction, useState } from 'react'
-import { bemClass } from '@utils'
+import React, { Dispatch, FunctionComponent, SetStateAction, useEffect, useState } from 'react'
+import { bemClass, transformConfigurations } from '@utils'
 import { NavLink, useLocation } from 'react-router-dom'
 import { RouteData } from '@config/navigation'
 import Text from '@base/text'
 
 import './style.scss'
 import Icon from '@base/icon'
+import { useConfigurationsQuery } from '@api/queries/configuration'
+import { Configuration } from '@types'
 
 const blk = 'sidenav-item'
 
@@ -17,9 +19,24 @@ interface SideNavItemProps {
 }
 
 const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, sideNavExpandHandler, isMobile = false, route }) => {
+  const { data: configurationsData } = useConfigurationsQuery()
+  
   const [isNavItemExpanded, setIsNavItemExpanded] = useState(false)
+  const [subRoutes, setSubRoutes] = useState(route.subRoutes)
   const location = useLocation()
-  if (route.subRoutes) {
+
+  useEffect(() => {
+    if (configurationsData && configurationsData.data) {
+      const configurations: Configuration[] = configurationsData.data
+      const configValue = transformConfigurations(configurations, 'navigation')
+      if (configValue[route.configurationVariable || ''] && configValue[route.configurationVariable || ''].length > 0) {
+        setSubRoutes(configValue[route.configurationVariable || ''])
+        console.log('SubRoutes set from configurations:', configValue[route.configurationVariable || ''])
+      }
+    }
+  }, [configurationsData])
+
+  if (subRoutes) {
     return (
       <>
         <div
@@ -48,7 +65,7 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
           <Icon name={isNavItemExpanded ? 'caret-up' : 'caret-down'} />
         </div>
         <div className={bemClass([blk, 'sub-menu', { expanded: isSideNavExpanded && isNavItemExpanded }])}>
-          {route.subRoutes.map(subRoute => {
+          {subRoutes.map(subRoute => {
             return (
               <NavLink
                 key={subRoute.name}

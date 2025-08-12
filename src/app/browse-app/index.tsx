@@ -14,9 +14,9 @@ import Settings from '@pages/browser-app/settings'
 import Configuration from '@pages/browser-app/settings/configuration'
 import Profile from '@pages/browser-app/settings/profile'
 import Packages from '@pages/browser-app/packages'
-import LocalPackages from '@pages/browser-app/packages/local'
+import CategoryPackages from '@pages/browser-app/packages/category'
 import Vehicles from '@pages/browser-app/vehicles'
-import OwnVehicles from '@pages/browser-app/vehicles/own'
+import CategoryVehicles from '@pages/browser-app/vehicles/category'
 
 const blk = 'browse-app'
 
@@ -101,8 +101,8 @@ const BrowseApp = () => {
                   element={<Packages />}
                 >
                   <Route
-                    path="local/*"
-                    element={<LocalPackages />}
+                    path=":category/*"
+                    element={<CategoryPackages />}
                   />
                 </Route>
                 <Route
@@ -110,8 +110,8 @@ const BrowseApp = () => {
                   element={<Vehicles />}
                 >
                   <Route
-                    path="own/*"
-                    element={<OwnVehicles />}
+                    path=":category/*"
+                    element={<CategoryVehicles />}
                   />
                 </Route>
                 <Route
