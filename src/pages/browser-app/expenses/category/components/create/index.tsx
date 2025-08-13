@@ -33,7 +33,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
 
   const navigateBack = () => {
     // Route to the ExpenseList page
-    window.location.href = `/expenses/${category}`
+    window.history.back()
   }
 
   return (

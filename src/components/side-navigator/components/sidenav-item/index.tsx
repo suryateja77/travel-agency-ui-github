@@ -25,6 +25,20 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
   const [subRoutes, setSubRoutes] = useState(route.subRoutes)
   const location = useLocation()
 
+  // Helper function to check if the current route matches this nav item
+  const isRouteActive = () => {
+    const currentPath = location.pathname
+    const routePath = route.path
+    
+    // Exact match for root paths like /dashboard
+    if (routePath === '/dashboard' || routePath === '/advance-booking' || routePath === '/advance-payments') {
+      return currentPath === routePath
+    }
+    
+    // For other paths, ensure we match from the start and either end there or continue with a slash
+    return currentPath === routePath || currentPath.startsWith(routePath + '/')
+  }
+
   useEffect(() => {
     if (configurationsData && configurationsData.data) {
       const configurations: Configuration[] = configurationsData.data
@@ -49,14 +63,14 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
             {route.image && (
               <img
                 className={bemClass([blk, 'nav-img'])}
-                src={location.pathname.includes(route.path) ? route.image.selected : route.image.unselected}
+                src={isRouteActive() ? route.image.selected : route.image.unselected}
                 alt="nav-image"
               />
             )}
             <Text
               typography="xs"
               fontWeight="bold"
-              color={location.pathname.includes(route.path) ? 'success' : 'white'}
+              color={isRouteActive() ? 'success' : 'white'}
               tag="p"
             >
               {route.name}
@@ -110,14 +124,14 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
       {route.image && (
         <img
           className={bemClass([blk, 'nav-img'])}
-          src={location.pathname.includes(route.path) ? route.image.selected : route.image.unselected}
+          src={isRouteActive() ? route.image.selected : route.image.unselected}
           alt="nav-image"
         />
       )}
       <Text
         typography="xs"
         fontWeight="bold"
-        color={location.pathname.includes(route.path) ? 'success' : 'white'}
+        color={isRouteActive() ? 'success' : 'white'}
         tag="p"
       >
         {route.name}
