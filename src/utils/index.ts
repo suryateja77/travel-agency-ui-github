@@ -135,4 +135,4 @@ const getValueByPath = (obj: Record<string, any>, path: string): any => {
   }, obj)
 }
 
-export { computeValue, bemClass, debounce, formatDate, validatePayload, chunkArray, normalizeWhitespace, transformConfigurations, getValueByPath, pathToName }
+export { computeValue, bemClass, debounce, formatDate, validatePayload, chunkArray, normalizeWhitespace, transformConfigurations, getValueByPath, pathToName, nameToPath }

@@ -330,3 +330,26 @@ export interface VehicleModel {
       }
   comments: string
 }
+//
+export interface ExpenseModel {
+  expenseDetails: {
+    expenseType: string
+    paymentMode: string
+    expenseDate: Date | null
+    expenseAmount: number
+    location: string
+  }
+  vehicleDetails:
+    | undefined
+    | {
+        category: string
+        vehicle: string
+      }
+  staffDetails:
+    | undefined
+    | {
+        category: string
+        staff: string
+      }
+  comments: string
+}

@@ -1,0 +1,36 @@
+@import '~/src/sass/style';
+
+.expenses-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: $white;
+  }
+  &__table-action {
+    width: 165px;
+    text-align: center !important;
+  }
+  &__first-button {
+    margin-bottom: 5px;
+    margin-right: 0px;
+  }
+}
+
+@include large-up {
+  .expenses-list {
+    &__first-button {
+      margin-bottom: 0px;
+      margin-right: 5px;
+    }
+  }
+}

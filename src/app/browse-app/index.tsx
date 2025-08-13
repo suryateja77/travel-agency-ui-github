@@ -17,6 +17,8 @@ import Packages from '@pages/browser-app/packages'
 import CategoryPackages from '@pages/browser-app/packages/category'
 import Vehicles from '@pages/browser-app/vehicles'
 import CategoryVehicles from '@pages/browser-app/vehicles/category'
+import CategoryExpenses from '@pages/browser-app/expenses/category'
+import Expenses from '@pages/browser-app/expenses'
 
 const blk = 'browse-app'
 
@@ -106,12 +108,21 @@ const BrowseApp = () => {
                   />
                 </Route>
                 <Route
-                  path="/Vehicles/*"
+                  path="/vehicles/*"
                   element={<Vehicles />}
                 >
                   <Route
                     path=":category/*"
                     element={<CategoryVehicles />}
+                  />
+                </Route>
+                <Route
+                  path="/expenses/*"
+                  element={<Expenses />}
+                >
+                  <Route
+                    path=":category/*"
+                    element={<CategoryExpenses />}
                   />
                 </Route>
                 <Route
