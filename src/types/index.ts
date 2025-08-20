@@ -79,6 +79,28 @@ export const enum DetailFieldType {
 
 // --------------------------------------------------------------------------------------------------------
 
+export interface CustomerAddress {
+  addressLine1: string
+  addressLine2: string
+  city: string
+  state: string
+  pinCode: string
+}
+
+export interface CustomerModel {
+  _id?: string
+  name: string
+  contact: string
+  whatsAppNumber: string
+  email?: string
+  address: CustomerAddress
+  isActive: boolean
+  comment?: string
+  category: string
+}
+
+// --------------------------------------------------------------------------------------------------------
+
 export interface RegularRequestModel {
   requestDetails: {
     customerSelection: string

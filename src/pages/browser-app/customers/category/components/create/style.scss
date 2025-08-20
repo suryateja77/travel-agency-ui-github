@@ -1,0 +1,42 @@
+@import '~/src/sass/style';
+
+.create-customer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+  
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+  }
+  
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  
+  &__margin-right {
+    margin-right: $space-small;
+  }
+  
+  &__field-column {
+    padding-bottom: 15px;
+  }
+
+  &__comment-column {
+    padding-bottom: 15px;
+  }
+
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+  }
+}
