@@ -1,0 +1,72 @@
+@import '~/src/sass/style';
+
+.toggle {
+  display: flex;
+  align-items: center;
+
+  &--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &__switch {
+    position: relative;
+    width: 50px;
+    height: 25px;
+  }
+
+  &__input {
+    display: none;
+  }
+
+  &__slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:before {
+      position: absolute;
+      content: "";
+      height: 19px;
+      width: 19px;
+      left: 3px;
+      bottom: 3px;
+      background-color: $white;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+    
+    &--checked {
+      background-color: $primary;
+      
+      &:before {
+        transform: translateX(25px);
+      }
+    }
+    
+    &--disabled {
+      background-color: $gray-light;
+      cursor: not-allowed;
+      
+      &:before {
+        background-color: $gray;
+      }
+    }
+    
+    &:not(&--checked):not(&--disabled) {
+      background-color: $gray;
+      cursor: pointer;
+    }
+  }
+
+  &__label {
+    margin-left: 10px;
+    color: $gray-darker;
+    font-size: 14px;
+  }
+}

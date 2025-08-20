@@ -1,0 +1,34 @@
+.active-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  &--active {
+    background-color: #d4edda;
+    color: #155724;
+
+    .active-indicator__dot {
+      background-color: #28a745;
+    }
+  }
+
+  &--disabled {
+    background-color: #f8d7da;
+    color: #721c24;
+
+    .active-indicator__dot {
+      background-color: #dc3545;
+    }
+  }
+}
