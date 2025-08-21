@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useState } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert } from '@base'
-import { sampleVehicleModel, VehicleModel } from '@types'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
+import { VehicleModel } from '@types'
 import { bemClass, pathToName, validatePayload } from '@utils'
 
 import './style.scss'
@@ -15,6 +15,20 @@ interface CreateVehicleProps {
 }
 
 const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' }) => {
+  const sampleVehicleModel: VehicleModel = {
+    vehicleDetails: {
+      vehicleType: '',
+      manufacturer: '',
+      name: '',
+      numberOfSeats: 0,
+      registrationNumber: '',
+      isACRequired: false,
+      isMonthlyFixed: false,
+    },
+    monthlyFixedDetails: undefined,
+    isActive: true,
+    comments: '',
+  }
   const navigate = useNavigate()
   const createVehicle = useCreateVehicleMutation()
 
@@ -240,11 +254,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <CheckBox
-                  id="isACRequired"
-                  label="AC Required"
+                <Toggle
+                  name="isACRequired"
+                  label='Is AC Required'
                   checked={vehicle.vehicleDetails.isACRequired}
-                  changeHandler={obj =>
+                  changeHandler={obj => {
                     setVehicle({
                       ...vehicle,
                       vehicleDetails: {
@@ -252,16 +266,16 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                         isACRequired: !!obj.isACRequired,
                       },
                     })
-                  }
+                  }}
                 />
               </Column>
               <Column
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <CheckBox
-                  id="isMonthlyFixed"
-                  label="Monthly Fixed"
+                <Toggle
+                  name="isMonthlyFixed"
+                  label='Is Monthly Fixed'
                   checked={vehicle.vehicleDetails.isMonthlyFixed}
                   changeHandler={obj =>
                     setVehicle({
@@ -280,242 +294,289 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
           </Panel>
 
           {vehicle.vehicleDetails.isMonthlyFixed && (
-            <Panel title="Monthly Fixed Details" className={bemClass([blk, 'margin-bottom'])}>
-              <Row>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Customer Category"
-                    name="customerCategory"
-                    options={[
-                      { key: 'Regular', value: 'Regular' },
-                      { key: 'Operator', value: 'Operator' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.customerCategory ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: value.customerCategory?.toString() ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.customerCategory']}
-                    invalid={errorMap['monthlyFixedDetails.customerCategory']}
-                  />
-                </Column>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Customer"
-                    name="customer"
-                    options={[
-                      { key: 'Ramesh', value: 'Ramesh' },
-                      { key: 'Suresh', value: 'Suresh' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.customer ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: value.customer?.toString() ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.customer']}
-                    invalid={errorMap['monthlyFixedDetails.customer']}
-                  />
-                </Column>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Package Category"
-                    name="packageCategory"
-                    options={[
-                      { key: 'Package 1', value: 'Package 1' },
-                      { key: 'Package 2', value: 'Package 2' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.packageCategory ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: value.packageCategory?.toString() ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.packageCategory']}
-                    invalid={errorMap['monthlyFixedDetails.packageCategory']}
-                  />
-                </Column>
-              </Row>
-              <Row>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Package"
-                    name="package"
-                    options={[
-                      { key: 'Package 1', value: 'Package 1' },
-                      { key: 'Package 2', value: 'Package 2' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.package ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: value.package?.toString() ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.package']}
-                    invalid={errorMap['monthlyFixedDetails.package']}
-                  />
-                </Column>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Staff Category"
-                    name="staffCategory"
-                    options={[
-                      { key: 'Driver', value: 'Driver' },
-                      { key: 'Guide', value: 'Guide' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.staffCategory ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: value.staffCategory?.toString() ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.staffCategory']}
-                    invalid={errorMap['monthlyFixedDetails.staffCategory']}
-                  />
-                </Column>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <SelectInput
-                    label="Staff"
-                    name="staff"
-                    options={[
-                      { key: 'Driver1', value: 'Driver1' },
-                      { key: 'Driver2', value: 'Driver2' },
-                    ]}
-                    value={vehicle.monthlyFixedDetails?.staff ?? ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: value.staff?.toString() ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.staff']}
-                    invalid={errorMap['monthlyFixedDetails.staff']}
-                  />
-                </Column>
-              </Row>
-              <Row>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <TextInput
-                    label="Contract Start Date"
-                    name="contractStartDate"
-                    type="date"
-                    value={
-                      vehicle.monthlyFixedDetails?.contractStartDate ? new Date(vehicle.monthlyFixedDetails.contractStartDate).toISOString().slice(0, 10) : ''
-                    }
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: value.contractStartDate ? new Date(value.contractStartDate) : new Date(),
-                          contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.contractStartDate']}
-                    invalid={errorMap['monthlyFixedDetails.contractStartDate']}
-                  />
-                </Column>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <TextInput
-                    label="Contract End Date"
-                    name="contractEndDate"
-                    type="date"
-                    value={vehicle.monthlyFixedDetails?.contractEndDate ? new Date(vehicle.monthlyFixedDetails.contractEndDate).toISOString().slice(0, 10) : ''}
-                    changeHandler={value => {
-                      setVehicle({
-                        ...vehicle,
-                        monthlyFixedDetails: {
-                          customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
-                          customer: vehicle.monthlyFixedDetails?.customer ?? '',
-                          packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
-                          package: vehicle.monthlyFixedDetails?.package ?? '',
-                          staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
-                          staff: vehicle.monthlyFixedDetails?.staff ?? '',
-                          contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
-                          contractEndDate: value.contractEndDate ? new Date(value.contractEndDate) : new Date(),
-                        },
-                      })
-                    }}
-                    required={vehicle.vehicleDetails.isMonthlyFixed}
-                    errorMessage={errorMap['monthlyFixedDetails.contractEndDate']}
-                    invalid={errorMap['monthlyFixedDetails.contractEndDate']}
-                  />
-                </Column>
-              </Row>
-            </Panel>
+            <>
+              <Panel
+                title="Monthly Fixed Customer Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Customer Category"
+                      name="customerCategory"
+                      options={[
+                        { key: 'Regular', value: 'Regular' },
+                        { key: 'Operator', value: 'Operator' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.customerCategory ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: value.customerCategory?.toString() ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.customerCategory']}
+                      invalid={errorMap['monthlyFixedDetails.customerCategory']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Customer"
+                      name="customer"
+                      options={[
+                        { key: 'Ramesh', value: 'Ramesh' },
+                        { key: 'Suresh', value: 'Suresh' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.customer ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: value.customer?.toString() ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.customer']}
+                      invalid={errorMap['monthlyFixedDetails.customer']}
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+
+              <Panel
+                title="Monthly Fixed Package Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Package Category"
+                      name="packageCategory"
+                      options={[
+                        { key: 'Package 1', value: 'Package 1' },
+                        { key: 'Package 2', value: 'Package 2' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.packageCategory ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: value.packageCategory?.toString() ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.packageCategory']}
+                      invalid={errorMap['monthlyFixedDetails.packageCategory']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Package"
+                      name="package"
+                      options={[
+                        { key: 'Package 1', value: 'Package 1' },
+                        { key: 'Package 2', value: 'Package 2' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.package ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: value.package?.toString() ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.package']}
+                      invalid={errorMap['monthlyFixedDetails.package']}
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+
+              <Panel
+                title="Monthly Fixed Staff Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Staff Category"
+                      name="staffCategory"
+                      options={[
+                        { key: 'Driver', value: 'Driver' },
+                        { key: 'Guide', value: 'Guide' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.staffCategory ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: value.staffCategory?.toString() ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.staffCategory']}
+                      invalid={errorMap['monthlyFixedDetails.staffCategory']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Staff"
+                      name="staff"
+                      options={[
+                        { key: 'Driver1', value: 'Driver1' },
+                        { key: 'Driver2', value: 'Driver2' },
+                      ]}
+                      value={vehicle.monthlyFixedDetails?.staff ?? ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: value.staff?.toString() ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.staff']}
+                      invalid={errorMap['monthlyFixedDetails.staff']}
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+
+              <Panel
+                title="Monthly Fixed Contract Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Contract Start Date"
+                      name="contractStartDate"
+                      type="date"
+                      value={vehicle.monthlyFixedDetails?.contractStartDate ? new Date(vehicle.monthlyFixedDetails.contractStartDate).toISOString().slice(0, 10) : ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: value.contractStartDate ? new Date(value.contractStartDate) : new Date(),
+                            contractEndDate: vehicle.monthlyFixedDetails?.contractEndDate ?? new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.contractStartDate']}
+                      invalid={errorMap['monthlyFixedDetails.contractStartDate']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Contract End Date"
+                      name="contractEndDate"
+                      type="date"
+                      value={vehicle.monthlyFixedDetails?.contractEndDate ? new Date(vehicle.monthlyFixedDetails.contractEndDate).toISOString().slice(0, 10) : ''}
+                      changeHandler={value => {
+                        setVehicle({
+                          ...vehicle,
+                          monthlyFixedDetails: {
+                            customerCategory: vehicle.monthlyFixedDetails?.customerCategory ?? '',
+                            customer: vehicle.monthlyFixedDetails?.customer ?? '',
+                            packageCategory: vehicle.monthlyFixedDetails?.packageCategory ?? '',
+                            package: vehicle.monthlyFixedDetails?.package ?? '',
+                            staffCategory: vehicle.monthlyFixedDetails?.staffCategory ?? '',
+                            staff: vehicle.monthlyFixedDetails?.staff ?? '',
+                            contractStartDate: vehicle.monthlyFixedDetails?.contractStartDate ?? new Date(),
+                            contractEndDate: value.contractEndDate ? new Date(value.contractEndDate) : new Date(),
+                          },
+                        })
+                      }}
+                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      errorMessage={errorMap['monthlyFixedDetails.contractEndDate']}
+                      invalid={errorMap['monthlyFixedDetails.contractEndDate']}
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+            </>
           )}
 
           <Panel
@@ -534,6 +595,28 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
               }}
               placeholder="Enter any additional comments or notes here..."
             />
+          </Panel>
+          <Panel
+            title="Is active"
+            className={bemClass([blk, 'margin-bottom'])}
+          >
+            <Row>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Toggle
+                  name="isActive"
+                  checked={vehicle.isActive}
+                  changeHandler={obj => {
+                    setVehicle({
+                      ...vehicle,
+                      isActive: !!obj.isActive,
+                    })
+                  }}
+                />
+              </Column>
+            </Row>
           </Panel>
 
           <div className={bemClass([blk, 'action-items'])}>

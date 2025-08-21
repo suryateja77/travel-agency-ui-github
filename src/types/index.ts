@@ -316,22 +316,10 @@ export interface VehicleModel {
         contractStartDate: Date
         contractEndDate: Date
       }
+  isActive: boolean
   comments: string
 }
 //
-export const sampleVehicleModel: VehicleModel = {
-  vehicleDetails: {
-    vehicleType: '',
-    manufacturer: '',
-    name: '',
-    numberOfSeats: 0,
-    registrationNumber: '',
-    isACRequired: false,
-    isMonthlyFixed: false,
-  },
-  monthlyFixedDetails: undefined,
-  comments: '',
-}
 export interface StaffModel {
   name: string
   contact: string
