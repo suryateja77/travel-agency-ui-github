@@ -1,0 +1,29 @@
+@import '~/src/sass/style';
+
+.page-header {
+  
+  &__content {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: $space-default;
+  }
+
+  &__title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    margin-right: $space-default;
+  }
+
+  &__breadcrumb-section {
+    display: flex;
+    align-items: center;
+  }
+
+  &__action-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}

@@ -19,6 +19,8 @@ import Vehicles from '@pages/browser-app/vehicles'
 import CategoryVehicles from '@pages/browser-app/vehicles/category'
 import CategoryExpenses from '@pages/browser-app/expenses/category'
 import Expenses from '@pages/browser-app/expenses'
+import Staff from '@pages/browser-app/staff'
+import CategoryStaff from '@pages/browser-app/staff/category'
 
 const blk = 'browse-app'
 
@@ -123,6 +125,15 @@ const BrowseApp = () => {
                   <Route
                     path=":category/*"
                     element={<CategoryExpenses />}
+                  />
+                </Route>
+                <Route
+                  path="/staff/*"
+                  element={<Staff />}
+                >
+                  <Route
+                    path=":category/*"
+                    element={<CategoryStaff />}
                   />
                 </Route>
                 <Route
