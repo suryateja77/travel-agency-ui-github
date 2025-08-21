@@ -16,16 +16,15 @@ interface CreateVehicleProps {
 
 const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' }) => {
   const sampleVehicleModel: VehicleModel = {
-    vehicleDetails: {
-      vehicleType: '',
-      manufacturer: '',
-      name: '',
-      numberOfSeats: 0,
-      registrationNumber: '',
-      isACRequired: false,
-      isMonthlyFixed: false,
-    },
+    type: '',
+    manufacturer: '',
+    name: '',
+    noOfSeats: '',
+    registrationNo: '',
+    hasAc: false,
+    isMonthlyFixed: false,
     monthlyFixedDetails: undefined,
+    category: '',
     isActive: true,
     comments: '',
   }
@@ -135,26 +134,23 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
               >
                 <SelectInput
                   label="Vehicle Type"
-                  name="vehicleType"
+                  name="type"
                   options={[
                     { key: 'Sedan', value: 'Sedan' },
                     { key: 'SUV', value: 'SUV' },
                     { key: 'Hatchback', value: 'Hatchback' },
                     { key: 'Bus', value: 'Bus' },
                   ]}
-                  value={vehicle.vehicleDetails.vehicleType}
+                  value={vehicle.type}
                   changeHandler={value => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        vehicleType: value.vehicleType?.toString() ?? '',
-                      },
+                      type: value.type?.toString() ?? '',
                     })
                   }}
                   required
-                  errorMessage={errorMap['vehicleDetails.vehicleType']}
-                  invalid={errorMap['vehicleDetails.vehicleType']}
+                  errorMessage={errorMap['type']}
+                  invalid={errorMap['type']}
                 />
               </Column>
               <Column
@@ -164,19 +160,16 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                 <TextInput
                   label="Manufacturer"
                   name="manufacturer"
-                  value={vehicle.vehicleDetails.manufacturer}
+                  value={vehicle.manufacturer}
                   changeHandler={value => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        manufacturer: value.manufacturer?.toString() ?? '',
-                      },
+                      manufacturer: value.manufacturer?.toString() ?? '',
                     })
                   }}
                   required
-                  errorMessage={errorMap['vehicleDetails.manufacturer']}
-                  invalid={errorMap['vehicleDetails.manufacturer']}
+                  errorMessage={errorMap['manufacturer']}
+                  invalid={errorMap['manufacturer']}
                 />
               </Column>
               <Column
@@ -186,19 +179,16 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                 <TextInput
                   label="Vehicle Name"
                   name="name"
-                  value={vehicle.vehicleDetails.name}
+                  value={vehicle.name}
                   changeHandler={value => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        name: value.name?.toString() ?? '',
-                      },
+                      name: value.name?.toString() ?? '',
                     })
                   }}
                   required
-                  errorMessage={errorMap['vehicleDetails.name']}
-                  invalid={errorMap['vehicleDetails.name']}
+                  errorMessage={errorMap['name']}
+                  invalid={errorMap['name']}
                 />
               </Column>
             </Row>
@@ -209,21 +199,18 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
               >
                 <TextInput
                   label="Number of Seats"
-                  name="numberOfSeats"
+                  name="noOfSeats"
                   type="number"
-                  value={vehicle.vehicleDetails.numberOfSeats ?? ''}
+                  value={vehicle.noOfSeats ?? ''}
                   changeHandler={value => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        numberOfSeats: value.numberOfSeats ? Number(value.numberOfSeats) : 0,
-                      },
+                      noOfSeats: value.noOfSeats ? Number(value.noOfSeats) : '',
                     })
                   }}
                   required
-                  errorMessage={errorMap['vehicleDetails.numberOfSeats']}
-                  invalid={errorMap['vehicleDetails.numberOfSeats']}
+                  errorMessage={errorMap['noOfSeats']}
+                  invalid={errorMap['noOfSeats']}
                 />
               </Column>
               <Column
@@ -232,20 +219,17 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
               >
                 <TextInput
                   label="Registration Number"
-                  name="registrationNumber"
-                  value={vehicle.vehicleDetails.registrationNumber}
+                  name="registrationNo"
+                  value={vehicle.registrationNo}
                   changeHandler={value => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        registrationNumber: value.registrationNumber?.toString() ?? '',
-                      },
+                      registrationNo: value.registrationNo?.toString() ?? '',
                     })
                   }}
                   required
-                  errorMessage={errorMap['vehicleDetails.registrationNumber']}
-                  invalid={errorMap['vehicleDetails.registrationNumber']}
+                  errorMessage={errorMap['registrationNo']}
+                  invalid={errorMap['registrationNo']}
                 />
               </Column>
             </Row>
@@ -255,16 +239,13 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <Toggle
-                  name="isACRequired"
+                  name="hasAc"
                   label='Is AC Required'
-                  checked={vehicle.vehicleDetails.isACRequired}
+                  checked={vehicle.hasAc}
                   changeHandler={obj => {
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        isACRequired: !!obj.isACRequired,
-                      },
+                      hasAc: !!obj.hasAc,
                     })
                   }}
                 />
@@ -276,14 +257,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                 <Toggle
                   name="isMonthlyFixed"
                   label='Is Monthly Fixed'
-                  checked={vehicle.vehicleDetails.isMonthlyFixed}
+                  checked={vehicle.isMonthlyFixed}
                   changeHandler={obj =>
                     setVehicle({
                       ...vehicle,
-                      vehicleDetails: {
-                        ...vehicle.vehicleDetails,
-                        isMonthlyFixed: !!obj.isMonthlyFixed,
-                      },
+                      isMonthlyFixed: !!obj.isMonthlyFixed,
                       // Reset monthly fixed details when toggling off
                       monthlyFixedDetails: obj.isMonthlyFixed ? vehicle.monthlyFixedDetails : undefined,
                     })
@@ -293,7 +271,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
             </Row>
           </Panel>
 
-          {vehicle.vehicleDetails.isMonthlyFixed && (
+          {vehicle.isMonthlyFixed && (
             <>
               <Panel
                 title="Monthly Fixed Customer Details"
@@ -327,7 +305,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.customerCategory']}
                       invalid={errorMap['monthlyFixedDetails.customerCategory']}
                     />
@@ -359,7 +337,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.customer']}
                       invalid={errorMap['monthlyFixedDetails.customer']}
                     />
@@ -399,7 +377,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.packageCategory']}
                       invalid={errorMap['monthlyFixedDetails.packageCategory']}
                     />
@@ -431,7 +409,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.package']}
                       invalid={errorMap['monthlyFixedDetails.package']}
                     />
@@ -471,7 +449,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.staffCategory']}
                       invalid={errorMap['monthlyFixedDetails.staffCategory']}
                     />
@@ -503,7 +481,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.staff']}
                       invalid={errorMap['monthlyFixedDetails.staff']}
                     />
@@ -540,7 +518,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.contractStartDate']}
                       invalid={errorMap['monthlyFixedDetails.contractStartDate']}
                     />
@@ -569,7 +547,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           },
                         })
                       }}
-                      required={vehicle.vehicleDetails.isMonthlyFixed}
+                      required={vehicle.isMonthlyFixed}
                       errorMessage={errorMap['monthlyFixedDetails.contractEndDate']}
                       invalid={errorMap['monthlyFixedDetails.contractEndDate']}
                     />

@@ -295,15 +295,13 @@ export interface PackageModel {
 }
 //
 export interface VehicleModel {
-  vehicleDetails: {
-    vehicleType: string
-    manufacturer: string
-    name: string
-    numberOfSeats: number
-    registrationNumber: string
-    isACRequired: boolean
-    isMonthlyFixed: boolean
-  }
+  type: string
+  manufacturer: string
+  name: string
+  noOfSeats: string | number
+  registrationNo: string
+  hasAc: boolean
+  isMonthlyFixed: boolean
   monthlyFixedDetails:
     | undefined
     | {
@@ -316,6 +314,7 @@ export interface VehicleModel {
         contractStartDate: Date
         contractEndDate: Date
       }
+  category: string
   isActive: boolean
   comments: string
 }

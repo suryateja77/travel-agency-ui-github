@@ -2,7 +2,7 @@ import { emailField, emptyField, numberFieldGreaterThanZero } from '@config/vali
 import { VehicleModel } from '@types'
 
 const createValidationSchema = (vehicleData: VehicleModel) => {
-  const conditionalFields = vehicleData.vehicleDetails.isMonthlyFixed
+  const conditionalFields = vehicleData.isMonthlyFixed
     ? [
         emptyField('monthlyFixedDetails.customerCategory'),
         emptyField('monthlyFixedDetails.customer'),
@@ -16,13 +16,14 @@ const createValidationSchema = (vehicleData: VehicleModel) => {
     : []
 
   return [
-    emptyField('vehicleDetails.vehicleType'),
-    emptyField('vehicleDetails.manufacturer'),
-    emptyField('vehicleDetails.name'),
-    numberFieldGreaterThanZero('vehicleDetails.numberOfSeats'),
-    emptyField('vehicleDetails.registrationNumber'),
-    emptyField('vehicleDetails.isACRequired'),
-    emptyField('vehicleDetails.isMonthlyFixed'),
+    emptyField('type'),
+    emptyField('manufacturer'),
+    emptyField('name'),
+    emptyField('noOfSeats'),
+    numberFieldGreaterThanZero('noOfSeats'),
+    emptyField('registrationNo'),
+    emptyField('hasAc'),
+    emptyField('isMonthlyFixed'),
     ...conditionalFields,
   ]
 }

@@ -40,40 +40,40 @@ const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
   const columns = [
     {
       label: 'Vehicle',
-      custom: ({ _id, vehicleDetails }: { _id: string; vehicleDetails: any }) => (
+      custom: ({ _id, name }: { _id: string; name: any }) => (
         <Anchor asLink href={`/vehicles/${category}/${_id}/detail`}>
-          {vehicleDetails?.name || '-'}
+          {name || '-'}
         </Anchor>
       ),
     },
     {
       label: 'Vehicle No',
-      custom: ({ vehicleDetails }: { vehicleDetails: any }) => (
-        <>{vehicleDetails?.registrationNumber || '-'}</>
+      custom: ({ registrationNo }: { registrationNo: any }) => (
+        <>{registrationNo || '-'}</>
       ),
     },
     {
       label: 'No of seats',
-      custom: ({ vehicleDetails }: { vehicleDetails: any }) => (
-        <>{vehicleDetails?.numberOfSeats || '-'}</>
+      custom: ({ noOfSeats }: { noOfSeats: any }) => (
+        <>{noOfSeats || '-'}</>
       ),
     },
     {
       label: 'Type',
-      custom: ({ vehicleDetails }: { vehicleDetails: any }) => (
-        <>{vehicleDetails?.vehicleType || '-'}</>
+      custom: ({ type }: { type: any }) => (
+        <>{type || '-'}</>
       ),
     },
     {
       label: 'AC',
-      custom: ({ vehicleDetails }: { vehicleDetails: any }) => (
-        <>{vehicleDetails?.isACRequired ? 'Yes' : 'No'}</>
+      custom: ({ hasAc }: { hasAc: any }) => (
+        <>{hasAc ? 'Yes' : 'No'}</>
       ),
     },
     {
       label: 'Monthly Fixed',
-      custom: ({ vehicleDetails }: { vehicleDetails: any }) => (
-        <>{vehicleDetails?.isMonthlyFixed ? 'Yes' : 'No'}</>
+      custom: ({ isMonthlyFixed }: { isMonthlyFixed: any }) => (
+        <>{isMonthlyFixed ? 'Yes' : 'No'}</>
       ),
     },
     {
@@ -99,7 +99,7 @@ const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid
           columns={columns}
-          data={filteredVehicleData}
+          data={filteredVehicleData || []}
           isLoading={isLoading}
           deleteHandler={handleDeleteVehicle}
           editRoute={`/vehicles/${category}`}
