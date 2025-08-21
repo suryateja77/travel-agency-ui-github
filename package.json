@@ -6,7 +6,8 @@
     "install": "npm run build",
     "start": "node server.js",
     "dev": "webpack-dev-server --mode=development --config webpack.dev.js",
-    "build": "rimraf build && webpack --mode production --config webpack.prod.js"
+    "build": "rimraf build && webpack --mode production --config webpack.prod.js",
+    "type-check": "tsc --noEmit"
   },
   "author": "Santosh Chaudhari",
   "license": "ISC",
