@@ -1,4 +1,4 @@
-import { REGEX_CONTACT, REGEX_EMAIL, REGEX_EMPTY, REGEX_NUMBER, REGEX_PIN_CODE } from './constant'
+import { REGEX_CONTACT, REGEX_EMAIL, REGEX_EMPTY, REGEX_NUMBER, REGEX_NUMBER_GREATER_THAN_ZERO, REGEX_PIN_CODE } from './constant'
 
 const emptyField = (path: any) => ({
   path,
@@ -28,6 +28,13 @@ const numberField = (path: any) => ({
   emptyCheck: true,
 })
 
+const numberFieldGreaterThanZero = (path: any) => ({
+  path,
+  pattern: REGEX_NUMBER_GREATER_THAN_ZERO,
+  message: 'Must be greater than zero',
+  emptyCheck: true,
+})
+
 const pinCodeField = (path: any) => ({
   path,
   pattern: REGEX_PIN_CODE,
@@ -35,4 +42,4 @@ const pinCodeField = (path: any) => ({
   emptyCheck: true,
 })
 
-export { emptyField, contactField, emailField, numberField, pinCodeField }
+export { emptyField, contactField, emailField, numberField, numberFieldGreaterThanZero, pinCodeField }

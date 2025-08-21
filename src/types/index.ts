@@ -304,31 +304,33 @@ export interface VehicleModel {
     isACRequired: boolean
     isMonthlyFixed: boolean
   }
-  monthlyFixedCustomerDetails:
+  monthlyFixedDetails:
     | undefined
     | {
         customerCategory: string
-        customerId: string
-      }
-  monthlyFixedPackageDetails:
-    | undefined
-    | {
+        customer: string
         packageCategory: string
-        packageId: string
-      }
-  monthlyFixedStaffDetails:
-    | undefined
-    | {
+        package: string
         staffCategory: string
-        staffId: string
-      }
-  monthlyFixedContractDetails:
-    | undefined
-    | {
-        contractStartDate: Date | null
-        contractEndDate: Date | null
+        staff: string
+        contractStartDate: Date
+        contractEndDate: Date
       }
   comments: string
+}
+//
+export const sampleVehicleModel: VehicleModel = {
+  vehicleDetails: {
+    vehicleType: '',
+    manufacturer: '',
+    name: '',
+    numberOfSeats: 0,
+    registrationNumber: '',
+    isACRequired: false,
+    isMonthlyFixed: false,
+  },
+  monthlyFixedDetails: undefined,
+  comments: '',
 }
 //
 export interface ExpenseModel {

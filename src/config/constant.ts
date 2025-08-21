@@ -3,6 +3,7 @@ const REGEX_CONTACT = /^([0-9]{10})+$/
 const REGEX_PIN_CODE = /^([0-9]{6})+$/
 const REGEX_EMAIL = /^[\w.+]+@\w+(\.\w{2,3})+$/
 const REGEX_NUMBER = /^[0-9]+$/
+const REGEX_NUMBER_GREATER_THAN_ZERO = /^[1-9][0-9]*$/
 
 const USER_ROLE_PERMISSIONS = {
   CREATE: 'CREATE',
@@ -452,6 +453,7 @@ export {
   REGEX_PIN_CODE,
   REGEX_EMAIL,
   REGEX_NUMBER,
+  REGEX_NUMBER_GREATER_THAN_ZERO,
   USER_ROLE_PERMISSIONS,
   ADMIN_USER_GROUP,
   ADMIN_USER_ROLE,
