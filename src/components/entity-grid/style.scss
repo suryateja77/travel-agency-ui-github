@@ -1,0 +1,28 @@
+@import '~/src/sass/style';
+
+.entity-grid {
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: $white;
+    padding: 15px;
+  }
+
+  &__table-action {
+    width: 165px;
+    text-align: center !important;
+  }
+
+  &__action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+
+  &__first-button {
+    margin-bottom: 0px;
+    margin-right: 0px;
+  }
+}

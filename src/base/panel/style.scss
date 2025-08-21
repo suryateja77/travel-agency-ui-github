@@ -5,10 +5,13 @@
   padding-top: 15px;
   padding-left: 15px;
   padding-right: 15px;
+  margin-bottom: 15px;
   overflow: hidden;
+  
   &__header {
     border-bottom: 1px solid $gray-light;
     padding-bottom: 5px;
     margin-bottom: 15px;
+    font-size: 16px;
   }
 }

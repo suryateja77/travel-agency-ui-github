@@ -332,6 +332,25 @@ export const sampleVehicleModel: VehicleModel = {
   monthlyFixedDetails: undefined,
   comments: '',
 }
+export interface StaffModel {
+  name: string
+  contact: string
+  whatsAppNumber: string
+  email?: string
+  joiningDate: Date | null
+  salary: string | number
+  license?: string
+  isActive: boolean
+  comment?: string
+  address: {
+    addressLine1: string
+    addressLine2: string
+    city: string
+    state: string
+    pinCode: string
+  }
+  category: string
+}
 //
 export interface ExpenseModel {
   expenseDetails: {
