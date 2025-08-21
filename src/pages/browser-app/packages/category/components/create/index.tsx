@@ -1,9 +1,13 @@
-import React, { FunctionComponent, useState } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, TextArea } from '@base'
+import { FunctionComponent, useState } from 'react'
+import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
+import { PageHeader } from '@components'
 import { PackageModel } from '@types'
-import { bemClass, pathToName } from '@utils'
+import { bemClass, pathToName, validatePayload } from '@utils'
 
 import './style.scss'
+import { useNavigate } from 'react-router-dom'
+import { createValidationSchema } from './validation'
+import { useCreatePackageMutation } from '@api/queries/package'
 
 const blk = 'create-package'
 
@@ -12,40 +16,109 @@ interface CreatePackageProps {
 }
 
 const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' }) => {
-  const [packageData, setPackageData] = useState<PackageModel>({
-    packageDetails: {
-      packageCode: '',
-      minimumKm: 0,
-      minimumHours: 0,
-      basicAmount: 0,
-      extraKmRate: 0,
-      extraHoursRate: 0,
-      comments: '',
-    },
-    statusDetails: {
-      isActive: true,
-    },
-  })
+  const samplePackageModel: PackageModel = {
+    category: '',
+    packageCode: '',
+    minimumKm: '',
+    minimumHr: '',
+    baseAmount: '',
+    extraKmPerKmRate: '',
+    extraHrPerHrRate: '',
+    comment: '',
+    isActive: true,
+  }
+  const navigate = useNavigate()
+  const createPackage = useCreatePackageMutation()
+
+  const [packageData, setPackageData] = useState<PackageModel>(samplePackageModel)
+  const [isEditing, setIsEditing] = useState(false)
+  const [packageId, setPackageId] = useState('')
+
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
+  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
+  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New package created successfully!')
+
+  const [errorMap, setErrorMap] = useState<Record<string, any>>(samplePackageModel)
+  const [isValidationError, setIsValidationError] = useState(false)
 
   const navigateBack = () => {
-    // Logic to navigate back to the previous page
-    window.history.back()
+    // Route to the PackagesList page
+    navigate(`/packages/${category}`)
   }
+
+  const closeConfirmationPopUp = () => {
+    if (showConfirmationModal) {
+      setShowConfirmationModal(false)
+    }
+  }
+
+  const submitHandler = async () => {
+    const validationSchema = createValidationSchema(packageData)
+    const { isValid, errorMap } = validatePayload(validationSchema, packageData)
+
+    setIsValidationError(!isValid)
+    setErrorMap(errorMap)
+    if (isValid) {
+      setIsValidationError(false)
+      try {
+        if (isEditing) {
+          // await updatePackage.mutateAsync({ _id: packageId, ...packageData })
+          setConfirmationPopUpType('update')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('Package updated successfully!')
+        } else {
+          await createPackage.mutateAsync({ ...packageData, category })
+          setConfirmationPopUpType('create')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('New Package created successfully!')
+        }
+
+        setTimeout(() => {
+          setShowConfirmationModal(true)
+        }, 500)
+      } catch (error) {
+        console.log('Unable to create/Update package', error)
+        setConfirmationPopUpType('delete')
+        setConfirmationPopUpTitle('Failed')
+        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} package, please try again.`)
+      }
+    } else {
+      console.log('Create Package: Validation Error', errorMap)
+    }
+  }
+
+  const categoryName = pathToName(category)
 
   return (
     <div className={bemClass([blk])}>
-      <div className={bemClass([blk, 'header'])}>
-        <Text
-          color="gray-darker"
-          typography="l"
-        >
-          {`New ${pathToName(category)} Package`}
-        </Text>
-        <Breadcrumb data={[{ label: 'Home', route: '/dashboard' }, { label: `${pathToName(category)} Packages`, route: `/packages/${category}` }, { label: `New ${pathToName(category)} Package` }]} />
-      </div>
+      <PageHeader
+        title={isEditing ? `Update ${categoryName}` : `Add ${categoryName}`}
+        withBreadCrumb
+        breadCrumbData={[
+          {
+            label: 'Home',
+            route: '/dashboard',
+          },
+          {
+            label: `${categoryName} list`,
+            route: `/packages/${category}`,
+          },
+          {
+            label: isEditing ? 'Update' : 'Create',
+          },
+        ]}
+      />
+      {isValidationError && (
+        <Alert
+          type="error"
+          message="There is an error with submission, please correct errors indicated below."
+          className={bemClass([blk, 'margin-bottom'])}
+        />
+      )}
       <div className={bemClass([blk, 'content'])}>
         <Panel
-          title="Package Details"
+          title="Package details"
           className={bemClass([blk, 'margin-bottom'])}
         >
           <Row>
@@ -56,16 +129,16 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               <TextInput
                 label="Package Code"
                 name="packageCode"
-                value={packageData.packageDetails.packageCode}
-                changeHandler={v =>
+                value={packageData.packageCode}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      packageCode: v.packageCode?.toString() ?? '',
-                    },
+                    packageCode: value.packageCode?.toString() ?? '',
                   })
-                }
+                }}
+                required
+                errorMessage={errorMap['packageCode']}
+                invalid={errorMap['packageCode']}
               />
             </Column>
             <Column
@@ -76,16 +149,16 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                 label="Minimum Km"
                 name="minimumKm"
                 type="number"
-                value={packageData.packageDetails.minimumKm ?? ''}
-                changeHandler={v =>
+                value={packageData.minimumKm ?? ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      minimumKm: v.minimumKm ? Number(v.minimumKm) : 0,
-                    },
+                    minimumKm: value.minimumKm ? Number(value.minimumKm) : '',
                   })
-                }
+                }}
+                required
+                errorMessage={errorMap['minimumKm']}
+                invalid={errorMap['minimumKm']}
               />
             </Column>
             <Column
@@ -94,18 +167,18 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
             >
               <TextInput
                 label="Minimum Hours"
-                name="minimumHours"
+                name="minimumHr"
                 type="number"
-                value={packageData.packageDetails.minimumHours ?? ''}
-                changeHandler={v =>
+                value={packageData.minimumHr ?? ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      minimumHours: v.minimumHours ? Number(v.minimumHours) : 0,
-                    },
+                    minimumHr: value.minimumHr ? Number(value.minimumHr) : '',
                   })
-                }
+                }}
+                required
+                errorMessage={errorMap['minimumHr']}
+                invalid={errorMap['minimumHr']}
               />
             </Column>
           </Row>
@@ -115,19 +188,19 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               className={bemClass([blk, 'margin-bottom'])}
             >
               <TextInput
-                label="Basic Amount"
-                name="basicAmount"
+                label="Base Amount"
+                name="baseAmount"
                 type="number"
-                value={packageData.packageDetails.basicAmount ?? ''}
-                changeHandler={v =>
+                value={packageData.baseAmount ?? ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      basicAmount: v.basicAmount ? Number(v.basicAmount) : 0,
-                    },
+                    baseAmount: value.baseAmount ? Number(value.baseAmount) : '',
                   })
-                }
+                }}
+                required
+                errorMessage={errorMap['baseAmount']}
+                invalid={errorMap['baseAmount']}
               />
             </Column>
             <Column
@@ -135,19 +208,19 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               className={bemClass([blk, 'margin-bottom'])}
             >
               <TextInput
-                label="Extra Km Rate"
-                name="extraKmRate"
+                label="Extra Km Per Km Rate"
+                name="extraKmPerKmRate"
                 type="number"
-                value={packageData.packageDetails.extraKmRate ?? ''}
-                changeHandler={v =>
+                value={packageData.extraKmPerKmRate ?? ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      extraKmRate: v.extraKmRate ? Number(v.extraKmRate) : 0,
-                    },
+                    extraKmPerKmRate: value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '',
                   })
-                }
+                }}
+                required
+                errorMessage={errorMap['extraKmPerKmRate']}
+                invalid={errorMap['extraKmPerKmRate']}
               />
             </Column>
             <Column
@@ -155,46 +228,44 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               className={bemClass([blk, 'margin-bottom'])}
             >
               <TextInput
-                label="Extra Hours Rate"
-                name="extraHoursRate"
+                label="Extra Hr Per Hr Rate"
+                name="extraHrPerHrRate"
                 type="number"
-                value={packageData.packageDetails.extraHoursRate ?? ''}
-                changeHandler={v =>
+                value={packageData.extraHrPerHrRate ?? ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      extraHoursRate: v.extraHoursRate ? Number(v.extraHoursRate) : 0,
-                    },
+                    extraHrPerHrRate: value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '',
                   })
-                }
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={12}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextArea
-                label="Comments"
-                name="comments"
-                value={packageData.packageDetails.comments}
-                changeHandler={v =>
-                  setPackageData({
-                    ...packageData,
-                    packageDetails: {
-                      ...packageData.packageDetails,
-                      comments: v.comments?.toString() ?? '',
-                    },
-                  })
-                }
+                }}
+                required
+                errorMessage={errorMap['extraHrPerHrRate']}
+                invalid={errorMap['extraHrPerHrRate']}
               />
             </Column>
           </Row>
         </Panel>
+
         <Panel
-          title="Status"
+          title="Comments"
+          className={bemClass([blk, 'margin-bottom'])}
+        >
+          <TextArea
+            className={bemClass([blk, 'margin-bottom'])}
+            name="comment"
+            value={packageData.comment || ''}
+            changeHandler={value => {
+              setPackageData({
+                ...packageData,
+                comment: value.comment?.toString() ?? '',
+              })
+            }}
+            placeholder="Enter any additional comments or notes here..."
+          />
+        </Panel>
+
+        <Panel
+          title="Is active"
           className={bemClass([blk, 'margin-bottom'])}
         >
           <Row>
@@ -202,23 +273,20 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               col={4}
               className={bemClass([blk, 'margin-bottom'])}
             >
-              <CheckBox
-                id="isActive"
-                label="Is Active"
-                checked={packageData.statusDetails.isActive}
-                changeHandler={obj =>
+              <Toggle
+                name="isActive"
+                checked={packageData.isActive}
+                changeHandler={obj => {
                   setPackageData({
                     ...packageData,
-                    statusDetails: {
-                      ...packageData.statusDetails,
-                      isActive: !!obj.isActive,
-                    },
+                    isActive: !!obj.isActive,
                   })
-                }
+                }}
               />
             </Column>
           </Row>
         </Panel>
+
         <div className={bemClass([blk, 'action-items'])}>
           <Button
             size="medium"
@@ -231,11 +299,28 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
           <Button
             size="medium"
             category="primary"
+            clickHandler={submitHandler}
           >
             Submit
           </Button>
         </div>
       </div>
+      <Modal
+        show={showConfirmationModal}
+        closeHandler={() => {
+          if (showConfirmationModal) {
+            setShowConfirmationModal(false)
+          }
+        }}
+      >
+        <ConfirmationPopup
+          type={confirmationPopUpType}
+          title={confirmationPopUpTitle}
+          subTitle={confirmationPopUpSubtitle}
+          confirmButtonText="Okay"
+          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+        />
+      </Modal>
     </div>
   )
 }

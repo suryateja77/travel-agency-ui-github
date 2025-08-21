@@ -347,18 +347,15 @@ export interface AdvancePaymentModel {
 }
 //
 export interface PackageModel {
-  packageDetails: {
-    packageCode: string
-    minimumKm: number
-    minimumHours: number
-    basicAmount: number
-    extraKmRate: number
-    extraHoursRate: number
-    comments: string
-  }
-  statusDetails: {
-    isActive: boolean
-  }
+  category: string
+  packageCode: string
+  minimumKm: string | number
+  minimumHr: string | number
+  baseAmount: string | number
+  extraKmPerKmRate: string | number
+  extraHrPerHrRate: string | number
+  comment?: string
+  isActive: boolean
 }
 //
 export interface VehicleModel {
