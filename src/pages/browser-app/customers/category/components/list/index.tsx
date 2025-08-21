@@ -38,7 +38,7 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
 
   const columns = [
     {
-      label: 'Customer Name',
+      label: 'Name',
       custom: ({ _id, name }: { _id: string; name: string }) => (
         <Anchor asLink href={`/customers/${category}/${_id}/detail`}>
           {name}
@@ -64,6 +64,10 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
       custom: ({ whatsAppNumber }: { whatsAppNumber: string }) => (
         <>{`+91 ${whatsAppNumber}`}</>
       ),
+    },
+    {
+      label: 'Email',
+      map: 'email',
     },
     {
       label: 'Active',

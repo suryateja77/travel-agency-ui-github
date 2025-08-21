@@ -1,7 +1,7 @@
 import { FunctionComponent, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Panel, Row, Column, TextInput, Toggle, Button, TextArea } from '@base'
-import PageHeader from '@components/page-header'
+import { Panel, Row, Column, TextInput, Button, TextArea, Toggle } from '@base'
+import { PageHeader } from '@components'
 import { CustomerModel } from '@types'
 import { bemClass, pathToName } from '@utils'
 
@@ -280,6 +280,7 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
             >
               <Toggle
                 name="isActive"
+                label="Active"
                 checked={customer.isActive}
                 changeHandler={obj => {
                   setCustomer({

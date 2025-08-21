@@ -101,6 +101,51 @@ export interface CustomerModel {
 
 // --------------------------------------------------------------------------------------------------------
 
+export interface StaffAddress {
+  addressLine1: string
+  addressLine2: string
+  city: string
+  state: string
+  pinCode: string
+}
+
+export interface StaffModel {
+  _id?: string
+  name: string
+  contact: string
+  whatsAppNumber: string
+  email?: string
+  joiningDate: Date | null
+  salary: number | string
+  license?: string
+  isActive: boolean
+  comment?: string
+  address: StaffAddress
+  category: string
+}
+
+export const sampleStaffModel: StaffModel = {
+  name: '',
+  contact: '',
+  whatsAppNumber: '',
+  email: '',
+  joiningDate: null,
+  salary: '',
+  license: '',
+  isActive: true,
+  comment: '',
+  address: {
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    pinCode: '',
+  },
+  category: '',
+}
+
+// --------------------------------------------------------------------------------------------------------
+
 export interface RegularRequestModel {
   requestDetails: {
     customerSelection: string

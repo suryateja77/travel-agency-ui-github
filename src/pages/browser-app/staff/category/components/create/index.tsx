@@ -1,5 +1,6 @@
-import React, { FunctionComponent, useState } from 'react'
-import { Breadcrumb, Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, DatePicker } from '@base'
+import { FunctionComponent, useState } from 'react'
+import { Panel, Row, Column, TextInput, Button, TextArea, DatePicker, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
+import { PageHeader } from '@components'
 import { StaffModel } from '@types'
 import { bemClass, pathToName, validatePayload } from '@utils'
 
@@ -7,7 +8,6 @@ import './style.scss'
 import { useNavigate } from 'react-router-dom'
 import { createValidationSchema } from './validation'
 import { useCreateStaffMutation } from '@api/queries/staff'
-import PageHeader from '@components/page-header'
 
 const blk = 'create-staff'
 
@@ -384,6 +384,7 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
             >
               <Toggle
                 name="isActive"
+                label="Active"
                 checked={staff.isActive}
                 changeHandler={obj => {
                   setStaff({
