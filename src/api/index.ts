@@ -34,6 +34,7 @@ const remove = async (URL: string, config?: payload) => await API.delete(URL, co
 const generateAPIMethods = (url: string) => {
   return {
     get: async (requestBody: requestBodyType) => await get(url, requestBody),
+    getByCategory: async (requestBody: requestBodyType) => await get(`${url}/category/${requestBody.category}`, requestBody),
     getById: async (requestBody: requestBodyType) => await get(`${url}/${requestBody._id}`, requestBody),
     create: async (requestBody: requestBodyType) => await post(url, requestBody),
     updateById: async (requestBody: requestBodyType) => await patch(`${url}/${requestBody._id}`, requestBody),
