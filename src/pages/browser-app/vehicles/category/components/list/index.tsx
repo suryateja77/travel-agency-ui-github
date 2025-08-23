@@ -7,7 +7,7 @@ import { Anchor } from '@base'
 import EntityGrid from '@components/entity-grid'
 import PageHeader from '@components/page-header'
 import ActiveIndicator from '@components/active-indicator'
-import { useVehiclesQuery, useDeleteVehicleMutation } from '@api/queries/vehicle'
+import { useVehiclesQuery, useVehicleByCategory, useDeleteVehicleMutation } from '@api/queries/vehicle'
 import { useConfigurationsQuery } from '@api/queries/configuration'
 
 const blk = 'vehicles-list'
@@ -17,14 +17,18 @@ interface Props {
 }
 
 const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
-  const { data: vehicleData = { data: [] }, isLoading } = useVehiclesQuery()
+  // Use category-specific query when category is provided, otherwise fetch all
+  const { data: vehicleData, isLoading } = category 
+    ? useVehicleByCategory(category) 
+    : useVehiclesQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deleteVehicleMutation = useDeleteVehicleMutation()
 
-  // Filter vehicles by category if category is provided
-  const filteredVehicleData = category 
-    ? vehicleData.data?.filter((vehicle: any) => vehicle.category?.toLowerCase() === category?.toLowerCase()) || [] 
-    : vehicleData.data || []
+  // Extract data from the response structure
+  const vehiclesData = vehicleData?.data || []
+
+  // No need to filter since we're using category-specific query
+  const filteredVehicleData = vehiclesData
 
   // Get category name from configurations
   const getVehicleCategoryName = () => {

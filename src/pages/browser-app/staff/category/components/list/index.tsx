@@ -7,7 +7,7 @@ import { Anchor, Currency } from '@base'
 import EntityGrid from '@components/entity-grid'
 import PageHeader from '@components/page-header'
 import ActiveIndicator from '@components/active-indicator'
-import { useStaffsQuery, useDeleteStaffMutation } from '@api/queries/staff'
+import { useStaffsQuery, useStaffByCategory, useDeleteStaffMutation } from '@api/queries/staff'
 import { useConfigurationsQuery } from '@api/queries/configuration'
 
 const blk = 'staff-list'
@@ -28,14 +28,18 @@ const formatDate = (dateString: string | Date) => {
 
 
 const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
-  const { data: staffData = { data: [] }, isLoading } = useStaffsQuery()
+  // Use category-specific query when category is provided, otherwise fetch all
+  const { data: staffData, isLoading } = category 
+    ? useStaffByCategory(category) 
+    : useStaffsQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deleteStaffMutation = useDeleteStaffMutation()
 
-  // Filter staff by category if category is provided
-  const filteredStaffData = category 
-    ? staffData.data?.filter((staff: any) => staff.category?.toLowerCase() === category?.toLowerCase()) || [] 
-    : staffData.data || []
+  // Extract data from the response structure
+  const staffsData = staffData?.data || []
+
+  // No need to filter since we're using category-specific query
+  const filteredStaffData = staffsData
 
   // Get category name from configurations
   const getStaffCategoryName = () => {

@@ -7,7 +7,7 @@ import { Anchor, Currency } from '@base'
 import EntityGrid from '@components/entity-grid'
 import PageHeader from '@components/page-header'
 import ActiveIndicator from '@components/active-indicator'
-import { usePackagesQuery, useDeletePackageMutation } from '@api/queries/package'
+import { usePackagesQuery, usePackageByCategory, useDeletePackageMutation } from '@api/queries/package'
 import { useConfigurationsQuery } from '@api/queries/configuration'
 
 const blk = 'packages-list'
@@ -17,14 +17,18 @@ interface Props {
 }
 
 const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
-  const { data: packageData = { data: [] }, isLoading } = usePackagesQuery()
+  // Use category-specific query when category is provided, otherwise fetch all
+  const { data: packageData, isLoading } = category 
+    ? usePackageByCategory(category) 
+    : usePackagesQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deletePackageMutation = useDeletePackageMutation()
 
-  // Filter packages by category if category is provided
-  const filteredPackageData = category 
-    ? packageData.data?.filter((pkg: any) => pkg.category?.toLowerCase() === category?.toLowerCase()) || [] 
-    : packageData.data || []
+  // Extract data from the response structure
+  const packagesData = packageData?.data || []
+
+  // No need to filter since we're using category-specific query
+  const filteredPackageData = packagesData
 
   // Get category name from configurations
   const getPackageCategoryName = () => {

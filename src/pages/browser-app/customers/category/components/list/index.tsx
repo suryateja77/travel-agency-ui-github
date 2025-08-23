@@ -6,7 +6,7 @@ import { Anchor } from '@base'
 import EntityGrid from '@components/entity-grid'
 import PageHeader from '@components/page-header'
 import ActiveIndicator from '@components/active-indicator'
-import { useCustomersQuery, useDeleteCustomerMutation } from '@api/queries/customer'
+import { useCustomersQuery, useCustomerByCategory, useDeleteCustomerMutation } from '@api/queries/customer'
 import { useConfigurationsQuery } from '@api/queries/configuration'
 
 const blk = 'customers-list'
@@ -16,14 +16,18 @@ interface Props {
 }
 
 const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
-  const { data: customersData = { data: [] }, isLoading } = useCustomersQuery()
+  // Use category-specific query when category is provided, otherwise fetch all
+  const { data: customersData, isLoading } = category 
+    ? useCustomerByCategory(category) 
+    : useCustomersQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deleteCustomerMutation = useDeleteCustomerMutation()
 
-  // Filter customers by category if category is provided
-  const filteredCustomersData = category 
-    ? customersData.data?.filter((customer: any) => customer.category?.toLowerCase() === category?.toLowerCase()) || [] 
-    : customersData.data || []
+  // Extract data from the response structure
+  const customersList = customersData?.data || []
+
+  // No need to filter since we're using category-specific query
+  const filteredCustomersData = customersList
 
   // Get category name from configurations
   const getCustomerCategoryName = () => {
