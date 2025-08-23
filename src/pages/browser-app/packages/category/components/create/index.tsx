@@ -2,7 +2,7 @@ import { FunctionComponent, useState } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
 import { PageHeader } from '@components'
 import { PackageModel } from '@types'
-import { bemClass, pathToName, validatePayload } from '@utils'
+import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 
 import './style.scss'
 import { useNavigate } from 'react-router-dom'
@@ -68,7 +68,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('Package updated successfully!')
         } else {
-          await createPackage.mutateAsync({ ...packageData, category })
+          await createPackage.mutateAsync({ ...packageData, category: nameToPath(category) })
           setConfirmationPopUpType('create')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('New Package created successfully!')
@@ -93,7 +93,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   return (
     <div className={bemClass([blk])}>
       <PageHeader
-        title={isEditing ? `Update ${categoryName}` : `Add ${categoryName}`}
+        title={isEditing ? `Update ${categoryName} Package` : `Add ${categoryName} Package`}
         withBreadCrumb
         breadCrumbData={[
           {

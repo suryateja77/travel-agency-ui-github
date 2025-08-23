@@ -404,24 +404,15 @@ export interface StaffModel {
 }
 //
 export interface ExpenseModel {
-  expenseDetails: {
-    expenseType: string
-    paymentMode: string
-    expenseDate: Date | null
-    expenseAmount: number
-    location: string
-  }
-  vehicleDetails:
-    | undefined
-    | {
-        category: string
-        vehicle: string
-      }
-  staffDetails:
-    | undefined
-    | {
-        category: string
-        staff: string
-      }
-  comments: string
+  type: string
+  paymentMethod: string
+  date: Date | null
+  amount: string | number
+  location: string
+  vehicleCategory: string | null
+  vehicle: string | null
+  staffCategory: string | null
+  staff: string | null
+  comment: string
+  category: string
 }

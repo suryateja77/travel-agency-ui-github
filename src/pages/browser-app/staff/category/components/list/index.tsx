@@ -103,10 +103,10 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
   return (
     <div className={bemClass([blk])}>
       <PageHeader
-        title={categoryName}
+        title={`${categoryName} Staff`}
         total={filteredStaffData.length}
         btnRoute={`/staff/${category}/create`}
-        btnLabel={`Add ${categoryName}`}
+        btnLabel={`Add new ${categoryName}`}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

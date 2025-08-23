@@ -2,7 +2,7 @@ import { FunctionComponent, useState } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
 import { PageHeader } from '@components'
 import { CustomerModel } from '@types'
-import { bemClass, pathToName, validatePayload } from '@utils'
+import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 
 import './style.scss'
 import { useNavigate } from 'react-router-dom'
@@ -73,7 +73,7 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('Customer updated successfully!')
         } else {
-          await createCustomer.mutateAsync({ ...customer, category })
+          await createCustomer.mutateAsync({ ...customer, category: nameToPath(category) })
           setConfirmationPopUpType('create')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('New Customer created successfully!')

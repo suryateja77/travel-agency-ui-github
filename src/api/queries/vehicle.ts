@@ -1,7 +1,7 @@
 import { generateAPIMethods } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/vehicle')
+const { get, getById, create, updateById, delete: deleteById, getByCategory } = generateAPIMethods('/vehicle')
 
 export const useVehiclesQuery = () => {
   return useQuery({
@@ -10,6 +10,17 @@ export const useVehiclesQuery = () => {
       const response = await get({})
       return response.data
     },
+  })
+}
+
+export const useVehicleByCategory = (category: string) => {
+  return useQuery({
+    queryKey: ['vehicles', category],
+    queryFn: async () => {
+      const response = await getByCategory({ category })
+      return response.data
+    },
+    enabled: !!category,
   })
 }
 

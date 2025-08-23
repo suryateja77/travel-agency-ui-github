@@ -1,7 +1,7 @@
 import { generateAPIMethods } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/expense')
+const { get, getById, create, updateById, delete: deleteById, getByCategory } = generateAPIMethods('/expense')
 
 export const useExpensesQuery = () => {
   return useQuery({
@@ -10,6 +10,17 @@ export const useExpensesQuery = () => {
       const response = await get({})
       return response.data
     },
+  })
+}
+
+export const useExpensesByCategory = (category: string) => {
+  return useQuery({
+    queryKey: ['expenses', category],
+    queryFn: async () => {
+      const response = await getByCategory({ category })
+      return response.data
+    },
+    enabled: !!category,
   })
 }
 

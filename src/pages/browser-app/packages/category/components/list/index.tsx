@@ -94,10 +94,10 @@ const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
   return (
     <div className={bemClass([blk])}>
       <PageHeader
-        title={categoryName}
+        title={`${categoryName} Packages`}
         total={filteredPackageData.length}
         btnRoute={`/packages/${category}/create`}
-        btnLabel={`Add ${categoryName}`}
+        btnLabel={`Add ${categoryName} Package`}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

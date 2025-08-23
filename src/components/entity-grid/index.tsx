@@ -107,6 +107,15 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
             title={confirmationPopUpType === 'delete' ? 'Are you sure?' : 'Success'}
             subTitle={confirmationPopUpType === 'delete' ? 'This action cannot be reversed. Please confirm.' : 'The item has been successfully deleted.'}
             confirmButtonText={confirmationPopUpType === 'delete' ? 'Yes, Delete' : 'Okay'}
+            cancelHandler={
+            confirmationPopUpType === 'delete'
+              ? () => {
+                  if (showConfirmationModal) {
+                    setShowConfirmationModal(false)
+                  }
+                }
+              : undefined
+          }
             confirmHandler={confirmationPopUpType === 'delete' ? () => handleDelete(itemIdToDelete) : () => setShowConfirmationModal(false)}
           />
         </Modal>

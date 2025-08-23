@@ -247,7 +247,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('Vehicle updated successfully!')
         } else {
-          await createVehicle.mutateAsync({ ...vehicle, category })
+          await createVehicle.mutateAsync({ ...vehicle, category: nameToPath(category) })
           setConfirmationPopUpType('create')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('New Vehicle created successfully!')
