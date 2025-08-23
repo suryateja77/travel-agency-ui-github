@@ -42,11 +42,9 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
   useEffect(() => {
     if (configurationsData && configurationsData.data) {
       const configurations: Configuration[] = configurationsData.data
-      console.log(">>>> Config", configurations)
       const configValue = transformConfigurations(configurations, 'navigation')
       if (configValue[route.configurationVariable || ''] && configValue[route.configurationVariable || ''].length > 0) {
         setSubRoutes(configValue[route.configurationVariable || ''])
-        console.log('>>>> SubRoutes set from configurations:', configValue[route.configurationVariable || ''])
       }
     }
   }, [configurationsData])

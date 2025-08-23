@@ -63,6 +63,7 @@ const ConfiguredInput: FunctionComponent<ConfiguredInputProps> = ({
       const configurations: Configuration[] = configurationsData.data
       const configValue = transformConfigurations(configurations)
       if (configValue[configToUse] && configValue[configToUse].length > 0) {
+        console.log('ConfiguredInput', configValue[configToUse])
         setInputOptions(configValue[configToUse])
       }
     }

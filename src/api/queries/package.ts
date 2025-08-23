@@ -1,7 +1,7 @@
 import { generateAPIMethods } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/package')
+const { get, getById, create, updateById, delete: deleteById, getByCategory } = generateAPIMethods('/package')
 
 export const usePackagesQuery = () => {
   return useQuery({
@@ -10,6 +10,17 @@ export const usePackagesQuery = () => {
       const response = await get({})
       return response.data
     },
+  })
+}
+
+export const usePackageByCategory = (category: string) => {
+  return useQuery({
+    queryKey: ['packages', category],
+    queryFn: async () => {
+      const response = await getByCategory({ category })
+      return response.data
+    },
+    enabled: !!category,
   })
 }
 

@@ -369,14 +369,14 @@ export interface VehicleModel {
   monthlyFixedDetails:
     | undefined
     | {
-        customerCategory: string
-        customer: string
-        packageCategory: string
-        package: string
-        staffCategory: string
-        staff: string
-        contractStartDate: Date
-        contractEndDate: Date
+        customerCategory: string | null
+        customer: string | null
+        packageCategory: string | null
+        package: string | null
+        staffCategory: string | null
+        staff: string | null
+        contractStartDate: Date | null
+        contractEndDate: Date | null
       }
   category: string
   isActive: boolean
