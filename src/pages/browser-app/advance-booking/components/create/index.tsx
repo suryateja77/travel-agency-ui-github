@@ -26,7 +26,7 @@ const CreateAdvanceBooking: FunctionComponent<Props> = () => {
     customerCategory: null,
     customer: null,
     customerDetails: null,
-    comments: '',
+    comment: '',
   }
 
   const navigate = useNavigate()
@@ -413,17 +413,17 @@ const CreateAdvanceBooking: FunctionComponent<Props> = () => {
         </Panel>
 
         <Panel
-          title="Comments"
+          title="Comment"
           className={bemClass([blk, 'margin-bottom'])}
         >
           <TextArea
-            name="comments"
+            name="comment"
             className={bemClass([blk, 'margin-bottom'])}
-            value={advanceBooking.comments}
+            value={advanceBooking.comment}
             changeHandler={value => {
               setAdvanceBooking({
                 ...advanceBooking,
-                comments: value.comments?.toString() ?? '',
+                comment: value.comment?.toString() ?? '',
               })
             }}
             placeholder="Enter any additional comments or notes here..."

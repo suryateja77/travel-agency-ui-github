@@ -318,20 +318,16 @@ export interface AdvanceBookingModel {
     contact: string
     email: string
   } | null
-  comments: string
+  comment: string
 }
 //
 export interface AdvancePaymentModel {
-  staffDetails: {
-    staffCategory: string
-    staffId: string
-  }
-  paymentDetails: {
-    expenseDate: Date | null
-    paymentMode: string
-    amount: number
-  }
-  comments: string
+  staffCategory: string
+  staff: string
+  paymentDate: Date | null
+  paymentMethod: string
+  amount: string | number
+  comment: string
 }
 //
 export interface PackageModel {
