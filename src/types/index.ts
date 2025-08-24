@@ -304,32 +304,20 @@ export interface MonthlyFixedRequestModel {
 }
 //
 export interface AdvanceBookingModel {
-  bookingDetails: {
-    customerSelection: string
-    pickupLocation: string
-    dropLocation: string
-    pickupDateAndTime: Date | null
-    numberOfSeats: number | null
-    airConditioning: boolean
-    vehicleType: string
-  }
-  customerDetails:
-    | {
-        // For EXISTING customer
-        customerId: string
-        customerCategory: string
-        customerName?: never
-        customerEmail?: never
-        customerContact?: never
-      }
-    | {
-        // For NEW customer
-        customerId?: never
-        customerCategory?: never
-        customerName: string
-        customerEmail: string
-        customerContact: string
-      }
+  customerType: string
+  pickUpLocation: string
+  dropOffLocation: string
+  pickUpDateTime: Date | null
+  noOfSeats: number | null
+  hasAc: boolean
+  vehicleType: string
+  customerCategory: string | null
+  customer: string | null
+  customerDetails: {
+    name: string
+    contact: string
+    email: string
+  } | null
   comments: string
 }
 //
