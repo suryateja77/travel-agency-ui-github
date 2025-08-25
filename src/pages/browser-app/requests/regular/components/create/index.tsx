@@ -1,7 +1,16 @@
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle } from '@base'
 import { RegularRequestModel } from '@types'
-import { bemClass } from '@utils'
-import React, { FunctionComponent, useState } from 'react'
+import { bemClass, validatePayload, nameToPath } from '@utils'
+import React, { FunctionComponent, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { createValidationSchema } from './validation'
+import { useCreateRegularRequestMutation } from '@api/queries/regular-request'
+import { useCustomerByCategory } from '@api/queries/customer'
+import { useVehicleByCategory } from '@api/queries/vehicle'
+import { useStaffByCategory } from '@api/queries/staff'
+import { usePackageByCategory } from '@api/queries/package'
+import ConfiguredInput from '@base/configured-input'
+import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 
 import './style.scss'
 
@@ -10,101 +19,315 @@ const blk = 'create-regular-request'
 interface CreateRegularRequestProps {}
 
 const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () => {
-  const [regularRequest, setRegularRequest] = useState<RegularRequestModel>({
-    requestDetails: {
-      customerSelection: 'Existing',
-      vehicleSelection: 'Existing',
-      staffSelection: 'Existing',
-      requestType: '',
-      pickupLocation: '',
-      dropLocation: '',
-      pickupDateAndTime: new Date(),
-      dropDateAndTime: new Date(),
-      openingKm: 0,
-      closingKm: 0,
-      totalTime: 0,
-      totalDistance: 0,
-    },
-    customerDetails: {
-      customerId: '',
-      customerCategory: '',
-    },
-    vehicleDetails: {
-      vehicleId: '',
-      vehicleCategory: '',
-    },
-    staffDetails: {
-      staffId: '',
-      staffCategory: '',
-    },
-    customerPackageDetails: {
-      packageCategory: '',
-      packageId: '',
+  const sampleRegularRequestModel: RegularRequestModel = {
+    customerType: 'existing',
+    vehicleType: 'existing',
+    staffType: 'existing',
+    requestType: '',
+
+    customerCategory: null,
+    customer: null,
+    customerDetails: null,
+    vehicleCategory: null,
+    vehicle: null,
+    vehicleDetails: null,
+    ac: false,
+    packageCategory: null,
+    package: null,
+    staffCategory: null,
+    staff: null,
+    staffDetails: null,
+    pickUpLocation: '',
+    dropOffLocation: '',
+    pickUpDateTime: null,
+    dropDateTime: null,
+    openingKm: null,
+    closingKm: null,
+    totalKm: null,
+    totalHr: null,
+
+    paymentDetails: {
+      status: '',
+      paymentMethod: '',
+      paymentDate: null,
     },
     otherCharges: {
       toll: {
-        charge: 0,
-        chargeableToCustomer: false,
+        amount: '',
+        isChargeableToCustomer: false,
       },
       parking: {
-        charge: 0,
-        chargeableToCustomer: false,
+        amount: '',
+        isChargeableToCustomer: false,
       },
       nightHalt: {
-        charge: 0,
-        chargeableToCustomer: false,
-        includeInDriverSalary: false,
+        amount: '',
+        isChargeableToCustomer: false,
+        isPayableWithSalary: false,
       },
       driverAllowance: {
-        charge: 0,
-        chargeableToCustomer: false,
-        includeInDriverSalary: false,
+        amount: '',
+        isChargeableToCustomer: false,
+        isPayableWithSalary: false,
       },
     },
-    advancePayment: {
-      advanceFromCustomer: 0,
-      advanceToDriver: 0,
+    advancedPayment: {
+      advancedFromCustomer: '',
+      advancedToCustomer: '',
     },
-    paymentDetails: {
-      paymentDate: new Date(),
-      paymentMode: '',
-      status: '',
-    },
-    comments: '',
+    comment: '',
+  }
+
+  const navigate = useNavigate()
+  const createRegularRequest = useCreateRegularRequestMutation()
+
+  const [regularRequest, setRegularRequest] = useState<RegularRequestModel>(sampleRegularRequestModel)
+
+  // Category paths for API queries
+  const customerCategoryPath = useMemo(() => {
+    return regularRequest.customerType === 'existing' && regularRequest.customerCategory ? nameToPath(regularRequest.customerCategory) : ''
+  }, [regularRequest.customerType, regularRequest.customerCategory])
+
+  const vehicleCategoryPath = useMemo(() => {
+    return regularRequest.vehicleType === 'existing' && regularRequest.vehicleCategory ? nameToPath(regularRequest.vehicleCategory) : ''
+  }, [regularRequest.vehicleType, regularRequest.vehicleCategory])
+
+  const staffCategoryPath = useMemo(() => {
+    return regularRequest.staffType === 'existing' && regularRequest.staffCategory ? nameToPath(regularRequest.staffCategory) : ''
+  }, [regularRequest.staffType, regularRequest.staffCategory])
+
+  const packageCategoryPath = useMemo(() => {
+    return regularRequest.packageCategory ? nameToPath(regularRequest.packageCategory) : ''
+  }, [regularRequest.packageCategory])
+
+  // API queries
+  const { data: customers, error: customersError, isLoading: customersLoading, isError: customersIsError } = useCustomerByCategory(customerCategoryPath)
+
+  const { data: vehicles, error: vehiclesError, isLoading: vehiclesLoading, isError: vehiclesIsError } = useVehicleByCategory(vehicleCategoryPath)
+
+  const { data: staffMembers, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
+
+  const { data: packages, error: packagesError, isLoading: packagesLoading, isError: packagesIsError } = usePackageByCategory(packageCategoryPath)
+
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
+  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
+  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New regular request created successfully!')
+
+  const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
+  const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
+  const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
+  const [packageOptions, setPackageOptions] = useState<{ key: any; value: any }[]>([])
+
+  // API Error states
+  const [apiErrors, setApiErrors] = useState({
+    customers: '',
+    vehicles: '',
+    staff: '',
+    packages: ''
   })
 
+  // Generic function to handle API responses and errors
+  const handleApiResponse = (
+    data: any,
+    error: any,
+    isError: boolean,
+    errorKey: 'customers' | 'vehicles' | 'staff' | 'packages',
+    setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
+    mapFunction: (item: any) => { key: any; value: any }
+  ) => {
+    if (isError) {
+      const userFriendlyMessages = {
+        customers: 'Unable to load customer data. Please check your connection and try again.',
+        vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
+        staff: 'Unable to load staff data. Please check your connection and try again.',
+        packages: 'Unable to load package information. Please check your connection and try again.'
+      }
+      setApiErrors(prev => ({
+        ...prev,
+        [errorKey]: userFriendlyMessages[errorKey]
+      }))
+      setOptions([])
+    } else if (data?.data?.length > 0) {
+      const options = data.data.map(mapFunction)
+      setOptions(options)
+      setApiErrors(prev => ({
+        ...prev,
+        [errorKey]: ''
+      }))
+    } else {
+      setOptions([])
+      setApiErrors(prev => ({
+        ...prev,
+        [errorKey]: ''
+      }))
+    }
+  }
+
+  // Generate options for SelectInput based on loading/error states
+  const getSelectOptions = (
+    isLoading: boolean,
+    isError: boolean,
+    options: { key: any; value: any }[],
+    loadingText: string,
+    errorText: string,
+    noDataText: string
+  ) => {
+    if (isLoading) return [{ key: 'loading', value: loadingText }]
+    if (isError) return [{ key: 'error', value: errorText }]
+    if (options.length > 0) return options
+    return [{ key: 'no-data', value: noDataText }]
+  }
+
+  // Check if a value should be ignored in change handlers
+  const isPlaceholderValue = (value: string, type: 'customers' | 'vehicles' | 'staff' | 'packages') => {
+    const placeholders = {
+      customers: ['Please wait...', 'Unable to load options', 'No customers found'],
+      vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
+      staff: ['Please wait...', 'Unable to load options', 'No staff found'],
+      packages: ['Please wait...', 'Unable to load options', 'No packages found']
+    }
+    return placeholders[type].includes(value)
+  }
+
+  const [errorMap, setErrorMap] = useState<Record<string, any>>({})
+  const [isValidationError, setIsValidationError] = useState(false)
+
+  // useEffect hooks to handle API responses
+  React.useEffect(() => {
+    handleApiResponse(
+      customers,
+      customersError,
+      customersIsError,
+      'customers',
+      setCustomerOptions,
+      (customer: { _id: any; name: any }) => ({ key: customer._id, value: customer.name })
+    )
+  }, [customers, customersError, customersIsError])
+
+  React.useEffect(() => {
+    handleApiResponse(
+      vehicles,
+      vehiclesError,
+      vehiclesIsError,
+      'vehicles',
+      setVehicleOptions,
+      (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name })
+    )
+  }, [vehicles, vehiclesError, vehiclesIsError])
+
+  React.useEffect(() => {
+    handleApiResponse(
+      staffMembers,
+      staffError,
+      staffIsError,
+      'staff',
+      setStaffOptions,
+      (staffMember: { _id: any; name: any }) => ({ key: staffMember._id, value: staffMember.name })
+    )
+  }, [staffMembers, staffError, staffIsError])
+
+  React.useEffect(() => {
+    handleApiResponse(
+      packages,
+      packagesError,
+      packagesIsError,
+      'packages',
+      setPackageOptions,
+      (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode })
+    )
+  }, [packages, packagesError, packagesIsError])
+
   const navigateBack = () => {
-    // Logic to navigate back to the previous page
-    window.history.back()
+    navigate('/requests/regular')
+  }
+
+  const closeConfirmationPopUp = () => {
+    if (showConfirmationModal) {
+      setShowConfirmationModal(false)
+    }
+  }
+
+  const submitHandler = async () => {
+    // Check for API errors before validation
+    const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
+    if (hasApiErrors) {
+      console.log('Cannot submit: API errors present', apiErrors)
+      return
+    }
+
+    const validationSchema = createValidationSchema(regularRequest)
+    const { isValid, errorMap } = validatePayload(validationSchema, regularRequest)
+
+    setIsValidationError(!isValid)
+    setErrorMap(errorMap)
+    if (isValid) {
+      setIsValidationError(false)
+      try {
+        await createRegularRequest.mutateAsync(regularRequest)
+        setConfirmationPopUpType('create')
+        setConfirmationPopUpTitle('Success')
+        setConfirmationPopUpSubtitle('New Regular Request created successfully!')
+
+        setTimeout(() => {
+          setShowConfirmationModal(true)
+        }, 500)
+      } catch (error) {
+        console.log('Unable to create regular request', error)
+        setConfirmationPopUpType('delete')
+        setConfirmationPopUpTitle('Error')
+        setConfirmationPopUpSubtitle('Unable to create regular request. Please try again.')
+        setTimeout(() => {
+          setShowConfirmationModal(true)
+        }, 500)
+      }
+    } else {
+      console.log('Create Regular Request: Validation Error', errorMap)
+    }
   }
 
   return (
-    <div className={bemClass([blk])}>
-      <div className={bemClass([blk, 'header'])}>
-        <Text
-          color="gray-darker"
-          typography="l"
-        >
-          New Regular Request
-        </Text>
-        <Breadcrumb
-          data={[
-            {
-              label: 'Home',
-              route: '/dashboard',
-            },
-            {
-              label: 'Regular Requests',
-              route: '/requests/regular',
-            },
-            {
-              label: 'New Regular Request',
-            },
-          ]}
-        />
-      </div>
-      <div className={bemClass([blk, 'content'])}>
-        <>
+    <>
+      <div className={bemClass([blk])}>
+        <div className={bemClass([blk, 'header'])}>
+          <Text
+            color="gray-darker"
+            typography="l"
+          >
+            New Regular Request
+          </Text>
+          <Breadcrumb
+            data={[
+              {
+                label: 'Home',
+                route: '/dashboard',
+              },
+              {
+                label: 'Regular Requests',
+                route: '/requests/regular',
+              },
+              {
+                label: 'New Regular Request',
+              },
+            ]}
+          />
+        </div>
+        {isValidationError && (
+          <Alert
+            type="error"
+            message="There is an error with submission, please correct errors indicated below."
+            className={bemClass([blk, 'margin-bottom'])}
+          />
+        )}
+        {(apiErrors.customers || apiErrors.vehicles || apiErrors.staff || apiErrors.packages) && (
+          <Alert
+            type="error"
+            message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
+            className={bemClass([blk, 'margin-bottom'])}
+          />
+        )}
+        <div className={bemClass([blk, 'content'])}>
+          {/* Request Details Panel */}
           <Panel
             title="Request Details"
             className={bemClass([blk, 'margin-bottom'])}
@@ -115,20 +338,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <RadioGroup
-                  question="Customer Selection"
-                  name="customerSelection"
-                  options={['Existing', 'New']}
-                  value={regularRequest.requestDetails.customerSelection}
+                  question="Customer Type"
+                  name="customerType"
+                  options={['existing', 'new']}
+                  value={regularRequest.customerType}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        customerSelection: value.customerSelection,
-                      },
+                      customerType: value.customerType as 'existing' | 'new',
+                      customerCategory: value.customerType === 'new' ? null : regularRequest.customerCategory,
+                      customer: value.customerType === 'new' ? null : regularRequest.customer,
+                      customerDetails: value.customerType === 'existing' ? null : { name: '', contact: '', email: '' },
                     })
                   }}
                   direction="horizontal"
+                  required
+                  errorMessage={errorMap['customerType']}
                 />
               </Column>
               <Column
@@ -136,20 +361,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <RadioGroup
-                  question="Vehicle Selection"
-                  name="vehicleSelection"
-                  options={['Existing', 'New']}
-                  value={regularRequest.requestDetails.vehicleSelection}
+                  question="Vehicle Type"
+                  name="vehicleType"
+                  options={['existing', 'new']}
+                  value={regularRequest.vehicleType}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        vehicleSelection: value.vehicleSelection,
-                      },
+                      vehicleType: value.vehicleType as 'existing' | 'new',
+                      vehicleCategory: value.vehicleType === 'new' ? null : regularRequest.vehicleCategory,
+                      vehicle: value.vehicleType === 'new' ? null : regularRequest.vehicle,
+                      vehicleDetails: value.vehicleType === 'existing' ? null : { ownerName: '', ownerContact: '', ownerEmail: '', manufacturer: '', name: '', registrationNo: '' },
                     })
                   }}
                   direction="horizontal"
+                  required
+                  errorMessage={errorMap['vehicleType']}
                 />
               </Column>
               <Column
@@ -157,20 +384,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <RadioGroup
-                  question="Staff Selection"
-                  name="staffSelection"
-                  options={['Existing', 'New']}
-                  value={regularRequest.requestDetails.staffSelection}
+                  question="Staff Type"
+                  name="staffType"
+                  options={['existing', 'new']}
+                  value={regularRequest.staffType}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        staffSelection: value.staffSelection,
-                      },
+                      staffType: value.staffType as 'existing' | 'new',
+                      staffCategory: value.staffType === 'new' ? null : regularRequest.staffCategory,
+                      staff: value.staffType === 'new' ? null : regularRequest.staff,
+                      staffDetails: value.staffType === 'existing' ? null : { name: '', contact: '', license: '' },
                     })
                   }}
                   direction="horizontal"
+                  required
+                  errorMessage={errorMap['staffType']}
                 />
               </Column>
             </Row>
@@ -179,23 +408,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <SelectInput
+                <ConfiguredInput
                   label="Request Type"
                   name="requestType"
-                  options={[
-                    { key: 'Local', value: 'Local' },
-                    { key: 'Out Station', value: 'Out Station' },
-                  ]}
-                  value={regularRequest.requestDetails.requestType}
+                  configToUse="Request type"
+                  type={CONFIGURED_INPUT_TYPES.SELECT}
+                  value={regularRequest.requestType}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        requestType: value.requestType?.toString() ?? '',
-                      },
+                      requestType: value.requestType?.toString() ?? '',
                     })
                   }}
+                  required
+                  errorMessage={errorMap['requestType']}
+                  invalid={errorMap['requestType']}
                 />
               </Column>
               <Column
@@ -204,17 +431,17 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <TextInput
                   label="Pickup Location"
-                  name="pickupLocation"
-                  value={regularRequest.requestDetails.pickupLocation}
+                  name="pickUpLocation"
+                  value={regularRequest.pickUpLocation}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        pickupLocation: value.pickupLocation?.toString() ?? '',
-                      },
+                      pickUpLocation: value.pickUpLocation?.toString() ?? '',
                     })
                   }}
+                  required
+                  errorMessage={errorMap['pickUpLocation']}
+                  invalid={errorMap['pickUpLocation']}
                 />
               </Column>
               <Column
@@ -223,17 +450,17 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <TextInput
                   label="Drop Location"
-                  name="dropLocation"
-                  value={regularRequest.requestDetails.dropLocation}
+                  name="dropOffLocation"
+                  value={regularRequest.dropOffLocation}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        dropLocation: value.dropLocation?.toString() ?? '',
-                      },
+                      dropOffLocation: value.dropOffLocation?.toString() ?? '',
                     })
                   }}
+                  required
+                  errorMessage={errorMap['dropOffLocation']}
+                  invalid={errorMap['dropOffLocation']}
                 />
               </Column>
             </Row>
@@ -244,18 +471,18 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <TextInput
                   label="Pickup Date and Time"
-                  name="pickupDateAndTime"
+                  name="pickUpDateTime"
                   type="datetime-local"
-                  value={regularRequest.requestDetails.pickupDateAndTime ? new Date(regularRequest.requestDetails.pickupDateAndTime).toISOString().slice(0, 16) : ''}
+                  value={regularRequest.pickUpDateTime ? new Date(regularRequest.pickUpDateTime).toISOString().slice(0, 16) : ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        pickupDateAndTime: value.pickupDateAndTime ? new Date(value.pickupDateAndTime) : null,
-                      },
+                      pickUpDateTime: value.pickUpDateTime ? new Date(value.pickUpDateTime) : null,
                     })
                   }}
+                  required
+                  errorMessage={errorMap['pickUpDateTime']}
+                  invalid={errorMap['pickUpDateTime']}
                 />
               </Column>
               <Column
@@ -263,19 +490,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Dropoff Date and Time"
-                  name="dropDateAndTime"
+                  label="Drop Date and Time"
+                  name="dropDateTime"
                   type="datetime-local"
-                  value={regularRequest.requestDetails.dropDateAndTime ? new Date(regularRequest.requestDetails.dropDateAndTime).toISOString().slice(0, 16) : ''}
+                  value={regularRequest.dropDateTime ? new Date(regularRequest.dropDateTime).toISOString().slice(0, 16) : ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        dropDateAndTime: value.dropDateAndTime ? new Date(value.dropDateAndTime) : null,
-                      },
+                      dropDateTime: value.dropDateTime ? new Date(value.dropDateTime) : null,
                     })
                   }}
+                  required
+                  errorMessage={errorMap['dropDateTime']}
+                  invalid={errorMap['dropDateTime']}
                 />
               </Column>
             </Row>
@@ -288,16 +515,16 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Opening Km"
                   name="openingKm"
                   type="number"
-                  value={regularRequest.requestDetails.openingKm ?? ''}
+                  value={regularRequest.openingKm ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        openingKm: value.openingKm ? Number(value.openingKm) : null,
-                      },
+                      openingKm: value.openingKm ? Number(value.openingKm) : null,
                     })
                   }}
+                  required
+                  errorMessage={errorMap['openingKm']}
+                  invalid={errorMap['openingKm']}
                 />
               </Column>
               <Column
@@ -308,187 +535,201 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Closing Km"
                   name="closingKm"
                   type="number"
-                  value={regularRequest.requestDetails.closingKm ?? ''}
+                  value={regularRequest.closingKm ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        closingKm: value.closingKm ? Number(value.closingKm) : null,
-                      },
+                      closingKm: value.closingKm ? Number(value.closingKm) : null,
+                    })
+                  }}
+                  required
+                  errorMessage={errorMap['closingKm']}
+                  invalid={errorMap['closingKm']}
+                />
+              </Column>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Toggle
+                  className={bemClass([blk, 'toggle'])}
+                  label="AC Required"
+                  name="ac"
+                  checked={regularRequest.ac}
+                  changeHandler={value => {
+                    setRegularRequest({
+                      ...regularRequest,
+                      ac: !!value.ac,
                     })
                   }}
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Customer Details Panel */}
           <Panel
             title="Customer Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
-            {regularRequest.requestDetails.customerSelection === 'Existing' ? (
-              <>
-                <Row>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Customer Category"
-                      name="customerCategory"
-                      options={[
-                        {
-                          key: 'Regular',
-                          value: 'Regular',
-                        },
-                        {
-                          key: 'Operator',
-                          value: 'Operator',
-                        },
-                      ]}
-                      value={regularRequest.customerDetails.customerCategory}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          customerDetails: {
-                            customerId: regularRequest.customerDetails.customerId ?? '',
-                            customerCategory: value.customerCategory.toString(),
-                          },
-                        })
-                      }}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Customer"
-                      name="customerId"
-                      options={[
-                        {
-                          key: 'Ramesh',
-                          value: 'Ramesh',
-                        },
-                        {
-                          key: 'Suresh',
-                          value: 'Suresh',
-                        },
-                      ]}
-                      value={regularRequest.customerDetails.customerId}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          customerDetails: {
-                            customerId: value.customerId.toString(),
-                            customerCategory: regularRequest.customerDetails.customerCategory ?? '',
-                          },
-                        })
-                      }}
-                    />
-                  </Column>
-                </Row>
-              </>
-            ) : (
-              <>
-                <Row>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Customer Name"
-                      name="customerName"
-                      value={regularRequest.customerDetails.customerName ?? ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          customerDetails: {
-                            customerName: value.customerName?.toString() || '',
-                            customerEmail: regularRequest.customerDetails.customerEmail?.toString() || '',
-                            customerContact: regularRequest.customerDetails.customerContact?.toString() || '',
-                          },
-                        })
-                      }}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Customer Contact"
-                      name="customerContact"
-                      value={regularRequest.customerDetails.customerContact ?? ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          customerDetails: {
-                            customerName: regularRequest.customerDetails.customerName || '',
-                            customerEmail: regularRequest.customerDetails.customerEmail || '',
-                            customerContact: value.customerContact?.toString() || '',
-                          },
-                        })
-                      }}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Customer Email"
-                      name="customerEmail"
-                      value={regularRequest.customerDetails.customerEmail ?? ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          customerDetails: {
-                            customerName: regularRequest.customerDetails.customerName || '',
-                            customerEmail: value.customerEmail?.toString() || '',
-                            customerContact: regularRequest.customerDetails.customerContact || '',
-                          },
-                        })
-                      }}
-                    />
-                  </Column>
-                </Row>
-              </>
-            )}
-          </Panel>
-          <Panel
-            title="Vehicle Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            {regularRequest.requestDetails.vehicleSelection === 'Existing' ? (
+            {regularRequest.customerType === 'existing' ? (
               <Row>
                 <Column
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <SelectInput
-                    label="Vehicle Category"
-                    name="vehicleCategory"
-                    options={[
-                      {
-                        key: 'Sedan',
-                        value: 'Sedan',
-                      },
-                      {
-                        key: 'SUV',
-                        value: 'SUV',
-                      },
-                    ]}
-                    value={regularRequest.vehicleDetails.vehicleCategory ?? ''}
+                  <ConfiguredInput
+                    label="Customer Category"
+                    name="customerCategory"
+                    configToUse="Customer category"
+                    type={CONFIGURED_INPUT_TYPES.SELECT}
+                    value={regularRequest.customerCategory || ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
-                        vehicleDetails: {
-                          vehicleId: regularRequest.vehicleDetails.vehicleId ?? '',
-                          vehicleCategory: value.vehicleCategory.toString(),
+                        customerCategory: value.customerCategory?.toString() ?? '',
+                        customer: null,
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['customerCategory']}
+                    invalid={errorMap['customerCategory']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <SelectInput
+                    label="Customer"
+                    name="customer"
+                    options={getSelectOptions(
+                      customersLoading,
+                      customersIsError,
+                      customerOptions,
+                      'Please wait...',
+                      'Unable to load options',
+                      'No customers found'
+                    )}
+                    value={
+                      regularRequest.customer 
+                        ? (customerOptions.find((option: any) => option.key === regularRequest.customer) as any)?.value ?? ''
+                        : ''
+                    }
+                    changeHandler={value => {
+                      if (isPlaceholderValue(value.customer?.toString() || '', 'customers')) return
+                      
+                      const selectedOption = customerOptions.find((option: any) => option.value === value.customer) as any
+                      setRegularRequest({
+                        ...regularRequest,
+                        customer: selectedOption?.key ?? '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['customer']}
+                    invalid={errorMap['customer']}
+                    disabled={!regularRequest.customerCategory || customersLoading || customersIsError}
+                  />
+                </Column>
+              </Row>
+            ) : (
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Customer Name"
+                    name="customerName"
+                    value={regularRequest.customerDetails?.name ?? ''}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        customerDetails: {
+                          ...regularRequest.customerDetails!,
+                          name: value.customerName?.toString() || '',
                         },
                       })
                     }}
+                    required
+                    errorMessage={errorMap['customerDetails.name']}
+                    invalid={errorMap['customerDetails.name']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Customer Contact"
+                    name="customerContact"
+                    value={regularRequest.customerDetails?.contact ?? ''}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        customerDetails: {
+                          ...regularRequest.customerDetails!,
+                          contact: value.customerContact?.toString() || '',
+                        },
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['customerDetails.contact']}
+                    invalid={errorMap['customerDetails.contact']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Customer Email"
+                    name="customerEmail"
+                    type="email"
+                    value={regularRequest.customerDetails?.email ?? ''}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        customerDetails: {
+                          ...regularRequest.customerDetails!,
+                          email: value.customerEmail?.toString() || '',
+                        },
+                      })
+                    }}
+                    errorMessage={errorMap['customerDetails.email']}
+                    invalid={errorMap['customerDetails.email']}
+                  />
+                </Column>
+              </Row>
+            )}
+          </Panel>
+          {/* Vehicle Details Panel */}
+          <Panel
+            title="Vehicle Details"
+            className={bemClass([blk, 'margin-bottom'])}
+          >
+            {regularRequest.vehicleType === 'existing' ? (
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <ConfiguredInput
+                    label="Vehicle Category"
+                    name="vehicleCategory"
+                    configToUse="Vehicle category"
+                    type={CONFIGURED_INPUT_TYPES.SELECT}
+                    value={regularRequest.vehicleCategory || ''}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                        vehicle: null,
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['vehicleCategory']}
+                    invalid={errorMap['vehicleCategory']}
                   />
                 </Column>
                 <Column
@@ -497,27 +738,33 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 >
                   <SelectInput
                     label="Vehicle"
-                    name="vehicleId"
-                    options={[
-                      {
-                        key: 'Car1',
-                        value: 'Car1',
-                      },
-                      {
-                        key: 'Car2',
-                        value: 'Car2',
-                      },
-                    ]}
-                    value={regularRequest.vehicleDetails.vehicleId}
+                    name="vehicle"
+                    options={getSelectOptions(
+                      vehiclesLoading,
+                      vehiclesIsError,
+                      vehicleOptions,
+                      'Please wait...',
+                      'Unable to load options',
+                      'No vehicles found'
+                    )}
+                    value={
+                      regularRequest.vehicle 
+                        ? (vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? ''
+                        : ''
+                    }
                     changeHandler={value => {
+                      if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
+                      
+                      const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
                       setRegularRequest({
                         ...regularRequest,
-                        vehicleDetails: {
-                          vehicleId: value.vehicleId.toString(),
-                          vehicleCategory: regularRequest.vehicleDetails.vehicleCategory ?? '',
-                        },
+                        vehicle: selectedOption?.key ?? '',
                       })
                     }}
+                    required
+                    errorMessage={errorMap['vehicle']}
+                    invalid={errorMap['vehicle']}
+                    disabled={!regularRequest.vehicleCategory || vehiclesLoading || vehiclesIsError}
                   />
                 </Column>
               </Row>
@@ -531,20 +778,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     <TextInput
                       label="Owner Name"
                       name="ownerName"
-                      value={regularRequest.vehicleDetails.ownerName ?? ''}
+                      value={regularRequest.vehicleDetails?.ownerName ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
+                            ...regularRequest.vehicleDetails!,
                             ownerName: value.ownerName?.toString() || '',
-                            ownerContact: regularRequest.vehicleDetails.ownerContact?.toString() || '',
-                            ownerEmail: regularRequest.vehicleDetails.ownerEmail?.toString() || '',
-                            vehicleManufacturer: regularRequest.vehicleDetails.vehicleManufacturer?.toString() || '',
-                            vehicleName: regularRequest.vehicleDetails.vehicleName?.toString() || '',
-                            vehicleRegistrationNumber: regularRequest.vehicleDetails.vehicleRegistrationNumber?.toString() || '',
                           },
                         })
                       }}
+                      required
+                      errorMessage={errorMap['vehicleDetails.ownerName']}
+                      invalid={errorMap['vehicleDetails.ownerName']}
                     />
                   </Column>
                   <Column
@@ -554,20 +800,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     <TextInput
                       label="Owner Contact"
                       name="ownerContact"
-                      value={regularRequest.vehicleDetails.ownerContact ?? ''}
+                      value={regularRequest.vehicleDetails?.ownerContact ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
-                            ownerName: regularRequest.vehicleDetails.ownerName || '',
+                            ...regularRequest.vehicleDetails!,
                             ownerContact: value.ownerContact?.toString() || '',
-                            ownerEmail: regularRequest.vehicleDetails.ownerEmail || '',
-                            vehicleManufacturer: regularRequest.vehicleDetails.vehicleManufacturer || '',
-                            vehicleName: regularRequest.vehicleDetails.vehicleName || '',
-                            vehicleRegistrationNumber: regularRequest.vehicleDetails.vehicleRegistrationNumber || '',
                           },
                         })
                       }}
+                      required
+                      errorMessage={errorMap['vehicleDetails.ownerContact']}
+                      invalid={errorMap['vehicleDetails.ownerContact']}
                     />
                   </Column>
                   <Column
@@ -577,20 +822,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     <TextInput
                       label="Owner Email"
                       name="ownerEmail"
-                      value={regularRequest.vehicleDetails.ownerEmail ?? ''}
+                      type="email"
+                      value={regularRequest.vehicleDetails?.ownerEmail ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
-                            ownerName: regularRequest.vehicleDetails.ownerName || '',
-                            ownerContact: regularRequest.vehicleDetails.ownerContact || '',
+                            ...regularRequest.vehicleDetails!,
                             ownerEmail: value.ownerEmail?.toString() || '',
-                            vehicleManufacturer: regularRequest.vehicleDetails.vehicleManufacturer || '',
-                            vehicleName: regularRequest.vehicleDetails.vehicleName || '',
-                            vehicleRegistrationNumber: regularRequest.vehicleDetails.vehicleRegistrationNumber || '',
                           },
                         })
                       }}
+                      errorMessage={errorMap['vehicleDetails.ownerEmail']}
+                      invalid={errorMap['vehicleDetails.ownerEmail']}
                     />
                   </Column>
                 </Row>
@@ -600,22 +844,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <TextInput
-                      label="Vehicle Manufacturer"
-                      name="vehicleManufacturer"
-                      value={regularRequest.vehicleDetails.vehicleManufacturer ?? ''}
+                      label="Manufacturer"
+                      name="manufacturer"
+                      value={regularRequest.vehicleDetails?.manufacturer ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
-                            ownerName: regularRequest.vehicleDetails.ownerName || '',
-                            ownerContact: regularRequest.vehicleDetails.ownerContact || '',
-                            ownerEmail: regularRequest.vehicleDetails.ownerEmail || '',
-                            vehicleManufacturer: value.vehicleManufacturer?.toString() || '',
-                            vehicleName: regularRequest.vehicleDetails.vehicleName || '',
-                            vehicleRegistrationNumber: regularRequest.vehicleDetails.vehicleRegistrationNumber || '',
+                            ...regularRequest.vehicleDetails!,
+                            manufacturer: value.manufacturer?.toString() || '',
                           },
                         })
                       }}
+                      required
+                      errorMessage={errorMap['vehicleDetails.manufacturer']}
+                      invalid={errorMap['vehicleDetails.manufacturer']}
                     />
                   </Column>
                   <Column
@@ -625,20 +868,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     <TextInput
                       label="Vehicle Name"
                       name="vehicleName"
-                      value={regularRequest.vehicleDetails.vehicleName ?? ''}
+                      value={regularRequest.vehicleDetails?.name ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
-                            ownerName: regularRequest.vehicleDetails.ownerName || '',
-                            ownerContact: regularRequest.vehicleDetails.ownerContact || '',
-                            ownerEmail: regularRequest.vehicleDetails.ownerEmail || '',
-                            vehicleManufacturer: regularRequest.vehicleDetails.vehicleManufacturer || '',
-                            vehicleName: value.vehicleName?.toString() || '',
-                            vehicleRegistrationNumber: regularRequest.vehicleDetails.vehicleRegistrationNumber || '',
+                            ...regularRequest.vehicleDetails!,
+                            name: value.vehicleName?.toString() || '',
                           },
                         })
                       }}
+                      required
+                      errorMessage={errorMap['vehicleDetails.name']}
+                      invalid={errorMap['vehicleDetails.name']}
                     />
                   </Column>
                   <Column
@@ -646,61 +888,55 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <TextInput
-                      label="Vehicle Registration Number"
-                      name="vehicleRegistrationNumber"
-                      value={regularRequest.vehicleDetails.vehicleRegistrationNumber ?? ''}
+                      label="Registration Number"
+                      name="registrationNo"
+                      value={regularRequest.vehicleDetails?.registrationNo ?? ''}
                       changeHandler={value => {
                         setRegularRequest({
                           ...regularRequest,
                           vehicleDetails: {
-                            ownerName: regularRequest.vehicleDetails.ownerName || '',
-                            ownerContact: regularRequest.vehicleDetails.ownerContact || '',
-                            ownerEmail: regularRequest.vehicleDetails.ownerEmail || '',
-                            vehicleManufacturer: regularRequest.vehicleDetails.vehicleManufacturer || '',
-                            vehicleName: regularRequest.vehicleDetails.vehicleName || '',
-                            vehicleRegistrationNumber: value.vehicleRegistrationNumber?.toString() || '',
+                            ...regularRequest.vehicleDetails!,
+                            registrationNo: value.registrationNo?.toString() || '',
                           },
                         })
                       }}
+                      required
+                      errorMessage={errorMap['vehicleDetails.registrationNo']}
+                      invalid={errorMap['vehicleDetails.registrationNo']}
                     />
                   </Column>
                 </Row>
               </>
             )}
           </Panel>
+
+          {/* Staff Details Panel */}
           <Panel
             title="Staff Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
-            {regularRequest.requestDetails.staffSelection === 'Existing' ? (
+            {regularRequest.staffType === 'existing' ? (
               <Row>
                 <Column
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <SelectInput
+                  <ConfiguredInput
                     label="Staff Category"
                     name="staffCategory"
-                    options={[
-                      {
-                        key: 'Driver',
-                        value: 'Driver',
-                      },
-                      {
-                        key: 'Guide',
-                        value: 'Guide',
-                      },
-                    ]}
-                    value={regularRequest.staffDetails.staffCategory ?? ''}
+                    configToUse="Staff category"
+                    type={CONFIGURED_INPUT_TYPES.SELECT}
+                    value={regularRequest.staffCategory || ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
-                        staffDetails: {
-                          staffId: regularRequest.staffDetails.staffId ?? '',
-                          staffCategory: value.staffCategory.toString(),
-                        },
+                        staffCategory: value.staffCategory?.toString() ?? '',
+                        staff: null,
                       })
                     }}
+                    required
+                    errorMessage={errorMap['staffCategory']}
+                    invalid={errorMap['staffCategory']}
                   />
                 </Column>
                 <Column
@@ -709,27 +945,33 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 >
                   <SelectInput
                     label="Staff"
-                    name="staffId"
-                    options={[
-                      {
-                        key: 'Driver1',
-                        value: 'Driver1',
-                      },
-                      {
-                        key: 'Driver2',
-                        value: 'Driver2',
-                      },
-                    ]}
-                    value={regularRequest.staffDetails.staffId}
+                    name="staff"
+                    options={getSelectOptions(
+                      staffLoading,
+                      staffIsError,
+                      staffOptions,
+                      'Please wait...',
+                      'Unable to load options',
+                      'No staff found'
+                    )}
+                    value={
+                      regularRequest.staff 
+                        ? (staffOptions.find((option: any) => option.key === regularRequest.staff) as any)?.value ?? ''
+                        : ''
+                    }
                     changeHandler={value => {
+                      if (isPlaceholderValue(value.staff?.toString() || '', 'staff')) return
+                      
+                      const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
                       setRegularRequest({
                         ...regularRequest,
-                        staffDetails: {
-                          staffId: value.staffId.toString(),
-                          staffCategory: regularRequest.staffDetails.staffCategory ?? '',
-                        },
+                        staff: selectedOption?.key ?? '',
                       })
                     }}
+                    required
+                    errorMessage={errorMap['staff']}
+                    invalid={errorMap['staff']}
+                    disabled={!regularRequest.staffCategory || staffLoading || staffIsError}
                   />
                 </Column>
               </Row>
@@ -742,17 +984,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <TextInput
                     label="Staff Name"
                     name="staffName"
-                    value={regularRequest.staffDetails.staffName ?? ''}
+                    value={regularRequest.staffDetails?.name ?? ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
                         staffDetails: {
-                          staffName: value.staffName?.toString() || '',
-                          staffEmail: regularRequest.staffDetails.staffEmail?.toString() || '',
-                          staffLicense: regularRequest.staffDetails.staffLicense?.toString() || '',
+                          ...regularRequest.staffDetails!,
+                          name: value.staffName?.toString() || '',
                         },
                       })
                     }}
+                    required
+                    errorMessage={errorMap['staffDetails.name']}
+                    invalid={errorMap['staffDetails.name']}
                   />
                 </Column>
                 <Column
@@ -760,19 +1004,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   className={bemClass([blk, 'margin-bottom'])}
                 >
                   <TextInput
-                    label="Staff Email"
-                    name="staffEmail"
-                    value={regularRequest.staffDetails.staffEmail ?? ''}
+                    label="Staff Contact"
+                    name="staffContact"
+                    value={regularRequest.staffDetails?.contact ?? ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
                         staffDetails: {
-                          staffName: regularRequest.staffDetails.staffName || '',
-                          staffEmail: value.staffEmail?.toString() || '',
-                          staffLicense: regularRequest.staffDetails.staffLicense || '',
+                          ...regularRequest.staffDetails!,
+                          contact: value.staffContact?.toString() || '',
                         },
                       })
                     }}
+                    required
+                    errorMessage={errorMap['staffDetails.contact']}
+                    invalid={errorMap['staffDetails.contact']}
                   />
                 </Column>
                 <Column
@@ -782,24 +1028,28 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <TextInput
                     label="Staff License"
                     name="staffLicense"
-                    value={regularRequest.staffDetails.staffLicense ?? ''}
+                    value={regularRequest.staffDetails?.license ?? ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
                         staffDetails: {
-                          staffName: regularRequest.staffDetails.staffName || '',
-                          staffEmail: regularRequest.staffDetails.staffEmail || '',
-                          staffLicense: value.staffLicense?.toString() || '',
+                          ...regularRequest.staffDetails!,
+                          license: value.staffLicense?.toString() || '',
                         },
                       })
                     }}
+                    required
+                    errorMessage={errorMap['staffDetails.license']}
+                    invalid={errorMap['staffDetails.license']}
                   />
                 </Column>
               </Row>
             )}
           </Panel>
+
+          {/* Package Details Panel */}
           <Panel
-            title="Customer package details"
+            title="Package Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
@@ -807,29 +1057,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <SelectInput
+                <ConfiguredInput
                   label="Package Category"
                   name="packageCategory"
-                  options={[
-                    {
-                      key: 'Package 1',
-                      value: 'Package 1',
-                    },
-                    {
-                      key: 'Package 2',
-                      value: 'Package 2',
-                    },
-                  ]}
-                  value={regularRequest.customerPackageDetails.packageCategory}
+                  configToUse="Package category"
+                  type={CONFIGURED_INPUT_TYPES.SELECT}
+                  value={regularRequest.packageCategory || ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      customerPackageDetails: {
-                        packageCategory: value.packageCategory.toString(),
-                        packageId: regularRequest.customerPackageDetails.packageId.toString(),
-                      },
+                      packageCategory: value.packageCategory?.toString() ?? '',
+                      package: null,
                     })
                   }}
+                  required
+                  errorMessage={errorMap['packageCategory']}
+                  invalid={errorMap['packageCategory']}
                 />
               </Column>
               <Column
@@ -838,31 +1081,38 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <SelectInput
                   label="Package"
-                  name="packageId"
-                  options={[
-                    {
-                      key: 'Package 1',
-                      value: 'Package 1',
-                    },
-                    {
-                      key: 'Package 2',
-                      value: 'Package 2',
-                    },
-                  ]}
-                  value={regularRequest.customerPackageDetails.packageId}
+                  name="package"
+                  options={getSelectOptions(
+                    packagesLoading,
+                    packagesIsError,
+                    packageOptions,
+                    'Please wait...',
+                    'Unable to load options',
+                    'No packages found'
+                  )}
+                  value={
+                    regularRequest.package 
+                      ? (packageOptions.find((option: any) => option.key === regularRequest.package) as any)?.value ?? ''
+                      : ''
+                  }
                   changeHandler={value => {
+                    if (isPlaceholderValue(value.package?.toString() || '', 'packages')) return
+                    
+                    const selectedOption = packageOptions.find((option: any) => option.value === value.package) as any
                     setRegularRequest({
                       ...regularRequest,
-                      customerPackageDetails: {
-                        packageCategory: regularRequest.customerPackageDetails.packageCategory ?? '',
-                        packageId: value.packageId.toString(),
-                      },
+                      package: selectedOption?.key ?? '',
                     })
                   }}
+                  required
+                  errorMessage={errorMap['package']}
+                  invalid={errorMap['package']}
+                  disabled={!regularRequest.packageCategory || packagesLoading || packagesIsError}
                 />
               </Column>
             </Row>
           </Panel>
+          {/* Other Charges Panel */}
           <Panel
             title="Other Charges"
             className={bemClass([blk, 'margin-bottom'])}
@@ -883,7 +1133,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <CheckBox
                     id="tollChargeableToCustomer"
                     label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.toll.chargeableToCustomer}
+                    checked={regularRequest.otherCharges.toll.isChargeableToCustomer}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
@@ -891,7 +1141,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           ...regularRequest.otherCharges,
                           toll: {
                             ...regularRequest.otherCharges.toll,
-                            chargeableToCustomer: value.tollChargeableToCustomer ?? false,
+                            isChargeableToCustomer: value.tollChargeableToCustomer ?? false,
                           },
                         },
                       })
@@ -899,9 +1149,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   />
                 </div>
                 <TextInput
-                  name="toll"
-                  placeholder="Toll"
-                  value={regularRequest.otherCharges.toll.charge}
+                  name="tollAmount"
+                  type="number"
+                  placeholder="Toll Amount"
+                  value={regularRequest.otherCharges.toll.amount ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -909,11 +1160,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         toll: {
                           ...regularRequest.otherCharges.toll,
-                          charge: value.tollCharges ? Number(value.tollCharges) : 0,
+                          amount: value.tollAmount ? Number(value.tollAmount) : '',
                         },
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['otherCharges.toll.amount']}
+                  invalid={errorMap['otherCharges.toll.amount']}
                 />
               </Column>
               <Column
@@ -931,7 +1185,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <CheckBox
                     id="parkingChargeableToCustomer"
                     label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.parking.chargeableToCustomer}
+                    checked={regularRequest.otherCharges.parking.isChargeableToCustomer}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
@@ -939,7 +1193,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           ...regularRequest.otherCharges,
                           parking: {
                             ...regularRequest.otherCharges.parking,
-                            chargeableToCustomer: value.parkingChargeableToCustomer ?? false,
+                            isChargeableToCustomer: value.parkingChargeableToCustomer ?? false,
                           },
                         },
                       })
@@ -947,9 +1201,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   />
                 </div>
                 <TextInput
-                  name="parking"
-                  placeholder="Parking"
-                  value={regularRequest.otherCharges.parking.charge}
+                  name="parkingAmount"
+                  type="number"
+                  placeholder="Parking Amount"
+                  value={regularRequest.otherCharges.parking.amount ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -957,11 +1212,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         parking: {
                           ...regularRequest.otherCharges.parking,
-                          charge: value.parking ? Number(value.parking) : 0,
+                          amount: value.parkingAmount ? Number(value.parkingAmount) : '',
                         },
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['otherCharges.parking.amount']}
+                  invalid={errorMap['otherCharges.parking.amount']}
                 />
               </Column>
             </Row>
@@ -981,7 +1239,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <CheckBox
                     id="nightHaltChargeableToCustomer"
                     label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.nightHalt.chargeableToCustomer}
+                    checked={regularRequest.otherCharges.nightHalt.isChargeableToCustomer}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
@@ -989,7 +1247,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           ...regularRequest.otherCharges,
                           nightHalt: {
                             ...regularRequest.otherCharges.nightHalt,
-                            chargeableToCustomer: value.nightHaltChargeableToCustomer ?? false,
+                            isChargeableToCustomer: value.nightHaltChargeableToCustomer ?? false,
                           },
                         },
                       })
@@ -997,9 +1255,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   />
                 </div>
                 <TextInput
-                  name="nightHalt"
-                  placeholder="Night Halt"
-                  value={regularRequest.otherCharges.nightHalt.charge}
+                  name="nightHaltAmount"
+                  type="number"
+                  placeholder="Night Halt Amount"
+                  value={regularRequest.otherCharges.nightHalt.amount ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -1007,22 +1266,25 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         nightHalt: {
                           ...regularRequest.otherCharges.nightHalt,
-                          charge: value.nightHalt ? Number(value.nightHalt) : 0,
+                          amount: value.nightHaltAmount ? Number(value.nightHaltAmount) : '',
                         },
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['otherCharges.nightHalt.amount']}
+                  invalid={errorMap['otherCharges.nightHalt.amount']}
                 />
               </Column>
               <Column
                 col={5}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <RadioGroup
-                  question="Include Night Halt in driver salary?"
-                  name="includeNightHaltInDriverSalary"
-                  options={['Yes', 'No']}
-                  value={regularRequest.otherCharges.nightHalt.includeInDriverSalary ? 'Yes' : 'No'}
+                <Toggle
+                  className={bemClass([blk, 'toggle'])}
+                  label="Include Night Halt in driver salary?"
+                  name="nightHaltPayableWithSalary"
+                  checked={regularRequest.otherCharges.nightHalt.isPayableWithSalary}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -1030,12 +1292,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         nightHalt: {
                           ...regularRequest.otherCharges.nightHalt,
-                          includeInDriverSalary: value.includeNightHaltInDriverSalary === 'Yes',
+                          isPayableWithSalary: !!value.nightHaltPayableWithSalary,
                         },
                       },
                     })
                   }}
-                  direction="horizontal"
                 />
               </Column>
             </Row>
@@ -1055,7 +1316,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <CheckBox
                     id="driverAllowanceChargeableToCustomer"
                     label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.driverAllowance.chargeableToCustomer}
+                    checked={regularRequest.otherCharges.driverAllowance.isChargeableToCustomer}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
@@ -1063,7 +1324,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           ...regularRequest.otherCharges,
                           driverAllowance: {
                             ...regularRequest.otherCharges.driverAllowance,
-                            chargeableToCustomer: value.driverAllowanceChargeableToCustomer ?? false,
+                            isChargeableToCustomer: value.driverAllowanceChargeableToCustomer ?? false,
                           },
                         },
                       })
@@ -1071,9 +1332,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   />
                 </div>
                 <TextInput
-                  name="driverAllowance"
-                  placeholder="Driver Allowance"
-                  value={regularRequest.otherCharges.driverAllowance.charge}
+                  name="driverAllowanceAmount"
+                  type="number"
+                  placeholder="Driver Allowance Amount"
+                  value={regularRequest.otherCharges.driverAllowance.amount ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -1081,22 +1343,25 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         driverAllowance: {
                           ...regularRequest.otherCharges.driverAllowance,
-                          charge: value.driverAllowance ? Number(value.driverAllowance) : 0,
+                          amount: value.driverAllowanceAmount ? Number(value.driverAllowanceAmount) : '',
                         },
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['otherCharges.driverAllowance.amount']}
+                  invalid={errorMap['otherCharges.driverAllowance.amount']}
                 />
               </Column>
               <Column
                 col={5}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <RadioGroup
-                  question="Include Driver Allowance in driver salary?"
-                  name="includeDriverAllowanceInDriverSalary"
-                  options={['Yes', 'No']}
-                  value={regularRequest.otherCharges.driverAllowance.includeInDriverSalary ? 'Yes' : 'No'}
+                <Toggle
+                  className={bemClass([blk, 'toggle'])}
+                  label="Include Driver Allowance in driver salary?"
+                  name="driverAllowancePayableWithSalary"
+                  checked={regularRequest.otherCharges.driverAllowance.isPayableWithSalary}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
@@ -1104,18 +1369,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         driverAllowance: {
                           ...regularRequest.otherCharges.driverAllowance,
-                          includeInDriverSalary: value.includeDriverAllowanceInDriverSalary === 'Yes',
+                          isPayableWithSalary: !!value.driverAllowancePayableWithSalary,
                         },
                       },
                     })
                   }}
-                  direction="horizontal"
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Advanced Payment Panel */}
           <Panel
-            title="Advance Payment"
+            title="Advanced Payment"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
@@ -1124,18 +1390,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Advance from Customer"
-                  name="advanceFromCustomer"
-                  value={regularRequest.advancePayment.advanceFromCustomer}
+                  label="Advanced from Customer"
+                  name="advancedFromCustomer"
+                  type="number"
+                  value={regularRequest.advancedPayment.advancedFromCustomer ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      advancePayment: {
-                        ...regularRequest.advancePayment,
-                        advanceFromCustomer: value.advanceFromCustomer ? Number(value.advanceFromCustomer) : 0,
+                      advancedPayment: {
+                        ...regularRequest.advancedPayment,
+                        advancedFromCustomer: value.advancedFromCustomer ? Number(value.advancedFromCustomer) : '',
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['advancedPayment.advancedFromCustomer']}
+                  invalid={errorMap['advancedPayment.advancedFromCustomer']}
                 />
               </Column>
               <Column
@@ -1143,22 +1413,28 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Advance to Driver"
-                  name="advanceToDriver"
-                  value={regularRequest.advancePayment.advanceToDriver}
+                  label="Advanced to Customer"
+                  name="advancedToCustomer"
+                  type="number"
+                  value={regularRequest.advancedPayment.advancedToCustomer ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      advancePayment: {
-                        ...regularRequest.advancePayment,
-                        advanceToDriver: value.advanceToDriver ? Number(value.advanceToDriver) : 0,
+                      advancedPayment: {
+                        ...regularRequest.advancedPayment,
+                        advancedToCustomer: value.advancedToCustomer ? Number(value.advancedToCustomer) : '',
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['advancedPayment.advancedToCustomer']}
+                  invalid={errorMap['advancedPayment.advancedToCustomer']}
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Payment Details Panel */}
           <Panel
             title="Payment Details"
             className={bemClass([blk, 'margin-bottom'])}
@@ -1170,31 +1446,67 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <SelectInput
                   label="Payment Status"
-                  name="PaymentStatus"
+                  name="paymentStatus"
                   options={[
-                    {
-                      key: 'Bill Generated',
-                      value: 'Bill Generated',
-                    },
-                    {
-                      key: 'Send to customer',
-                      value: 'Send to customer',
-                    },
-                    {
-                      key: 'Payment Received',
-                      value: 'Payment Received',
-                    },
+                    { key: 'BILL_GENERATED', value: 'Bill Generated' },
+                    { key: 'BILL_SENT_TO_CUSTOMER', value: 'Bill Sent to Customer' },
+                    { key: 'PAYMENT_RECEIVED', value: 'Payment Received' },
                   ]}
-                  value={regularRequest.paymentDetails.status}
+                  value={
+                    regularRequest.paymentDetails.status === 'BILL_GENERATED'
+                      ? 'Bill Generated'
+                      : regularRequest.paymentDetails.status === 'BILL_SENT_TO_CUSTOMER'
+                        ? 'Bill Sent to Customer'
+                        : regularRequest.paymentDetails.status === 'PAYMENT_RECEIVED'
+                          ? 'Payment Received'
+                          : ''
+                  }
+                  changeHandler={value => {
+                    let status: '' | 'BILL_GENERATED' | 'BILL_SENT_TO_CUSTOMER' | 'PAYMENT_RECEIVED' = ''
+
+                    if (value.paymentStatus === 'Bill Generated') {
+                      status = 'BILL_GENERATED'
+                    } else if (value.paymentStatus === 'Bill Sent to Customer') {
+                      status = 'BILL_SENT_TO_CUSTOMER'
+                    } else if (value.paymentStatus === 'Payment Received') {
+                      status = 'PAYMENT_RECEIVED'
+                    }
+
+                    setRegularRequest({
+                      ...regularRequest,
+                      paymentDetails: {
+                        ...regularRequest.paymentDetails,
+                        status: status,
+                      },
+                    })
+                  }}
+                  required
+                  errorMessage={errorMap['paymentDetails.status']}
+                  invalid={errorMap['paymentDetails.status']}
+                />
+              </Column>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ConfiguredInput
+                  label="Payment Method"
+                  name="paymentMethod"
+                  configToUse="Payment method"
+                  type={CONFIGURED_INPUT_TYPES.SELECT}
+                  value={regularRequest.paymentDetails.paymentMethod}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
                       paymentDetails: {
                         ...regularRequest.paymentDetails,
-                        status: value.PaymentStatus?.toString() ?? '',
+                        paymentMethod: value.paymentMethod?.toString() ?? '',
                       },
                     })
                   }}
+                  required
+                  errorMessage={errorMap['paymentDetails.paymentMethod']}
+                  invalid={errorMap['paymentDetails.paymentMethod']}
                 />
               </Column>
               <Column
@@ -1215,79 +1527,69 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       },
                     })
                   }}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Payment Mode"
-                  name="paymentMode"
-                  options={[
-                    {
-                      key: 'Cash',
-                      value: 'Cash',
-                    },
-                    {
-                      key: 'Card',
-                      value: 'Card',
-                    },
-                    {
-                      key: 'Online Transfer',
-                      value: 'Online Transfer',
-                    },
-                  ]}
-                  value={regularRequest.paymentDetails.paymentMode}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      paymentDetails: {
-                        ...regularRequest.paymentDetails,
-                        paymentMode: value.paymentMode?.toString() ?? '',
-                      },
-                    })
-                  }}
+                  required
+                  errorMessage={errorMap['paymentDetails.paymentDate']}
+                  invalid={errorMap['paymentDetails.paymentDate']}
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Comments Panel */}
           <Panel
             title="Comments"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <TextArea
               className={bemClass([blk, 'margin-bottom'])}
-              name="comments"
-              value={regularRequest.comments}
+              name="comment"
+              value={regularRequest.comment}
               changeHandler={value => {
                 setRegularRequest({
                   ...regularRequest,
-                  comments: value.comments?.toString() ?? '',
+                  comment: value.comment?.toString() ?? '',
                 })
               }}
               placeholder="Enter any additional comments or notes here..."
             />
           </Panel>
-        </>
-        <div className={bemClass([blk, 'action-items'])}>
-          <Button
-            size="medium"
-            category="default"
-            className={bemClass([blk, 'margin-right'])}
-            clickHandler={navigateBack}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="medium"
-            category="primary"
-          >
-            Submit
-          </Button>
+
+          <div className={bemClass([blk, 'action-items'])}>
+            <Button
+              size="medium"
+              category="default"
+              className={bemClass([blk, 'margin-right'])}
+              clickHandler={navigateBack}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="medium"
+              category="primary"
+              clickHandler={submitHandler}
+            >
+              Submit
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+      <Modal
+        show={showConfirmationModal}
+        closeHandler={() => {
+          if (showConfirmationModal) {
+            setShowConfirmationModal(false)
+          }
+        }}
+      >
+        <ConfirmationPopup
+          type={confirmationPopUpType}
+          title={confirmationPopUpTitle}
+          subTitle={confirmationPopUpSubtitle}
+          confirmButtonText="Okay"
+          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+        />
+      </Modal>
+    </>
   )
 }
 

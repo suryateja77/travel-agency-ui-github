@@ -30,6 +30,9 @@
   &__margin-bottom {
     margin-bottom: $space-default;
   }
+  &__toggle {
+    margin-top: 0px;
+  }
   &__margin-right {
     margin-right: $space-small;
   }
@@ -42,5 +45,8 @@
 
 @include large-up {
   .create-regular-request {
+    &__toggle {
+    margin-top: 34px;
+  }
   }
 }

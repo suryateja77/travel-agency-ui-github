@@ -147,111 +147,77 @@ export const sampleStaffModel: StaffModel = {
 // --------------------------------------------------------------------------------------------------------
 
 export interface RegularRequestModel {
-  requestDetails: {
-    customerSelection: string
-    vehicleSelection: string
-    staffSelection: string
-    requestType: string
-    pickupLocation: string
-    dropLocation: string
-    pickupDateAndTime: Date | null
-    dropDateAndTime: Date | null
-    openingKm: number | null
-    closingKm: number | null
-    totalTime: number | null
-    totalDistance: number | null
+  customerType: 'existing' | 'new'
+  vehicleType: 'existing' | 'new'
+  staffType: 'existing' | 'new'
+  requestType: string
+
+  customerCategory: string | null
+  customer: string | null
+  customerDetails: null | {
+    name: string
+    contact: string
+    email: string
   }
-  customerDetails:
-    | {
-        // For EXISTING customer
-        customerId: string
-        customerCategory: string
-        customerName?: never
-        customerEmail?: never
-        customerContact?: never
-      }
-    | {
-        // For NEW customer
-        customerId?: never
-        customerCategory?: never
-        customerName: string
-        customerEmail: string
-        customerContact: string
-      }
-  vehicleDetails:
-    | {
-        // For EXISTING vehicle
-        vehicleId: string
-        vehicleCategory?: string
-        ownerName?: never
-        ownerContact?: never
-        ownerEmail?: never
-        vehicleManufacturer?: never
-        vehicleName?: never
-        vehicleRegistrationNumber?: never
-      }
-    | {
-        // For NEW vehicle
-        vehicleId?: never
-        vehicleCategory?: never
-        ownerName: string
-        ownerContact: string
-        ownerEmail: string
-        vehicleManufacturer: string
-        vehicleName: string
-        vehicleRegistrationNumber: string
-      }
-  staffDetails:
-    | {
-        // For EXISTING staff
-        staffId: string
-        staffCategory?: string
-        staffName?: never
-        staffEmail?: never
-        staffLicense?: never
-      }
-    | {
-        // For NEW staff
-        staffId?: never
-        staffCategory?: never
-        staffName: string
-        staffEmail: string
-        staffLicense: string
-      }
-  customerPackageDetails: {
-    packageCategory: string
-    packageId: string
+  vehicleCategory: string | null
+  vehicle: string | null
+  vehicleDetails: null | {
+    ownerName: string
+    ownerContact: string
+    ownerEmail: string
+    manufacturer: string
+    name: string
+    registrationNo: string
+  }
+  ac: boolean
+  packageCategory: string | null
+  package: string | null
+  staffCategory: string | null
+  staff: string | null
+  staffDetails: null | {
+    name: string
+    contact: string
+    license: string
+  }
+  pickUpLocation: string
+  dropOffLocation: string
+  pickUpDateTime: Date | null
+  dropDateTime: Date | null
+  openingKm: number | null
+  closingKm: number | null
+  totalKm: number | null
+  totalHr: number | null
+
+  paymentDetails: {
+    status: '' | 'BILL_GENERATED' | 'BILL_SENT_TO_CUSTOMER' | 'PAYMENT_RECEIVED'
+    paymentMethod: string
+    paymentDate: Date | null
   }
   otherCharges: {
     toll: {
-      charge: number
-      chargeableToCustomer: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
     }
     parking: {
-      charge: number
-      chargeableToCustomer: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
     }
     nightHalt: {
-      charge: number
-      chargeableToCustomer: boolean
-      includeInDriverSalary: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
+      isPayableWithSalary: boolean
     }
     driverAllowance: {
-      charge: number
-      chargeableToCustomer: boolean
-      includeInDriverSalary: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
+      isPayableWithSalary: boolean
     }
   }
-  advancePayment: {
-    advanceFromCustomer: number
-    advanceToDriver: number
+  advancedPayment: {
+    advancedFromCustomer: string | number
+    advancedToCustomer: string | number
   }
-  paymentDetails: {
-    status: string
-    paymentMode: string
-    paymentDate: Date | null
-  }
-  comments: string
+  comment: string
 }
 //
 export interface MonthlyFixedRequestModel {

@@ -22,7 +22,6 @@ const Configuration: FunctionComponent<ConfigurationProps> = () => {
   const [configuration, setConfiguration] = useState<Array<Configuration>>([])
 
   useEffect(() => {
-    console.log('CONFIG', configurationsData)
     if (configurationsData && configurationsData.data) {
       const configResult: Array<Configuration> = configurationsData.data
       if (configResult.length > 0) {
@@ -50,7 +49,7 @@ const Configuration: FunctionComponent<ConfigurationProps> = () => {
           asLink
           href={`${location.pathname}/create`}
           size="medium"
-          disabled={true}
+          // disabled={true}
         >
           New Configuration
         </Button>
