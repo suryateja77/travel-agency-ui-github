@@ -1,0 +1,47 @@
+@import '~/src/sass/style';
+
+.read-only-text {
+  position: relative;
+  
+  &__textField {
+    width: 100%;
+    background-color: transparent;
+    padding: 10px 0;
+    font-size: 14px;
+    border: none;
+    border-radius: 0;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    
+    &--small {
+      font-size: 12px;
+    }
+    
+    &--large {
+      font-size: 16px;
+    }
+    
+    &--extra-large {
+      font-size: 18px;
+    }
+    
+    &--jumbo {
+      font-size: 20px;
+    }
+  }
+  
+  &__label-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  &__label {
+    display: block;
+    padding-bottom: 5px;
+  }
+  
+  &__star {
+    color: $error;
+  }
+}

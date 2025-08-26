@@ -135,4 +135,45 @@ const getValueByPath = (obj: Record<string, any>, path: string): any => {
   }, obj)
 }
 
-export { computeValue, bemClass, debounce, formatDate, validatePayload, chunkArray, normalizeWhitespace, transformConfigurations, getValueByPath, pathToName, nameToPath }
+/**
+ * Formats a Date object for use in datetime-local input fields
+ * Converts date to local time format: YYYY-MM-DDTHH:MM
+ */
+const formatDateTimeForInput = (date: Date | null): string => {
+  if (!date) return ''
+  
+  const localDate = new Date(date)
+  const year = localDate.getFullYear()
+  const month = String(localDate.getMonth() + 1).padStart(2, '0')
+  const day = String(localDate.getDate()).padStart(2, '0')
+  const hours = String(localDate.getHours()).padStart(2, '0')
+  const minutes = String(localDate.getMinutes()).padStart(2, '0')
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+/**
+ * Parses datetime-local input value to Date object
+ * Input value is interpreted as local time
+ */
+const parseDateTimeFromInput = (value: string): Date | null => {
+  if (!value) return null
+  // Create date object which will be interpreted as local time
+  return new Date(value)
+}
+
+export { 
+  computeValue, 
+  bemClass, 
+  debounce, 
+  formatDate, 
+  validatePayload, 
+  chunkArray, 
+  normalizeWhitespace, 
+  transformConfigurations, 
+  getValueByPath, 
+  pathToName, 
+  nameToPath,
+  formatDateTimeForInput,
+  parseDateTimeFromInput
+}

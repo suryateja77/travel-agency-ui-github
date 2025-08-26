@@ -1,4 +1,4 @@
-import { emailField, emptyField, numberFieldGreaterThanZero } from '@config/validation'
+import { emailField, emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
 import { RegularRequestModel } from '@types'
 
 const createValidationSchema = (regularRequestData: RegularRequestModel) => {
@@ -11,10 +11,12 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
     emptyField('dropOffLocation'),
     emptyField('pickUpDateTime'),
     emptyField('dropDateTime'),
+    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
     emptyField('openingKm'),
     numberFieldGreaterThanZero('openingKm'),
     emptyField('closingKm'),
     numberFieldGreaterThanZero('closingKm'),
+    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
     emptyField('packageCategory'),
     emptyField('package'),
     emptyField('paymentDetails.status'),

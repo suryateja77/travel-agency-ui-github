@@ -42,4 +42,41 @@ const pinCodeField = (path: any) => ({
   emptyCheck: true,
 })
 
-export { emptyField, contactField, emailField, numberField, numberFieldGreaterThanZero, pinCodeField }
+const dateTimeGreaterThanField = (path: any, compareToPath: any, label: string) => ({
+  path,
+  pattern: REGEX_EMPTY, // We'll use custom validation instead of regex
+  message: `Must be greater than ${label}`,
+  emptyCheck: false,
+  custom: (model: any, value: any) => {
+    if (!value) return false // If empty, let emptyField handle it
+    const compareValue = getNestedValue(model, compareToPath)
+    if (!compareValue) return true // If comparison value is empty, this validation passes
+    
+    const currentDate = new Date(value)
+    const compareDate = new Date(compareValue)
+    return currentDate > compareDate
+  },
+})
+
+const numberGreaterThanField = (path: any, compareToPath: any, label: string) => ({
+  path,
+  pattern: REGEX_EMPTY, // We'll use custom validation instead of regex
+  message: `Must be greater than ${label}`,
+  emptyCheck: false,
+  custom: (model: any, value: any) => {
+    if (!value) return false // If empty, let emptyField handle it
+    const compareValue = getNestedValue(model, compareToPath)
+    if (!compareValue) return true // If comparison value is empty, this validation passes
+    
+    const currentValue = Number(value)
+    const compareNumber = Number(compareValue)
+    return currentValue > compareNumber
+  },
+})
+
+// Helper function to get nested object values
+const getNestedValue = (obj: any, path: string): any => {
+  return path.split('.').reduce((current, key) => current?.[key], obj)
+}
+
+export { emptyField, contactField, emailField, numberField, numberFieldGreaterThanZero, pinCodeField, dateTimeGreaterThanField, numberGreaterThanField }

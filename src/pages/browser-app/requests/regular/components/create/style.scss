@@ -41,6 +41,9 @@
     justify-content: flex-end;
     padding: $space-default;
   }
+  &__read-only {
+    margin-bottom: $space-default;
+  }
 }
 
 @include large-up {

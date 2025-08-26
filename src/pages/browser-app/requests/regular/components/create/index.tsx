@@ -1,6 +1,6 @@
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle, ReadOnlyText } from '@base'
 import { RegularRequestModel } from '@types'
-import { bemClass, validatePayload, nameToPath } from '@utils'
+import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
 import React, { FunctionComponent, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createValidationSchema } from './validation'
@@ -19,6 +19,37 @@ const blk = 'create-regular-request'
 interface CreateRegularRequestProps {}
 
 const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () => {
+  // Helper functions for calculations
+  const calculateDateTimeDifference = (startDate: Date | null, endDate: Date | null): string => {
+    if (!startDate || !endDate) return ''
+    
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (end <= start) return ''
+    
+    const diffMs = end.getTime() - start.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    
+    if (diffDays === 0) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
+    } else if (diffHours === 0) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+    } else {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''}, ${diffHours} hour${diffHours !== 1 ? 's' : ''}`
+    }
+  }
+
+  const calculateKmDifference = (openingKm: number | null, closingKm: number | null): string => {
+    if (!openingKm || !closingKm) return ''
+    
+    if (closingKm <= openingKm) return ''
+    
+    const diffKm = closingKm - openingKm
+    return `${diffKm} km${diffKm !== 1 ? 's' : ''}`
+  }
+
   const sampleRegularRequestModel: RegularRequestModel = {
     customerType: 'existing',
     vehicleType: 'existing',
@@ -124,7 +155,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     customers: '',
     vehicles: '',
     staff: '',
-    packages: ''
+    packages: '',
   })
 
   // Generic function to handle API responses and errors
@@ -134,18 +165,18 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     isError: boolean,
     errorKey: 'customers' | 'vehicles' | 'staff' | 'packages',
     setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
-    mapFunction: (item: any) => { key: any; value: any }
+    mapFunction: (item: any) => { key: any; value: any },
   ) => {
     if (isError) {
       const userFriendlyMessages = {
         customers: 'Unable to load customer data. Please check your connection and try again.',
         vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
         staff: 'Unable to load staff data. Please check your connection and try again.',
-        packages: 'Unable to load package information. Please check your connection and try again.'
+        packages: 'Unable to load package information. Please check your connection and try again.',
       }
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: userFriendlyMessages[errorKey]
+        [errorKey]: userFriendlyMessages[errorKey],
       }))
       setOptions([])
     } else if (data?.data?.length > 0) {
@@ -153,26 +184,19 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       setOptions(options)
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: ''
+        [errorKey]: '',
       }))
     } else {
       setOptions([])
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: ''
+        [errorKey]: '',
       }))
     }
   }
 
   // Generate options for SelectInput based on loading/error states
-  const getSelectOptions = (
-    isLoading: boolean,
-    isError: boolean,
-    options: { key: any; value: any }[],
-    loadingText: string,
-    errorText: string,
-    noDataText: string
-  ) => {
+  const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
     if (isLoading) return [{ key: 'loading', value: loadingText }]
     if (isError) return [{ key: 'error', value: errorText }]
     if (options.length > 0) return options
@@ -185,7 +209,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       customers: ['Please wait...', 'Unable to load options', 'No customers found'],
       vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
       staff: ['Please wait...', 'Unable to load options', 'No staff found'],
-      packages: ['Please wait...', 'Unable to load options', 'No packages found']
+      packages: ['Please wait...', 'Unable to load options', 'No packages found'],
     }
     return placeholders[type].includes(value)
   }
@@ -195,47 +219,25 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   // useEffect hooks to handle API responses
   React.useEffect(() => {
-    handleApiResponse(
-      customers,
-      customersError,
-      customersIsError,
-      'customers',
-      setCustomerOptions,
-      (customer: { _id: any; name: any }) => ({ key: customer._id, value: customer.name })
-    )
+    handleApiResponse(customers, customersError, customersIsError, 'customers', setCustomerOptions, (customer: { _id: any; name: any }) => ({
+      key: customer._id,
+      value: customer.name,
+    }))
   }, [customers, customersError, customersIsError])
 
   React.useEffect(() => {
-    handleApiResponse(
-      vehicles,
-      vehiclesError,
-      vehiclesIsError,
-      'vehicles',
-      setVehicleOptions,
-      (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name })
-    )
+    handleApiResponse(vehicles, vehiclesError, vehiclesIsError, 'vehicles', setVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
   }, [vehicles, vehiclesError, vehiclesIsError])
 
   React.useEffect(() => {
-    handleApiResponse(
-      staffMembers,
-      staffError,
-      staffIsError,
-      'staff',
-      setStaffOptions,
-      (staffMember: { _id: any; name: any }) => ({ key: staffMember._id, value: staffMember.name })
-    )
+    handleApiResponse(staffMembers, staffError, staffIsError, 'staff', setStaffOptions, (staffMember: { _id: any; name: any }) => ({
+      key: staffMember._id,
+      value: staffMember.name,
+    }))
   }, [staffMembers, staffError, staffIsError])
 
   React.useEffect(() => {
-    handleApiResponse(
-      packages,
-      packagesError,
-      packagesIsError,
-      'packages',
-      setPackageOptions,
-      (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode })
-    )
+    handleApiResponse(packages, packagesError, packagesIsError, 'packages', setPackageOptions, (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode }))
   }, [packages, packagesError, packagesIsError])
 
   const navigateBack = () => {
@@ -473,11 +475,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Pickup Date and Time"
                   name="pickUpDateTime"
                   type="datetime-local"
-                  value={regularRequest.pickUpDateTime ? new Date(regularRequest.pickUpDateTime).toISOString().slice(0, 16) : ''}
+                  value={formatDateTimeForInput(regularRequest.pickUpDateTime)}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      pickUpDateTime: value.pickUpDateTime ? new Date(value.pickUpDateTime) : null,
+                      pickUpDateTime: parseDateTimeFromInput(value.pickUpDateTime?.toString() || ''),
                     })
                   }}
                   required
@@ -493,16 +495,27 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Drop Date and Time"
                   name="dropDateTime"
                   type="datetime-local"
-                  value={regularRequest.dropDateTime ? new Date(regularRequest.dropDateTime).toISOString().slice(0, 16) : ''}
+                  value={formatDateTimeForInput(regularRequest.dropDateTime)}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      dropDateTime: value.dropDateTime ? new Date(value.dropDateTime) : null,
+                      dropDateTime: parseDateTimeFromInput(value.dropDateTime?.toString() || ''),
                     })
                   }}
                   required
                   errorMessage={errorMap['dropDateTime']}
                   invalid={errorMap['dropDateTime']}
+                />
+              </Column>
+              <Column
+                col={4}
+                className={bemClass([blk, 'read-only'])}
+              >
+                <ReadOnlyText
+                  label="Duration"
+                  value={calculateDateTimeDifference(regularRequest.pickUpDateTime, regularRequest.dropDateTime)}
+                  color="success"
+                  size='jumbo'
                 />
               </Column>
             </Row>
@@ -549,19 +562,33 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               </Column>
               <Column
                 col={4}
+                className={bemClass([blk, 'read-only'])}
+              >
+                <ReadOnlyText
+                  label="Total Distance"
+                  value={calculateKmDifference(regularRequest.openingKm, regularRequest.closingKm)}
+                  color="success"
+                  size='jumbo'
+                />
+              </Column>
+            </Row>
+            <Row>
+              <Column
+                col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <Toggle
-                  className={bemClass([blk, 'toggle'])}
-                  label="AC Required"
+                <RadioGroup
+                  question="AC Required"
                   name="ac"
-                  checked={regularRequest.ac}
+                  options={['Yes', 'No']}
+                  value={regularRequest.ac ? 'Yes' : 'No'}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
-                      ac: !!value.ac,
+                      ac: value.ac === 'Yes',
                     })
                   }}
+                  direction="horizontal"
                 />
               </Column>
             </Row>
@@ -603,22 +630,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <SelectInput
                     label="Customer"
                     name="customer"
-                    options={getSelectOptions(
-                      customersLoading,
-                      customersIsError,
-                      customerOptions,
-                      'Please wait...',
-                      'Unable to load options',
-                      'No customers found'
-                    )}
-                    value={
-                      regularRequest.customer 
-                        ? (customerOptions.find((option: any) => option.key === regularRequest.customer) as any)?.value ?? ''
-                        : ''
-                    }
+                    options={getSelectOptions(customersLoading, customersIsError, customerOptions, 'Please wait...', 'Unable to load options', 'No customers found')}
+                    value={regularRequest.customer ? ((customerOptions.find((option: any) => option.key === regularRequest.customer) as any)?.value ?? '') : ''}
                     changeHandler={value => {
                       if (isPlaceholderValue(value.customer?.toString() || '', 'customers')) return
-                      
+
                       const selectedOption = customerOptions.find((option: any) => option.value === value.customer) as any
                       setRegularRequest({
                         ...regularRequest,
@@ -739,22 +755,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <SelectInput
                     label="Vehicle"
                     name="vehicle"
-                    options={getSelectOptions(
-                      vehiclesLoading,
-                      vehiclesIsError,
-                      vehicleOptions,
-                      'Please wait...',
-                      'Unable to load options',
-                      'No vehicles found'
-                    )}
-                    value={
-                      regularRequest.vehicle 
-                        ? (vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? ''
-                        : ''
-                    }
+                    options={getSelectOptions(vehiclesLoading, vehiclesIsError, vehicleOptions, 'Please wait...', 'Unable to load options', 'No vehicles found')}
+                    value={regularRequest.vehicle ? ((vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? '') : ''}
                     changeHandler={value => {
                       if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
-                      
+
                       const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
                       setRegularRequest({
                         ...regularRequest,
@@ -946,22 +951,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   <SelectInput
                     label="Staff"
                     name="staff"
-                    options={getSelectOptions(
-                      staffLoading,
-                      staffIsError,
-                      staffOptions,
-                      'Please wait...',
-                      'Unable to load options',
-                      'No staff found'
-                    )}
-                    value={
-                      regularRequest.staff 
-                        ? (staffOptions.find((option: any) => option.key === regularRequest.staff) as any)?.value ?? ''
-                        : ''
-                    }
+                    options={getSelectOptions(staffLoading, staffIsError, staffOptions, 'Please wait...', 'Unable to load options', 'No staff found')}
+                    value={regularRequest.staff ? ((staffOptions.find((option: any) => option.key === regularRequest.staff) as any)?.value ?? '') : ''}
                     changeHandler={value => {
                       if (isPlaceholderValue(value.staff?.toString() || '', 'staff')) return
-                      
+
                       const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
                       setRegularRequest({
                         ...regularRequest,
@@ -1082,22 +1076,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 <SelectInput
                   label="Package"
                   name="package"
-                  options={getSelectOptions(
-                    packagesLoading,
-                    packagesIsError,
-                    packageOptions,
-                    'Please wait...',
-                    'Unable to load options',
-                    'No packages found'
-                  )}
-                  value={
-                    regularRequest.package 
-                      ? (packageOptions.find((option: any) => option.key === regularRequest.package) as any)?.value ?? ''
-                      : ''
-                  }
+                  options={getSelectOptions(packagesLoading, packagesIsError, packageOptions, 'Please wait...', 'Unable to load options', 'No packages found')}
+                  value={regularRequest.package ? ((packageOptions.find((option: any) => option.key === regularRequest.package) as any)?.value ?? '') : ''}
                   changeHandler={value => {
                     if (isPlaceholderValue(value.package?.toString() || '', 'packages')) return
-                    
+
                     const selectedOption = packageOptions.find((option: any) => option.value === value.package) as any
                     setRegularRequest({
                       ...regularRequest,
