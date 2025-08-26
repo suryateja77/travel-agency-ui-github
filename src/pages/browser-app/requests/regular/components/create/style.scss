@@ -16,7 +16,7 @@
     align-items: flex-end;
     margin-bottom: $space-default;
   }
-  &__custom-label{
+  &__custom-label {
     display: flex;
     justify-content: space-between;
   }
@@ -44,12 +44,24 @@
   &__read-only {
     margin-bottom: $space-default;
   }
+  &__request-calculation {
+    padding: $space-default;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: $white;
+    align-items: center;
+  }
 }
 
 @include large-up {
   .create-regular-request {
     &__toggle {
-    margin-top: 34px;
-  }
+      margin-top: 34px;
+    }
+    &__request-calculation {
+      flex-direction: row;
+      justify-content: space-between;
+    }
   }
 }

@@ -28,17 +28,11 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
 
   // Customer type conditional fields
   if (regularRequestData.customerType === 'existing') {
-    conditionalFields.push(
-      emptyField('customerCategory'),
-      emptyField('customer')
-    )
+    conditionalFields.push(emptyField('customerCategory'), emptyField('customer'))
   }
 
   if (regularRequestData.customerType === 'new' && regularRequestData.customerDetails) {
-    conditionalFields.push(
-      emptyField('customerDetails.name'),
-      emptyField('customerDetails.contact')
-    )
+    conditionalFields.push(emptyField('customerDetails.name'), emptyField('customerDetails.contact'))
     // Email validation if provided
     if (regularRequestData.customerDetails.email) {
       conditionalFields.push(emailField('customerDetails.email'))
@@ -47,10 +41,7 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
 
   // Vehicle type conditional fields
   if (regularRequestData.vehicleType === 'existing') {
-    conditionalFields.push(
-      emptyField('vehicleCategory'),
-      emptyField('vehicle')
-    )
+    conditionalFields.push(emptyField('vehicleCategory'), emptyField('vehicle'))
   }
 
   if (regularRequestData.vehicleType === 'new' && regularRequestData.vehicleDetails) {
@@ -59,7 +50,7 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
       emptyField('vehicleDetails.ownerContact'),
       emptyField('vehicleDetails.manufacturer'),
       emptyField('vehicleDetails.name'),
-      emptyField('vehicleDetails.registrationNo')
+      emptyField('vehicleDetails.registrationNo'),
     )
     // Email validation if provided
     if (regularRequestData.vehicleDetails.ownerEmail) {
@@ -69,21 +60,25 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
 
   // Staff type conditional fields
   if (regularRequestData.staffType === 'existing') {
-    conditionalFields.push(
-      emptyField('staffCategory'),
-      emptyField('staff')
-    )
+    conditionalFields.push(emptyField('staffCategory'), emptyField('staff'))
   }
 
   if (regularRequestData.staffType === 'new' && regularRequestData.staffDetails) {
-    conditionalFields.push(
-      emptyField('staffDetails.name'),
-      emptyField('staffDetails.contact'),
-      emptyField('staffDetails.license')
-    )
+    conditionalFields.push(emptyField('staffDetails.name'), emptyField('staffDetails.contact'), emptyField('staffDetails.license'))
   }
 
   return [...baseFields, ...conditionalFields]
 }
 
-export { createValidationSchema }
+const calculateTotalValidationSchema = [
+  emptyField('pickUpDateTime'),
+  emptyField('dropDateTime'),
+  dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
+  emptyField('openingKm'),
+  numberFieldGreaterThanZero('openingKm'),
+  emptyField('closingKm'),
+  numberFieldGreaterThanZero('closingKm'),
+  numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
+]
+
+export { createValidationSchema, calculateTotalValidationSchema }

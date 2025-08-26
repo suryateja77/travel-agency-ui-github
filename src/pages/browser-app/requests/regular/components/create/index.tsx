@@ -22,16 +22,16 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   // Helper functions for calculations
   const calculateDateTimeDifference = (startDate: Date | null, endDate: Date | null): string => {
     if (!startDate || !endDate) return ''
-    
+
     const start = new Date(startDate)
     const end = new Date(endDate)
-    
+
     if (end <= start) return ''
-    
+
     const diffMs = end.getTime() - start.getTime()
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
     const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    
+
     if (diffDays === 0) {
       return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
     } else if (diffHours === 0) {
@@ -43,9 +43,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   const calculateKmDifference = (openingKm: number | null, closingKm: number | null): string => {
     if (!openingKm || !closingKm) return ''
-    
+
     if (closingKm <= openingKm) return ''
-    
+
     const diffKm = closingKm - openingKm
     return `${diffKm} km${diffKm !== 1 ? 's' : ''}`
   }
@@ -344,14 +344,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="customerType"
                   options={['existing', 'new']}
                   value={regularRequest.customerType}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
+                  changeHandler={(value) => {
+                    setRegularRequest(prev => ({
+                      ...prev,
                       customerType: value.customerType as 'existing' | 'new',
-                      customerCategory: value.customerType === 'new' ? null : regularRequest.customerCategory,
-                      customer: value.customerType === 'new' ? null : regularRequest.customer,
+                      customerCategory: value.customerType === 'new' ? null : prev.customerCategory,
+                      customer: value.customerType === 'new' ? null : prev.customer,
                       customerDetails: value.customerType === 'existing' ? null : { name: '', contact: '', email: '' },
-                    })
+                    }))
                   }}
                   direction="horizontal"
                   required
@@ -367,14 +367,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="vehicleType"
                   options={['existing', 'new']}
                   value={regularRequest.vehicleType}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
+                  changeHandler={(value) => {
+                    setRegularRequest(prev => ({
+                      ...prev,
                       vehicleType: value.vehicleType as 'existing' | 'new',
-                      vehicleCategory: value.vehicleType === 'new' ? null : regularRequest.vehicleCategory,
-                      vehicle: value.vehicleType === 'new' ? null : regularRequest.vehicle,
+                      vehicleCategory: value.vehicleType === 'new' ? null : prev.vehicleCategory,
+                      vehicle: value.vehicleType === 'new' ? null : prev.vehicle,
                       vehicleDetails: value.vehicleType === 'existing' ? null : { ownerName: '', ownerContact: '', ownerEmail: '', manufacturer: '', name: '', registrationNo: '' },
-                    })
+                    }))
                   }}
                   direction="horizontal"
                   required
@@ -390,14 +390,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="staffType"
                   options={['existing', 'new']}
                   value={regularRequest.staffType}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
+                  changeHandler={(value) => {
+                    setRegularRequest(prev => ({
+                      ...prev,
                       staffType: value.staffType as 'existing' | 'new',
-                      staffCategory: value.staffType === 'new' ? null : regularRequest.staffCategory,
-                      staff: value.staffType === 'new' ? null : regularRequest.staff,
+                      staffCategory: value.staffType === 'new' ? null : prev.staffCategory,
+                      staff: value.staffType === 'new' ? null : prev.staff,
                       staffDetails: value.staffType === 'existing' ? null : { name: '', contact: '', license: '' },
-                    })
+                    }))
                   }}
                   direction="horizontal"
                   required
@@ -515,7 +515,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Duration"
                   value={calculateDateTimeDifference(regularRequest.pickUpDateTime, regularRequest.dropDateTime)}
                   color="success"
-                  size='jumbo'
+                  size="jumbo"
                 />
               </Column>
             </Row>
@@ -568,7 +568,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   label="Total Distance"
                   value={calculateKmDifference(regularRequest.openingKm, regularRequest.closingKm)}
                   color="success"
-                  size='jumbo'
+                  size="jumbo"
                 />
               </Column>
             </Row>
@@ -1536,6 +1536,23 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               placeholder="Enter any additional comments or notes here..."
             />
           </Panel>
+
+          <div className={bemClass([blk, 'request-calculation'])}>
+            <Text
+              tag="p"
+              typography="s"
+              color="gray-darker"
+            >
+              Request Calculation
+            </Text>
+            <Button
+              size="medium"
+              category="primary"
+              clickHandler={() => {}}
+            >
+              Calculate
+            </Button>
+          </div>
 
           <div className={bemClass([blk, 'action-items'])}>
             <Button
