@@ -19,6 +19,10 @@ const CategoryPackages: FunctionComponent<PackagesProps> = () => {
         path="create"
         element={<CreatePackage category={category} />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreatePackage category={category} />}
+      />
     </Routes>
   )
 }

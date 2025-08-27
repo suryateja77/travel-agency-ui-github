@@ -1,13 +1,13 @@
-import { FunctionComponent, useState } from 'react'
+import { FunctionComponent, useEffect, useState } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
 import { PageHeader } from '@components'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 
 import './style.scss'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
-import { useCreatePackageMutation } from '@api/queries/package'
+import { useCreatePackageMutation, usePackageByIdQuery, useUpdatePackageMutation } from '@api/queries/package'
 
 const blk = 'create-package'
 
@@ -28,7 +28,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     isActive: true,
   }
   const navigate = useNavigate()
+  const params = useParams()
   const createPackage = useCreatePackageMutation()
+  const updatePackage = useUpdatePackageMutation()
+
+  const { data: packageDataResponse, isLoading } = usePackageByIdQuery(params.id || '')
 
   const [packageData, setPackageData] = useState<PackageModel>(samplePackageModel)
   const [isEditing, setIsEditing] = useState(false)
@@ -53,6 +57,29 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     }
   }
 
+  useEffect(() => {
+    if (packageDataResponse) {
+      // setPackageData(packageDataResponse)
+      // setIsEditing(true)
+      // setPackageId(params.id || '')
+      console.log('Package data response:', packageDataResponse)
+      const { _id, packageCode, minimumKm, minimumHr, baseAmount, extraKmPerKmRate, extraHrPerHrRate, comment, isActive } = packageDataResponse
+      setPackageData({
+        category,
+        packageCode,
+        minimumKm,
+        minimumHr,
+        baseAmount,
+        extraKmPerKmRate,
+        extraHrPerHrRate,
+        comment,
+        isActive
+      })
+      setIsEditing(true)
+      setPackageId(params.id || '')
+    }
+  }, [packageDataResponse])
+
   const submitHandler = async () => {
     const validationSchema = createValidationSchema(packageData)
     const { isValid, errorMap } = validatePayload(validationSchema, packageData)
@@ -63,7 +90,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
       setIsValidationError(false)
       try {
         if (isEditing) {
-          // await updatePackage.mutateAsync({ _id: packageId, ...packageData })
+          await updatePackage.mutateAsync({ _id: packageId, ...packageData })
           setConfirmationPopUpType('update')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('Package updated successfully!')
