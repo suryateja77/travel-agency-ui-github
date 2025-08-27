@@ -317,7 +317,7 @@ export interface VehicleModel {
   hasAc: boolean
   isMonthlyFixed: boolean
   monthlyFixedDetails:
-    | undefined
+    | null
     | {
         customerCategory: string | null
         customer: string | null

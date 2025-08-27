@@ -17,6 +17,10 @@ const CategoryVehicles: FunctionComponent<VehiclesProps> = () => {
         path="create"
         element={<CreateVehicle category={params.category} />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateVehicle category={params.category} />}
+      />
     </Routes>
   )
 }
