@@ -8,6 +8,7 @@ import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
 import { useCreatePackageMutation, usePackageByIdQuery, useUpdatePackageMutation } from '@api/queries/package'
+import Loader from '@components/loader'
 
 const blk = 'create-package'
 
@@ -32,7 +33,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   const createPackage = useCreatePackageMutation()
   const updatePackage = useUpdatePackageMutation()
 
-  const { data: packageDataResponse, isLoading } = usePackageByIdQuery(params.id || '')
+  const { data: packageDataResponse, isLoading, error: getPackageError } = usePackageByIdQuery(params.id || '')
 
   const [packageData, setPackageData] = useState<PackageModel>(samplePackageModel)
   const [isEditing, setIsEditing] = useState(false)
@@ -57,24 +58,23 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     }
   }
 
+  const loadDataFromResponse = (responseData: PackageModel) => {
+    setPackageData({
+      category: responseData.category || '',
+      packageCode: responseData.packageCode || '',
+      minimumKm: responseData.minimumKm || '',
+      minimumHr: responseData.minimumHr || '',
+      baseAmount: responseData.baseAmount || '',
+      extraKmPerKmRate: responseData.extraKmPerKmRate || '',
+      extraHrPerHrRate: responseData.extraHrPerHrRate || '',
+      comment: responseData.comment || '',
+      isActive: responseData.isActive || true,
+    })
+  }
+
   useEffect(() => {
     if (packageDataResponse) {
-      // setPackageData(packageDataResponse)
-      // setIsEditing(true)
-      // setPackageId(params.id || '')
-      console.log('Package data response:', packageDataResponse)
-      const { _id, packageCode, minimumKm, minimumHr, baseAmount, extraKmPerKmRate, extraHrPerHrRate, comment, isActive } = packageDataResponse
-      setPackageData({
-        category,
-        packageCode,
-        minimumKm,
-        minimumHr,
-        baseAmount,
-        extraKmPerKmRate,
-        extraHrPerHrRate,
-        comment,
-        isActive
-      })
+      loadDataFromResponse(packageDataResponse)
       setIsEditing(true)
       setPackageId(params.id || '')
     }
@@ -144,193 +144,208 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
         />
       )}
       <div className={bemClass([blk, 'content'])}>
-        <Panel
-          title="Package details"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <Row>
-            <Column
-              col={4}
+        {isLoading ? (
+          <Loader type="form" />
+        ) : getPackageError ? (
+          <>
+            <Alert
+              type="error"
+              message="Unable to get the Package data. Please try again later."
+              className={bemClass([blk, 'margin-bottom'])}
+            />
+            <Button size="medium" clickHandler={navigateBack}>Go Back</Button>
+          </>
+        ) : (
+          <>
+            <Panel
+              title="Package details"
               className={bemClass([blk, 'margin-bottom'])}
             >
-              <TextInput
-                label="Package Code"
-                name="packageCode"
-                value={packageData.packageCode}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    packageCode: value.packageCode?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['packageCode']}
-                invalid={errorMap['packageCode']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Minimum Km"
-                name="minimumKm"
-                type="number"
-                value={packageData.minimumKm ?? ''}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    minimumKm: value.minimumKm ? Number(value.minimumKm) : '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['minimumKm']}
-                invalid={errorMap['minimumKm']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Minimum Hours"
-                name="minimumHr"
-                type="number"
-                value={packageData.minimumHr ?? ''}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    minimumHr: value.minimumHr ? Number(value.minimumHr) : '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['minimumHr']}
-                invalid={errorMap['minimumHr']}
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Base Amount"
-                name="baseAmount"
-                type="number"
-                value={packageData.baseAmount ?? ''}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    baseAmount: value.baseAmount ? Number(value.baseAmount) : '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['baseAmount']}
-                invalid={errorMap['baseAmount']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Extra Km Per Km Rate"
-                name="extraKmPerKmRate"
-                type="number"
-                value={packageData.extraKmPerKmRate ?? ''}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    extraKmPerKmRate: value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['extraKmPerKmRate']}
-                invalid={errorMap['extraKmPerKmRate']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Extra Hr Per Hr Rate"
-                name="extraHrPerHrRate"
-                type="number"
-                value={packageData.extraHrPerHrRate ?? ''}
-                changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    extraHrPerHrRate: value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['extraHrPerHrRate']}
-                invalid={errorMap['extraHrPerHrRate']}
-              />
-            </Column>
-          </Row>
-        </Panel>
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Package Code"
+                    name="packageCode"
+                    value={packageData.packageCode}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        packageCode: value.packageCode?.toString() ?? '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['packageCode']}
+                    invalid={errorMap['packageCode']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Minimum Km"
+                    name="minimumKm"
+                    type="number"
+                    value={packageData.minimumKm ?? ''}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        minimumKm: value.minimumKm ? Number(value.minimumKm) : '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['minimumKm']}
+                    invalid={errorMap['minimumKm']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Minimum Hours"
+                    name="minimumHr"
+                    type="number"
+                    value={packageData.minimumHr ?? ''}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        minimumHr: value.minimumHr ? Number(value.minimumHr) : '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['minimumHr']}
+                    invalid={errorMap['minimumHr']}
+                  />
+                </Column>
+              </Row>
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Base Amount"
+                    name="baseAmount"
+                    type="number"
+                    value={packageData.baseAmount ?? ''}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        baseAmount: value.baseAmount ? Number(value.baseAmount) : '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['baseAmount']}
+                    invalid={errorMap['baseAmount']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Extra Km Per Km Rate"
+                    name="extraKmPerKmRate"
+                    type="number"
+                    value={packageData.extraKmPerKmRate ?? ''}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        extraKmPerKmRate: value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['extraKmPerKmRate']}
+                    invalid={errorMap['extraKmPerKmRate']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Extra Hr Per Hr Rate"
+                    name="extraHrPerHrRate"
+                    type="number"
+                    value={packageData.extraHrPerHrRate ?? ''}
+                    changeHandler={value => {
+                      setPackageData({
+                        ...packageData,
+                        extraHrPerHrRate: value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '',
+                      })
+                    }}
+                    required
+                    errorMessage={errorMap['extraHrPerHrRate']}
+                    invalid={errorMap['extraHrPerHrRate']}
+                  />
+                </Column>
+              </Row>
+            </Panel>
 
-        <Panel
-          title="Comments"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <TextArea
-            className={bemClass([blk, 'margin-bottom'])}
-            name="comment"
-            value={packageData.comment || ''}
-            changeHandler={value => {
-              setPackageData({
-                ...packageData,
-                comment: value.comment?.toString() ?? '',
-              })
-            }}
-            placeholder="Enter any additional comments or notes here..."
-          />
-        </Panel>
-
-        <Panel
-          title="Is active"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <Row>
-            <Column
-              col={4}
+            <Panel
+              title="Comments"
               className={bemClass([blk, 'margin-bottom'])}
             >
-              <Toggle
-                name="isActive"
-                checked={packageData.isActive}
-                changeHandler={obj => {
+              <TextArea
+                className={bemClass([blk, 'margin-bottom'])}
+                name="comment"
+                value={packageData.comment || ''}
+                changeHandler={value => {
                   setPackageData({
                     ...packageData,
-                    isActive: !!obj.isActive,
+                    comment: value.comment?.toString() ?? '',
                   })
                 }}
+                placeholder="Enter any additional comments or notes here..."
               />
-            </Column>
-          </Row>
-        </Panel>
+            </Panel>
 
-        <div className={bemClass([blk, 'action-items'])}>
-          <Button
-            size="medium"
-            category="default"
-            className={bemClass([blk, 'margin-right'])}
-            clickHandler={navigateBack}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="medium"
-            category="primary"
-            clickHandler={submitHandler}
-          >
-            Submit
-          </Button>
-        </div>
+            <Panel
+              title="Is active"
+              className={bemClass([blk, 'margin-bottom'])}
+            >
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <Toggle
+                    name="isActive"
+                    checked={packageData.isActive}
+                    changeHandler={obj => {
+                      setPackageData({
+                        ...packageData,
+                        isActive: !!obj.isActive,
+                      })
+                    }}
+                  />
+                </Column>
+              </Row>
+            </Panel>
+
+            <div className={bemClass([blk, 'action-items'])}>
+              <Button
+                size="medium"
+                category="default"
+                className={bemClass([blk, 'margin-right'])}
+                clickHandler={navigateBack}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="medium"
+                category="primary"
+                clickHandler={submitHandler}
+              >
+                Submit
+              </Button>
+            </div>
+          </>
+        )}
       </div>
       <Modal
         show={showConfirmationModal}
