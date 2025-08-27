@@ -16,6 +16,10 @@ const AdvanceBookings: FunctionComponent<AdvanceBookingsProps> = () => {
         path="create"
         element={<CreateAdvanceBooking />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateAdvanceBooking />}
+      />
     </Routes>
   )
 }

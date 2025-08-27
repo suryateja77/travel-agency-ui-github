@@ -1,119 +1,385 @@
-import React, { FunctionComponent, useState } from 'react'
+import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
+import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert, ConfirmationPopup, Modal } from '@base'
+import { AdvanceBookingModel, CustomerModel } from '@types'
 import { bemClass, validatePayload } from '@utils'
 
 import './style.scss'
-import { AdvanceBookingModel } from '@types'
-import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert, ConfirmationPopup, Modal } from '@base'
-import { PageHeader } from '@components'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
-import { useCreateAdvanceBookingMutation } from '@api/queries/advance-booking'
+import { useCreateAdvanceBookingMutation, useUpdateAdvanceBookingMutation, useAdvanceBookingByIdQuery } from '@api/queries/advance-booking'
 import { useCustomerByCategory } from '@api/queries/customer'
+import { PageHeader } from '@components'
+import Loader from '@components/loader'
 
 const blk = 'create-advance-booking'
 
-interface Props {}
+// ============================================================================
+// TYPESCRIPT INTERFACES & TYPES
+// ============================================================================
 
-const CreateAdvanceBooking: FunctionComponent<Props> = () => {
-  const sampleAdvanceBookingModel: AdvanceBookingModel = {
-    customerType: 'existing',
-    pickUpLocation: '',
-    dropOffLocation: '',
-    pickUpDateTime: null,
-    noOfSeats: null,
-    hasAc: false,
-    vehicleType: '',
-    customerCategory: null,
-    customer: null,
-    customerDetails: null,
-    comment: '',
+interface CreateAdvanceBookingProps {}
+
+interface SelectOption {
+  key: string
+  value: string
+}
+
+interface ValidationErrors {
+  [key: string]: string
+}
+
+interface ConfirmationModal {
+  show: boolean
+  type: 'create' | 'update' | 'delete'
+  title: string
+  subtitle: string
+}
+
+// State interface for useReducer
+interface FormState {
+  advanceBooking: AdvanceBookingModel
+  isEditing: boolean
+  advanceBookingId: string
+  validationErrors: ValidationErrors
+  isValidationError: boolean
+  showConfirmationModal: boolean
+  confirmationModal: ConfirmationModal
+  customerSelectOptions: SelectOption[]
+}
+
+// Action types for useReducer
+type FormAction =
+  | { type: 'SET_ADVANCE_BOOKING'; payload: AdvanceBookingModel }
+  | { type: 'UPDATE_FIELD'; payload: { field: keyof AdvanceBookingModel; value: any } }
+  | { type: 'UPDATE_CUSTOMER_DETAILS'; payload: Partial<{ name: string; contact: string; email: string }> }
+  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; advanceBookingId: string } }
+  | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
+  | { type: 'SET_CUSTOMER_OPTIONS'; payload: SelectOption[] }
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const INITIAL_ADVANCE_BOOKING: AdvanceBookingModel = {
+  customerType: 'existing',
+  pickUpLocation: '',
+  dropOffLocation: '',
+  pickUpDateTime: null,
+  noOfSeats: null,
+  hasAc: false,
+  vehicleType: '',
+  customerCategory: null,
+  customer: null,
+  customerDetails: null,
+  comment: '',
+} as const
+
+const INITIAL_CUSTOMER_DETAILS = {
+  name: '',
+  contact: '',
+  email: '',
+} as const
+
+const VEHICLE_TYPE_OPTIONS: SelectOption[] = [
+  { key: 'Sedan', value: 'Sedan' },
+  { key: 'Hatchback', value: 'Hatchback' },
+  { key: 'SUV', value: 'SUV' },
+] as const
+
+const CUSTOMER_CATEGORY_OPTIONS: SelectOption[] = [
+  { key: 'regular', value: 'Regular' },
+  { key: 'operator', value: 'Operator' },
+] as const
+
+const CUSTOMER_TYPE_OPTIONS: string[] = ['Existing', 'New']
+const AC_OPTIONS: string[] = ['Yes', 'No']
+
+// ============================================================================
+// REDUCER & INITIAL STATE
+// ============================================================================
+
+const initialState: FormState = {
+  advanceBooking: INITIAL_ADVANCE_BOOKING,
+  isEditing: false,
+  advanceBookingId: '',
+  validationErrors: {},
+  isValidationError: false,
+  showConfirmationModal: false,
+  confirmationModal: {
+    show: false,
+    type: 'create',
+    title: '',
+    subtitle: '',
+  },
+  customerSelectOptions: [],
+}
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_ADVANCE_BOOKING':
+      return { ...state, advanceBooking: action.payload }
+
+    case 'UPDATE_FIELD':
+      return {
+        ...state,
+        advanceBooking: { ...state.advanceBooking, [action.payload.field]: action.payload.value },
+      }
+
+    case 'UPDATE_CUSTOMER_DETAILS':
+      return {
+        ...state,
+        advanceBooking: {
+          ...state.advanceBooking,
+          customerDetails: {
+            ...INITIAL_CUSTOMER_DETAILS,
+            ...state.advanceBooking.customerDetails,
+            ...action.payload,
+          },
+        },
+      }
+
+    case 'SET_EDITING_MODE':
+      return {
+        ...state,
+        isEditing: action.payload.isEditing,
+        advanceBookingId: action.payload.advanceBookingId,
+      }
+
+    case 'SET_VALIDATION_ERRORS':
+      return {
+        ...state,
+        validationErrors: action.payload.errors,
+        isValidationError: action.payload.hasError,
+      }
+
+    case 'SET_CONFIRMATION_MODAL':
+      return {
+        ...state,
+        showConfirmationModal: action.payload.show,
+        confirmationModal: { ...state.confirmationModal, ...action.payload },
+      }
+
+    case 'SET_CUSTOMER_OPTIONS':
+      return {
+        ...state,
+        customerSelectOptions: action.payload,
+      }
+
+    default:
+      return state
   }
+}
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const formatDateTimeForInput = (date: Date | null): string => {
+  if (!date) return ''
+  return new Date(date).toISOString().slice(0, 16)
+}
+
+const extractIdFromResponse = (field: any): string => {
+  if (typeof field === 'string') return field
+  if (field && typeof field === 'object' && field._id) return field._id
+  return ''
+}
+
+const transformAdvanceBookingResponse = (response: AdvanceBookingModel & { _id: string }): AdvanceBookingModel => ({
+  customerType: response.customerType || 'existing',
+  pickUpLocation: response.pickUpLocation || '',
+  dropOffLocation: response.dropOffLocation || '',
+  pickUpDateTime: response.pickUpDateTime ? new Date(response.pickUpDateTime) : null,
+  noOfSeats: response.noOfSeats || null,
+  hasAc: response.hasAc || false,
+  vehicleType: response.vehicleType || '',
+  customerCategory: response.customerCategory || null,
+  customer: extractIdFromResponse(response.customer),
+  customerDetails: response.customerDetails || null,
+  comment: response.comment || '',
+})
+
+const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () => {
   const navigate = useNavigate()
+  const params = useParams()
+
+  const [state, dispatch] = useReducer(formReducer, initialState)
+  const { advanceBooking, isEditing, advanceBookingId, validationErrors, isValidationError, showConfirmationModal, confirmationModal, customerSelectOptions } = state
+
+  // API Hooks
   const createAdvanceBooking = useCreateAdvanceBookingMutation()
+  const updateAdvanceBooking = useUpdateAdvanceBookingMutation()
+  const { data: advanceBookingDataResponse, isLoading, error: getAdvanceBookingDataError } = useAdvanceBookingByIdQuery(params.id || '')
 
-  const [advanceBooking, setAdvanceBooking] = useState<AdvanceBookingModel>(sampleAdvanceBookingModel)
-  const [isEditing, setIsEditing] = useState(false)
-  const [advanceBookingId, setAdvanceBookingId] = useState('')
-
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New advance booking created successfully!')
-
-  const [errorMap, setErrorMap] = useState<Record<string, any>>(sampleAdvanceBookingModel)
-  const [isValidationError, setIsValidationError] = useState(false)
-
-  // Fetch customers when customerCategory is selected for existing customer type
+  // Conditional API query for customers
   const shouldFetchCustomers = advanceBooking.customerType === 'existing' && !!advanceBooking.customerCategory
-  const { data: customersResponse } = useCustomerByCategory(
-    shouldFetchCustomers ? advanceBooking.customerCategory || '' : ''
-  )
-  const customersData = customersResponse?.data || []
+  const customersQuery = useCustomerByCategory(shouldFetchCustomers ? advanceBooking.customerCategory || '' : '')
 
-  const navigateBack = () => {
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
+
+  const handleFieldChange = useCallback(<K extends keyof AdvanceBookingModel>(field: K, value: AdvanceBookingModel[K]) => {
+    dispatch({ type: 'UPDATE_FIELD', payload: { field, value } })
+  }, [])
+
+  const handleCustomerDetailsChange = useCallback((updates: Partial<{ name: string; contact: string; email: string }>) => {
+    dispatch({ type: 'UPDATE_CUSTOMER_DETAILS', payload: updates })
+  }, [])
+
+  const navigateBack = useCallback(() => {
     navigate('/advance-booking')
-  }
+  }, [navigate])
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
+  const closeConfirmationModal = useCallback(() => {
+    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
+  }, [])
 
-  const submitHandler = async () => {
+  const handleCustomerTypeChange = useCallback(
+    (customerType: string) => {
+      const lowerCaseType = customerType.toLowerCase() as 'existing' | 'new'
+      dispatch({
+        type: 'SET_ADVANCE_BOOKING',
+        payload: {
+          ...advanceBooking,
+          customerType: lowerCaseType,
+          customerCategory: null,
+          customer: null,
+          customerDetails: null,
+        },
+      })
+    },
+    [advanceBooking],
+  )
+
+  const handleCustomerCategoryChange = useCallback(
+    (customerCategory: string | null) => {
+      handleFieldChange('customerCategory', customerCategory)
+      handleFieldChange('customer', null) // Reset customer when category changes
+    },
+    [handleFieldChange],
+  )
+
+  const handleCustomerChange = useCallback(
+    (customerValue: string) => {
+      const selectedCustomer = customerSelectOptions.find(c => c.value === customerValue)
+      handleFieldChange('customer', selectedCustomer?.key || null)
+    },
+    [customerSelectOptions, handleFieldChange],
+  )
+
+  const handleSubmit = useCallback(async () => {
+    // Validate form
     const validationSchema = createValidationSchema(advanceBooking)
     const { isValid, errorMap } = validatePayload(validationSchema, advanceBooking)
 
-    setIsValidationError(!isValid)
-    setErrorMap(errorMap)
-    if (isValid) {
-      setIsValidationError(false)
-      try {
-        if (isEditing) {
-          // await updateAdvanceBooking.mutateAsync({ _id: advanceBookingId, ...advanceBooking })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Advance booking updated successfully!')
-        } else {
-          await createAdvanceBooking.mutateAsync(advanceBooking)
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New advance booking created successfully!')
-        }
+    dispatch({
+      type: 'SET_VALIDATION_ERRORS',
+      payload: { errors: errorMap, hasError: !isValid },
+    })
 
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
-      } catch (error) {
-        console.log('Unable to create/Update advance booking', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Failed')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} advance booking, please try again.`)
-      }
-    } else {
-      console.log('Create Advance Booking: Validation Error', errorMap)
+    if (!isValid) {
+      console.error('Validation Error', errorMap)
+      return
     }
-  }
+
+    try {
+      if (isEditing) {
+        await updateAdvanceBooking.mutateAsync({ _id: advanceBookingId, ...advanceBooking })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'update',
+            title: 'Success',
+            subtitle: 'Advance booking updated successfully!',
+          },
+        })
+      } else {
+        await createAdvanceBooking.mutateAsync(advanceBooking)
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'create',
+            title: 'Success',
+            subtitle: 'New advance booking created successfully!',
+          },
+        })
+      }
+    } catch (error) {
+      console.error('Unable to create/update advance booking', error)
+      dispatch({
+        type: 'SET_CONFIRMATION_MODAL',
+        payload: {
+          show: true,
+          type: 'delete',
+          title: 'Error',
+          subtitle: `Unable to ${isEditing ? 'update' : 'create'} advance booking. Please try again.`,
+        },
+      })
+    }
+  }, [advanceBooking, isEditing, advanceBookingId, createAdvanceBooking, updateAdvanceBooking])
+
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  // Load advance booking data when editing
+  useEffect(() => {
+    if (advanceBookingDataResponse) {
+      const transformedAdvanceBooking = transformAdvanceBookingResponse(advanceBookingDataResponse)
+      dispatch({ type: 'SET_ADVANCE_BOOKING', payload: transformedAdvanceBooking })
+      dispatch({
+        type: 'SET_EDITING_MODE',
+        payload: { isEditing: true, advanceBookingId: params.id || '' },
+      })
+    }
+  }, [advanceBookingDataResponse, params.id])
+
+  // Handle customers data
+  useEffect(() => {
+    if (customersQuery.data?.data) {
+      const options = customersQuery.data.data.map((customer: CustomerModel & { _id: string }) => ({
+        key: customer._id,
+        value: customer.name,
+      }))
+      dispatch({ type: 'SET_CUSTOMER_OPTIONS', payload: options })
+    } else {
+      dispatch({ type: 'SET_CUSTOMER_OPTIONS', payload: [] })
+    }
+  }, [customersQuery.data])
+
+  // ============================================================================
+  // MEMOIZED VALUES
+  // ============================================================================
+
+  const breadcrumbData = useMemo(
+    () => [{ label: 'Home', route: '/dashboard' }, { label: 'Advance Bookings', route: '/advance-booking' }, { label: isEditing ? 'Update' : 'Create' }],
+    [isEditing],
+  )
+
+  const selectedCustomerValue = useMemo(() => {
+    const customerId = advanceBooking.customer
+    if (!customerId || !customerSelectOptions.length) return ''
+    const option = customerSelectOptions.find(opt => opt.key === customerId)
+    return option?.value || ''
+  }, [advanceBooking.customer, customerSelectOptions])
+
+  const customerTypeDisplayValue = useMemo(() => advanceBooking.customerType.charAt(0).toUpperCase() + advanceBooking.customerType.slice(1), [advanceBooking.customerType])
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
         title={isEditing ? 'Update Advance Booking' : 'New Advance Booking'}
         withBreadCrumb
-        breadCrumbData={[
-          {
-            label: 'Home',
-            route: '/dashboard',
-          },
-          {
-            label: 'Advance Bookings',
-            route: '/advance-booking',
-          },
-          {
-            label: isEditing ? 'Update' : 'Create',
-          },
-        ]}
+        breadCrumbData={breadcrumbData}
       />
+
       {isValidationError && (
         <Alert
           type="error"
@@ -121,347 +387,300 @@ const CreateAdvanceBooking: FunctionComponent<Props> = () => {
           className={bemClass([blk, 'margin-bottom'])}
         />
       )}
+
       <div className={bemClass([blk, 'content'])}>
-        <Panel
-          className={bemClass([blk, 'margin-bottom'])}
-          title="Booking Details"
-        >
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <RadioGroup
-                question="Customer Type"
-                name="customerType"
-                options={['Existing', 'New']}
-                value={advanceBooking.customerType.charAt(0).toUpperCase() + advanceBooking.customerType.slice(1)}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    customerType: value.customerType.toLowerCase(),
-                    customerCategory: null,
-                    customer: null,
-                    customerDetails: null,
-                  })
-                }}
-                direction="horizontal"
-                required
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Pickup Location"
-                name="pickUpLocation"
-                value={advanceBooking.pickUpLocation}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    pickUpLocation: value.pickUpLocation?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['pickUpLocation']}
-                invalid={errorMap['pickUpLocation']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Drop Off Location"
-                name="dropOffLocation"
-                value={advanceBooking.dropOffLocation}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    dropOffLocation: value.dropOffLocation?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['dropOffLocation']}
-                invalid={errorMap['dropOffLocation']}
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Pickup Date and Time"
-                name="pickUpDateTime"
-                type="datetime-local"
-                value={advanceBooking.pickUpDateTime ? new Date(advanceBooking.pickUpDateTime).toISOString().slice(0, 16) : ''}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    pickUpDateTime: value.pickUpDateTime ? new Date(value.pickUpDateTime) : null,
-                  })
-                }}
-                required
-                errorMessage={errorMap['pickUpDateTime']}
-                invalid={errorMap['pickUpDateTime']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Number of Seats"
-                name="noOfSeats"
-                type="number"
-                value={advanceBooking.noOfSeats ?? ''}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    noOfSeats: value.noOfSeats ? Number(value.noOfSeats) : null,
-                  })
-                }}
-                required
-                errorMessage={errorMap['noOfSeats']}
-                invalid={errorMap['noOfSeats']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <SelectInput
-                label="Vehicle Type"
-                name="vehicleType"
-                options={[
-                  { key: 'Sedan', value: 'Sedan' },
-                  { key: 'Hatchback', value: 'Hatchback' },
-                  { key: 'SUV', value: 'SUV' },
-                ]}
-                value={advanceBooking.vehicleType}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    vehicleType: value.vehicleType?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['vehicleType']}
-                invalid={errorMap['vehicleType']}
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <RadioGroup
-                question="Air Conditioning"
-                name="hasAc"
-                options={['Yes', 'No']}
-                value={advanceBooking.hasAc ? 'Yes' : 'No'}
-                changeHandler={value => {
-                  setAdvanceBooking({
-                    ...advanceBooking,
-                    hasAc: value.hasAc === 'Yes',
-                  })
-                }}
-                direction="horizontal"
-                required
-              />
-            </Column>
-          </Row>
-        </Panel>
+        {isLoading ? (
+          <Loader type="form" />
+        ) : (
+          <>
+            {getAdvanceBookingDataError ? (
+              <>
+                <Alert
+                  type="error"
+                  message="Unable to load advance booking data. Please try again."
+                  className={bemClass([blk, 'margin-bottom'])}
+                />
+                <Button
+                  size="medium"
+                  clickHandler={navigateBack}
+                >
+                  Go Back
+                </Button>
+              </>
+            ) : (
+              <>
+                <Panel
+                  className={bemClass([blk, 'margin-bottom'])}
+                  title="Booking Details"
+                >
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <RadioGroup
+                        question="Customer Type"
+                        name="customerType"
+                        options={CUSTOMER_TYPE_OPTIONS}
+                        value={customerTypeDisplayValue}
+                        changeHandler={value => {
+                          handleCustomerTypeChange(value.customerType)
+                        }}
+                        direction="horizontal"
+                        required
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Pickup Location"
+                        name="pickUpLocation"
+                        value={advanceBooking.pickUpLocation}
+                        changeHandler={value => {
+                          handleFieldChange('pickUpLocation', value.pickUpLocation?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.pickUpLocation}
+                        invalid={!!validationErrors.pickUpLocation}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Drop Off Location"
+                        name="dropOffLocation"
+                        value={advanceBooking.dropOffLocation}
+                        changeHandler={value => {
+                          handleFieldChange('dropOffLocation', value.dropOffLocation?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.dropOffLocation}
+                        invalid={!!validationErrors.dropOffLocation}
+                      />
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Pickup Date and Time"
+                        name="pickUpDateTime"
+                        type="datetime-local"
+                        value={formatDateTimeForInput(advanceBooking.pickUpDateTime)}
+                        changeHandler={value => {
+                          handleFieldChange('pickUpDateTime', value.pickUpDateTime ? new Date(value.pickUpDateTime) : null)
+                        }}
+                        required
+                        errorMessage={validationErrors.pickUpDateTime}
+                        invalid={!!validationErrors.pickUpDateTime}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Number of Seats"
+                        name="noOfSeats"
+                        type="number"
+                        value={advanceBooking.noOfSeats ?? ''}
+                        changeHandler={value => {
+                          handleFieldChange('noOfSeats', value.noOfSeats ? Number(value.noOfSeats) : null)
+                        }}
+                        required
+                        errorMessage={validationErrors.noOfSeats}
+                        invalid={!!validationErrors.noOfSeats}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Vehicle Type"
+                        name="vehicleType"
+                        options={VEHICLE_TYPE_OPTIONS}
+                        value={advanceBooking.vehicleType}
+                        changeHandler={value => {
+                          handleFieldChange('vehicleType', value.vehicleType?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.vehicleType}
+                        invalid={!!validationErrors.vehicleType}
+                      />
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <RadioGroup
+                        question="Air Conditioning"
+                        name="hasAc"
+                        options={AC_OPTIONS}
+                        value={advanceBooking.hasAc ? 'Yes' : 'No'}
+                        changeHandler={value => {
+                          handleFieldChange('hasAc', value.hasAc === 'Yes')
+                        }}
+                        direction="horizontal"
+                        required
+                      />
+                    </Column>
+                  </Row>
+                </Panel>
 
-        <Panel
-          title="Customer Details"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          {advanceBooking.customerType === 'existing' ? (
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Customer Category"
-                  name="customerCategory"
-                  options={[
-                    { key: 'regular', value: 'Regular' },
-                    { key: 'operator', value: 'Operator' },
-                  ]}
-                  value={advanceBooking.customerCategory || ''}
-                  changeHandler={value => {
-                    setAdvanceBooking({
-                      ...advanceBooking,
-                      customerCategory: value.customerCategory?.toString() || null,
-                      customer: null, // Reset customer when category changes
-                    })
-                  }}
-                  required
-                  errorMessage={errorMap['customerCategory']}
-                  invalid={errorMap['customerCategory']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Customer"
-                  name="customer"
-                  options={customersData.map((customer: any) => ({
-                    key: customer._id,
-                    value: customer.name,
-                  }))}
-                  value={
-                    advanceBooking.customer && customersData.length > 0
-                      ? (customersData.find((customer: any) => customer._id === advanceBooking.customer) as any)?.name ?? ''
-                      : ''
-                  }
-                  changeHandler={value => {
-                    const selectedCustomer = customersData.find((customer: any) => customer.name === value.customer)
-                    setAdvanceBooking({
-                      ...advanceBooking,
-                      customer: selectedCustomer?._id || null,
-                    })
-                  }}
-                  required
-                  errorMessage={errorMap['customer']}
-                  invalid={errorMap['customer']}
-                  disabled={!advanceBooking.customerCategory}
-                />
-              </Column>
-            </Row>
-          ) : (
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Customer Name"
-                  name="customerName"
-                  value={advanceBooking.customerDetails?.name ?? ''}
-                  changeHandler={value => {
-                    setAdvanceBooking({
-                      ...advanceBooking,
-                      customerDetails: {
-                        name: value.customerName?.toString() || '',
-                        contact: advanceBooking.customerDetails?.contact || '',
-                        email: advanceBooking.customerDetails?.email || '',
-                      },
-                    })
-                  }}
-                  required
-                  errorMessage={errorMap['customerDetails.name']}
-                  invalid={errorMap['customerDetails.name']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Customer Contact"
-                  name="customerContact"
-                  value={advanceBooking.customerDetails?.contact ?? ''}
-                  changeHandler={value => {
-                    setAdvanceBooking({
-                      ...advanceBooking,
-                      customerDetails: {
-                        name: advanceBooking.customerDetails?.name || '',
-                        contact: value.customerContact?.toString() || '',
-                        email: advanceBooking.customerDetails?.email || '',
-                      },
-                    })
-                  }}
-                  required
-                  errorMessage={errorMap['customerDetails.contact']}
-                  invalid={errorMap['customerDetails.contact']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Customer Email"
-                  name="customerEmail"
-                  type="email"
-                  value={advanceBooking.customerDetails?.email ?? ''}
-                  changeHandler={value => {
-                    setAdvanceBooking({
-                      ...advanceBooking,
-                      customerDetails: {
-                        name: advanceBooking.customerDetails?.name || '',
-                        contact: advanceBooking.customerDetails?.contact || '',
-                        email: value.customerEmail?.toString() || '',
-                      },
-                    })
-                  }}
-                  errorMessage={errorMap['customerDetails.email']}
-                  invalid={errorMap['customerDetails.email']}
-                />
-              </Column>
-            </Row>
-          )}
-        </Panel>
+                <Panel
+                  title="Customer Details"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  {advanceBooking.customerType === 'existing' ? (
+                    <Row>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <SelectInput
+                          label="Customer Category"
+                          name="customerCategory"
+                          options={CUSTOMER_CATEGORY_OPTIONS}
+                          value={advanceBooking.customerCategory || ''}
+                          changeHandler={value => {
+                            handleCustomerCategoryChange(value.customerCategory?.toString() || null)
+                          }}
+                          required
+                          errorMessage={validationErrors.customerCategory}
+                          invalid={!!validationErrors.customerCategory}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <SelectInput
+                          label="Customer"
+                          name="customer"
+                          options={customerSelectOptions}
+                          value={selectedCustomerValue}
+                          changeHandler={value => {
+                            handleCustomerChange(value.customer?.toString() ?? '')
+                          }}
+                          required
+                          errorMessage={validationErrors.customer}
+                          invalid={!!validationErrors.customer}
+                          disabled={!advanceBooking.customerCategory || customersQuery.isLoading || customersQuery.isError}
+                          isLoading={customersQuery.isLoading && !!advanceBooking.customerCategory}
+                        />
+                      </Column>
+                    </Row>
+                  ) : (
+                    <Row>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Customer Name"
+                          name="customerName"
+                          value={advanceBooking.customerDetails?.name ?? ''}
+                          changeHandler={value => {
+                            handleCustomerDetailsChange({ name: value.customerName?.toString() || '' })
+                          }}
+                          required
+                          errorMessage={validationErrors['customerDetails.name']}
+                          invalid={!!validationErrors['customerDetails.name']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Customer Contact"
+                          name="customerContact"
+                          value={advanceBooking.customerDetails?.contact ?? ''}
+                          changeHandler={value => {
+                            handleCustomerDetailsChange({ contact: value.customerContact?.toString() || '' })
+                          }}
+                          required
+                          errorMessage={validationErrors['customerDetails.contact']}
+                          invalid={!!validationErrors['customerDetails.contact']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Customer Email"
+                          name="customerEmail"
+                          type="email"
+                          value={advanceBooking.customerDetails?.email ?? ''}
+                          changeHandler={value => {
+                            handleCustomerDetailsChange({ email: value.customerEmail?.toString() || '' })
+                          }}
+                          errorMessage={validationErrors['customerDetails.email']}
+                          invalid={!!validationErrors['customerDetails.email']}
+                        />
+                      </Column>
+                    </Row>
+                  )}
+                </Panel>
 
-        <Panel
-          title="Comment"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <TextArea
-            name="comment"
-            className={bemClass([blk, 'margin-bottom'])}
-            value={advanceBooking.comment}
-            changeHandler={value => {
-              setAdvanceBooking({
-                ...advanceBooking,
-                comment: value.comment?.toString() ?? '',
-              })
-            }}
-            placeholder="Enter any additional comments or notes here..."
-          />
-        </Panel>
+                <Panel
+                  title="Comment"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextArea
+                    name="comment"
+                    className={bemClass([blk, 'margin-bottom'])}
+                    value={advanceBooking.comment}
+                    changeHandler={value => {
+                      handleFieldChange('comment', value.comment?.toString() ?? '')
+                    }}
+                    placeholder="Enter any additional comments or notes here..."
+                  />
+                </Panel>
 
-        <div className={bemClass([blk, 'action-items'])}>
-          <Button
-            size="medium"
-            category="default"
-            className={bemClass([blk, 'margin-right'])}
-            clickHandler={navigateBack}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="medium"
-            category="primary"
-            clickHandler={submitHandler}
-          >
-            Submit
-          </Button>
-        </div>
+                <div className={bemClass([blk, 'action-items'])}>
+                  <Button
+                    size="medium"
+                    category="default"
+                    className={bemClass([blk, 'margin-right'])}
+                    clickHandler={navigateBack}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="medium"
+                    category="primary"
+                    clickHandler={handleSubmit}
+                  >
+                    {isEditing ? 'Update' : 'Submit'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
+
       <Modal
         show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
+        closeHandler={closeConfirmationModal}
       >
         <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
+          type={confirmationModal.type}
+          title={confirmationModal.title}
+          subTitle={confirmationModal.subtitle}
           confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
         />
       </Modal>
     </div>
