@@ -1,5 +1,5 @@
-import { FunctionComponent, useEffect, useState } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
+import React, { FunctionComponent, useEffect, useState, useMemo, useCallback, useReducer } from 'react'
+import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb, Text } from '@base'
 import { PageHeader } from '@components'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
@@ -12,130 +12,285 @@ import Loader from '@components/loader'
 
 const blk = 'create-package'
 
+// ============================================================================
+// TYPESCRIPT INTERFACES & TYPES
+// ============================================================================
+
+interface PackageResponseModel extends PackageModel {
+  _id: string
+}
+
 interface CreatePackageProps {
   category?: string
 }
 
-const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' }) => {
-  const samplePackageModel: PackageModel = {
-    category: '',
-    packageCode: '',
-    minimumKm: '',
-    minimumHr: '',
-    baseAmount: '',
-    extraKmPerKmRate: '',
-    extraHrPerHrRate: '',
-    comment: '',
-    isActive: true,
+interface ValidationErrors {
+  [key: string]: string
+}
+
+interface ConfirmationModal {
+  show: boolean
+  type: 'create' | 'update' | 'delete'
+  title: string
+  subtitle: string
+}
+
+// State interface for useReducer
+interface FormState {
+  package: PackageModel
+  isEditing: boolean
+  packageId: string
+  validationErrors: ValidationErrors
+  isValidationError: boolean
+  showConfirmationModal: boolean
+  confirmationModal: ConfirmationModal
+}
+
+// Action types for useReducer
+type FormAction =
+  | { type: 'SET_PACKAGE'; payload: PackageModel }
+  | { type: 'UPDATE_PACKAGE_FIELD'; payload: { field: keyof PackageModel; value: any } }
+  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; packageId: string } }
+  | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const INITIAL_PACKAGE: PackageModel = {
+  category: '',
+  packageCode: '',
+  minimumKm: '',
+  minimumHr: '',
+  baseAmount: '',
+  extraKmPerKmRate: '',
+  extraHrPerHrRate: '',
+  comment: '',
+  isActive: true,
+} as const
+
+// ============================================================================
+// REDUCER & INITIAL STATE
+// ============================================================================
+
+const initialState: FormState = {
+  package: INITIAL_PACKAGE,
+  isEditing: false,
+  packageId: '',
+  validationErrors: {},
+  isValidationError: false,
+  showConfirmationModal: false,
+  confirmationModal: {
+    show: false,
+    type: 'create',
+    title: '',
+    subtitle: '',
+  },
+}
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_PACKAGE':
+      return { ...state, package: action.payload }
+    
+    case 'UPDATE_PACKAGE_FIELD':
+      return {
+        ...state,
+        package: { ...state.package, [action.payload.field]: action.payload.value },
+      }
+    
+    case 'SET_EDITING_MODE':
+      return {
+        ...state,
+        isEditing: action.payload.isEditing,
+        packageId: action.payload.packageId,
+      }
+    
+    case 'SET_VALIDATION_ERRORS':
+      return {
+        ...state,
+        validationErrors: action.payload.errors,
+        isValidationError: action.payload.hasError,
+      }
+    
+    case 'SET_CONFIRMATION_MODAL':
+      return {
+        ...state,
+        showConfirmationModal: action.payload.show,
+        confirmationModal: { ...state.confirmationModal, ...action.payload },
+      }
+    
+    default:
+      return state
   }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const transformPackageResponse = (response: PackageResponseModel, category: string): PackageModel => ({
+  category: response.category || nameToPath(category),
+  packageCode: response.packageCode || '',
+  minimumKm: response.minimumKm || '',
+  minimumHr: response.minimumHr || '',
+  baseAmount: response.baseAmount || '',
+  extraKmPerKmRate: response.extraKmPerKmRate || '',
+  extraHrPerHrRate: response.extraHrPerHrRate || '',
+  comment: response.comment || '',
+  isActive: response.isActive !== undefined ? response.isActive : true,
+})
+
+const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' }) => {
   const navigate = useNavigate()
   const params = useParams()
+  
+  const [state, dispatch] = useReducer(formReducer, {
+    ...initialState,
+    package: {
+      ...INITIAL_PACKAGE,
+      category: nameToPath(category),
+    },
+  })
+  
+  const {
+    package: packageData,
+    isEditing,
+    packageId,
+    validationErrors,
+    isValidationError,
+    showConfirmationModal,
+    confirmationModal,
+  } = state
+
+  // API Hooks
   const createPackage = useCreatePackageMutation()
   const updatePackage = useUpdatePackageMutation()
-
   const { data: packageDataResponse, isLoading, error: getPackageError } = usePackageByIdQuery(params.id || '')
 
-  const [packageData, setPackageData] = useState<PackageModel>(samplePackageModel)
-  const [isEditing, setIsEditing] = useState(false)
-  const [packageId, setPackageId] = useState('')
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
 
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New package created successfully!')
+  const handlePackageFieldChange = useCallback(
+    <K extends keyof PackageModel>(field: K, value: PackageModel[K]) => {
+      dispatch({ type: 'UPDATE_PACKAGE_FIELD', payload: { field, value } })
+    },
+    []
+  )
 
-  const [errorMap, setErrorMap] = useState<Record<string, any>>(samplePackageModel)
-  const [isValidationError, setIsValidationError] = useState(false)
-
-  const navigateBack = () => {
-    // Route to the PackagesList page
+  const navigateBack = useCallback(() => {
     navigate(`/packages/${category}`)
-  }
+  }, [navigate, category])
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
+  const closeConfirmationModal = useCallback(() => {
+    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
+  }, [])
 
-  const loadDataFromResponse = (responseData: PackageModel) => {
-    setPackageData({
-      category: responseData.category || '',
-      packageCode: responseData.packageCode || '',
-      minimumKm: responseData.minimumKm || '',
-      minimumHr: responseData.minimumHr || '',
-      baseAmount: responseData.baseAmount || '',
-      extraKmPerKmRate: responseData.extraKmPerKmRate || '',
-      extraHrPerHrRate: responseData.extraHrPerHrRate || '',
-      comment: responseData.comment || '',
-      isActive: responseData.isActive || true,
-    })
-  }
-
-  useEffect(() => {
-    if (packageDataResponse) {
-      loadDataFromResponse(packageDataResponse)
-      setIsEditing(true)
-      setPackageId(params.id || '')
-    }
-  }, [packageDataResponse])
-
-  const submitHandler = async () => {
+  const handleSubmit = useCallback(async () => {
+    // Validate form
     const validationSchema = createValidationSchema(packageData)
     const { isValid, errorMap } = validatePayload(validationSchema, packageData)
 
-    setIsValidationError(!isValid)
-    setErrorMap(errorMap)
-    if (isValid) {
-      setIsValidationError(false)
-      try {
-        if (isEditing) {
-          await updatePackage.mutateAsync({ _id: packageId, ...packageData })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Package updated successfully!')
-        } else {
-          await createPackage.mutateAsync({ ...packageData, category: nameToPath(category) })
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New Package created successfully!')
-        }
+    dispatch({
+      type: 'SET_VALIDATION_ERRORS',
+      payload: { errors: errorMap, hasError: !isValid },
+    })
 
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
-      } catch (error) {
-        console.log('Unable to create/Update package', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Failed')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} package, please try again.`)
-      }
-    } else {
-      console.log('Create Package: Validation Error', errorMap)
+    if (!isValid) {
+      console.error('Validation Error', errorMap)
+      return
     }
-  }
 
-  const categoryName = pathToName(category)
+    try {
+      if (isEditing) {
+        await updatePackage.mutateAsync({ _id: packageId, ...packageData })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'update',
+            title: 'Success',
+            subtitle: 'Package updated successfully!',
+          },
+        })
+      } else {
+        await createPackage.mutateAsync({ ...packageData, category: nameToPath(category) })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'create',
+            title: 'Success',
+            subtitle: 'New package created successfully!',
+          },
+        })
+      }
+
+      setTimeout(() => {
+        dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: true } })
+      }, 500)
+    } catch (error) {
+      console.error('Unable to create/update package', error)
+      dispatch({
+        type: 'SET_CONFIRMATION_MODAL',
+        payload: {
+          show: true,
+          type: 'delete',
+          title: 'Error',
+          subtitle: `Unable to ${isEditing ? 'update' : 'create'} package. Please try again.`,
+        },
+      })
+    }
+  }, [packageData, isEditing, packageId, updatePackage, createPackage, category])
+
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  // Load package data when editing
+  useEffect(() => {
+    if (packageDataResponse) {
+      const transformedPackage = transformPackageResponse(packageDataResponse, category)
+      dispatch({ type: 'SET_PACKAGE', payload: transformedPackage })
+      dispatch({
+        type: 'SET_EDITING_MODE',
+        payload: { isEditing: true, packageId: params.id || '' },
+      })
+    }
+  }, [packageDataResponse, params.id, category])
+
+  // ============================================================================
+  // MEMOIZED VALUES
+  // ============================================================================
+
+  const categoryDisplayName = useMemo(() => pathToName(category), [category])
+
+  const breadcrumbData = useMemo(
+    () => [
+      { label: 'Home', route: '/dashboard' },
+      { label: `${categoryDisplayName} Packages`, route: `/packages/${category}` },
+      { label: `${isEditing ? 'Edit' : 'New'} ${categoryDisplayName} Package` },
+    ],
+    [categoryDisplayName, category, isEditing]
+  )
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   return (
     <div className={bemClass([blk])}>
-      <PageHeader
-        title={isEditing ? `Update ${categoryName} Package` : `Add ${categoryName} Package`}
-        withBreadCrumb
-        breadCrumbData={[
-          {
-            label: 'Home',
-            route: '/dashboard',
-          },
-          {
-            label: `${categoryName} list`,
-            route: `/packages/${category}`,
-          },
-          {
-            label: isEditing ? 'Update' : 'Create',
-          },
-        ]}
-      />
+      <div className={bemClass([blk, 'header'])}>
+        <Text
+          color="gray-darker"
+          typography="l"
+        >
+          {`${isEditing ? 'Edit' : 'New'} ${categoryDisplayName} Package`}
+        </Text>
+        <Breadcrumb data={breadcrumbData} />
+      </div>
       {isValidationError && (
         <Alert
           type="error"
@@ -171,14 +326,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     name="packageCode"
                     value={packageData.packageCode}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        packageCode: value.packageCode?.toString() ?? '',
-                      })
+                      handlePackageFieldChange('packageCode', value.packageCode?.toString() ?? '')
                     }}
                     required
-                    errorMessage={errorMap['packageCode']}
-                    invalid={errorMap['packageCode']}
+                    errorMessage={validationErrors['packageCode']}
+                    invalid={!!validationErrors['packageCode']}
                   />
                 </Column>
                 <Column
@@ -191,14 +343,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     type="number"
                     value={packageData.minimumKm ?? ''}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        minimumKm: value.minimumKm ? Number(value.minimumKm) : '',
-                      })
+                      handlePackageFieldChange('minimumKm', value.minimumKm ? Number(value.minimumKm) : '')
                     }}
                     required
-                    errorMessage={errorMap['minimumKm']}
-                    invalid={errorMap['minimumKm']}
+                    errorMessage={validationErrors['minimumKm']}
+                    invalid={!!validationErrors['minimumKm']}
                   />
                 </Column>
                 <Column
@@ -211,14 +360,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     type="number"
                     value={packageData.minimumHr ?? ''}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        minimumHr: value.minimumHr ? Number(value.minimumHr) : '',
-                      })
+                      handlePackageFieldChange('minimumHr', value.minimumHr ? Number(value.minimumHr) : '')
                     }}
                     required
-                    errorMessage={errorMap['minimumHr']}
-                    invalid={errorMap['minimumHr']}
+                    errorMessage={validationErrors['minimumHr']}
+                    invalid={!!validationErrors['minimumHr']}
                   />
                 </Column>
               </Row>
@@ -233,14 +379,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     type="number"
                     value={packageData.baseAmount ?? ''}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        baseAmount: value.baseAmount ? Number(value.baseAmount) : '',
-                      })
+                      handlePackageFieldChange('baseAmount', value.baseAmount ? Number(value.baseAmount) : '')
                     }}
                     required
-                    errorMessage={errorMap['baseAmount']}
-                    invalid={errorMap['baseAmount']}
+                    errorMessage={validationErrors['baseAmount']}
+                    invalid={!!validationErrors['baseAmount']}
                   />
                 </Column>
                 <Column
@@ -253,14 +396,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     type="number"
                     value={packageData.extraKmPerKmRate ?? ''}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        extraKmPerKmRate: value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '',
-                      })
+                      handlePackageFieldChange('extraKmPerKmRate', value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '')
                     }}
                     required
-                    errorMessage={errorMap['extraKmPerKmRate']}
-                    invalid={errorMap['extraKmPerKmRate']}
+                    errorMessage={validationErrors['extraKmPerKmRate']}
+                    invalid={!!validationErrors['extraKmPerKmRate']}
                   />
                 </Column>
                 <Column
@@ -273,14 +413,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     type="number"
                     value={packageData.extraHrPerHrRate ?? ''}
                     changeHandler={value => {
-                      setPackageData({
-                        ...packageData,
-                        extraHrPerHrRate: value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '',
-                      })
+                      handlePackageFieldChange('extraHrPerHrRate', value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '')
                     }}
                     required
-                    errorMessage={errorMap['extraHrPerHrRate']}
-                    invalid={errorMap['extraHrPerHrRate']}
+                    errorMessage={validationErrors['extraHrPerHrRate']}
+                    invalid={!!validationErrors['extraHrPerHrRate']}
                   />
                 </Column>
               </Row>
@@ -295,10 +432,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                 name="comment"
                 value={packageData.comment || ''}
                 changeHandler={value => {
-                  setPackageData({
-                    ...packageData,
-                    comment: value.comment?.toString() ?? '',
-                  })
+                  handlePackageFieldChange('comment', value.comment?.toString() ?? '')
                 }}
                 placeholder="Enter any additional comments or notes here..."
               />
@@ -317,10 +451,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     name="isActive"
                     checked={packageData.isActive}
                     changeHandler={obj => {
-                      setPackageData({
-                        ...packageData,
-                        isActive: !!obj.isActive,
-                      })
+                      handlePackageFieldChange('isActive', !!obj.isActive)
                     }}
                   />
                 </Column>
@@ -339,9 +470,9 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               <Button
                 size="medium"
                 category="primary"
-                clickHandler={submitHandler}
+                clickHandler={handleSubmit}
               >
-                Submit
+                {isEditing ? 'Update' : 'Submit'}
               </Button>
             </div>
           </>
@@ -349,18 +480,14 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
       </div>
       <Modal
         show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
+        closeHandler={closeConfirmationModal}
       >
         <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
+          type={confirmationModal.type}
+          title={confirmationModal.title}
+          subTitle={confirmationModal.subtitle}
           confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
         />
       </Modal>
     </div>

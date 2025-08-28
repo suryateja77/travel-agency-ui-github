@@ -16,6 +16,10 @@ const AdvancePayments: FunctionComponent<AdvancePaymentsProps> = () => {
         path="create"
         element={<CreateAdvancePayment />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateAdvancePayment />}
+      />
     </Routes>
   )
 }

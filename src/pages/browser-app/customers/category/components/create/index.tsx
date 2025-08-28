@@ -1,119 +1,310 @@
-import { FunctionComponent, useState } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb } from '@base'
+import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
+import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
 import { PageHeader } from '@components'
 import { CustomerModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 
 import './style.scss'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
-import { useCreateCustomerMutation } from '@api/queries/customer'
+import { useCreateCustomerMutation, useUpdateCustomerMutation, useCustomerByIdQuery } from '@api/queries/customer'
+import Loader from '@components/loader'
 
 const blk = 'create-customer'
+
+// ============================================================================
+// TYPESCRIPT INTERFACES & TYPES
+// ============================================================================
 
 interface CreateCustomerProps {
   category?: string
 }
 
+interface CustomerResponseModel extends CustomerModel {
+  _id: string
+}
+
+interface ValidationErrors {
+  [key: string]: string
+}
+
+interface ConfirmationModal {
+  show: boolean
+  type: 'create' | 'update' | 'delete'
+  title: string
+  subtitle: string
+}
+
+// State interface for useReducer
+interface FormState {
+  customer: CustomerModel
+  isEditing: boolean
+  customerId: string
+  validationErrors: ValidationErrors
+  isValidationError: boolean
+  showConfirmationModal: boolean
+  confirmationModal: ConfirmationModal
+}
+
+// Action types for useReducer
+type FormAction =
+  | { type: 'SET_CUSTOMER'; payload: CustomerModel }
+  | { type: 'UPDATE_CUSTOMER_FIELD'; payload: { field: keyof CustomerModel; value: any } }
+  | { type: 'UPDATE_ADDRESS_FIELD'; payload: { field: keyof CustomerModel['address']; value: any } }
+  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; customerId: string } }
+  | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const INITIAL_CUSTOMER: CustomerModel = {
+  name: '',
+  contact: '',
+  whatsAppNumber: '',
+  email: '',
+  isActive: true,
+  comment: '',
+  address: {
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    pinCode: '',
+  },
+  category: '',
+} as const
+
+// ============================================================================
+// REDUCER & INITIAL STATE
+// ============================================================================
+
+const initialState: FormState = {
+  customer: INITIAL_CUSTOMER,
+  isEditing: false,
+  customerId: '',
+  validationErrors: {},
+  isValidationError: false,
+  showConfirmationModal: false,
+  confirmationModal: {
+    show: false,
+    type: 'create',
+    title: '',
+    subtitle: '',
+  },
+}
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_CUSTOMER':
+      return { ...state, customer: action.payload }
+
+    case 'UPDATE_CUSTOMER_FIELD':
+      return {
+        ...state,
+        customer: { ...state.customer, [action.payload.field]: action.payload.value },
+      }
+
+    case 'UPDATE_ADDRESS_FIELD':
+      return {
+        ...state,
+        customer: {
+          ...state.customer,
+          address: {
+            ...state.customer.address,
+            [action.payload.field]: action.payload.value,
+          },
+        },
+      }
+
+    case 'SET_EDITING_MODE':
+      return {
+        ...state,
+        isEditing: action.payload.isEditing,
+        customerId: action.payload.customerId,
+      }
+
+    case 'SET_VALIDATION_ERRORS':
+      return {
+        ...state,
+        validationErrors: action.payload.errors,
+        isValidationError: action.payload.hasError,
+      }
+
+    case 'SET_CONFIRMATION_MODAL':
+      return {
+        ...state,
+        showConfirmationModal: action.payload.show,
+        confirmationModal: { ...state.confirmationModal, ...action.payload },
+      }
+
+    default:
+      return state
+  }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const transformCustomerResponse = (response: CustomerResponseModel): CustomerModel => ({
+  name: response.name || '',
+  contact: response.contact || '',
+  whatsAppNumber: response.whatsAppNumber || '',
+  email: response.email || '',
+  isActive: response.isActive !== undefined ? response.isActive : true,
+  comment: response.comment || '',
+  address: {
+    addressLine1: response.address?.addressLine1 || '',
+    addressLine2: response.address?.addressLine2 || '',
+    city: response.address?.city || '',
+    state: response.address?.state || '',
+    pinCode: response.address?.pinCode || '',
+  },
+  category: response.category || '',
+})
+
 const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' }) => {
-  const sampleCustomerModel: CustomerModel = {
-    name: '',
-    contact: '',
-    whatsAppNumber: '',
-    email: '',
-    isActive: true,
-    comment: '',
-    address: {
-      addressLine1: '',
-      addressLine2: '',
-      city: '',
-      state: '',
-      pinCode: '',
-    },
-    category: '',
-  }
   const navigate = useNavigate()
+  const params = useParams()
+
+  const [state, dispatch] = useReducer(formReducer, initialState)
+  const { customer, isEditing, customerId, validationErrors, isValidationError, showConfirmationModal, confirmationModal } = state
+
+  // API Hooks
   const createCustomer = useCreateCustomerMutation()
+  const updateCustomer = useUpdateCustomerMutation()
+  const { data: customerDataResponse, isLoading, error: getCustomerDataError } = useCustomerByIdQuery(params.id || '')
 
-  const [customer, setCustomer] = useState<CustomerModel>(sampleCustomerModel)
-  const [isEditing, setIsEditing] = useState(false)
-  const [customerId, setCustomerId] = useState('')
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
 
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New customer created successfully!')
+  const handleCustomerFieldChange = useCallback(
+    <K extends keyof CustomerModel>(field: K, value: CustomerModel[K]) => {
+      dispatch({ type: 'UPDATE_CUSTOMER_FIELD', payload: { field, value } })
+    },
+    []
+  )
 
-  const [errorMap, setErrorMap] = useState<Record<string, any>>(sampleCustomerModel)
-  const [isValidationError, setIsValidationError] = useState(false)
+  const handleAddressFieldChange = useCallback(
+    <K extends keyof CustomerModel['address']>(field: K, value: CustomerModel['address'][K]) => {
+      dispatch({ type: 'UPDATE_ADDRESS_FIELD', payload: { field, value } })
+    },
+    []
+  )
 
-  const navigateBack = () => {
-    // Route to the CustomersList page
+  const navigateBack = useCallback(() => {
     navigate(`/customers/${category}`)
-  }
+  }, [navigate, category])
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
+  const closeConfirmationModal = useCallback(() => {
+    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
+  }, [])
 
-  const submitHandler = async () => {
+  const handleSubmit = useCallback(async () => {
+    // Validate form
     const validationSchema = createValidationSchema(customer)
     const { isValid, errorMap } = validatePayload(validationSchema, customer)
 
-    setIsValidationError(!isValid)
-    setErrorMap(errorMap)
-    if (isValid) {
-      setIsValidationError(false)
-      try {
-        if (isEditing) {
-          // await updateCustomer.mutateAsync({ _id: customerId, ...customer })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Customer updated successfully!')
-        } else {
-          await createCustomer.mutateAsync({ ...customer, category: nameToPath(category) })
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New Customer created successfully!')
-        }
+    dispatch({
+      type: 'SET_VALIDATION_ERRORS',
+      payload: { errors: errorMap, hasError: !isValid },
+    })
 
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
-      } catch (error) {
-        console.log('Unable to create/Update customer', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Failed')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} customer, please try again.`)
-      }
-    } else {
-      console.log('Create Customer: Validation Error', errorMap)
+    if (!isValid) {
+      console.error('Validation Error', errorMap)
+      return
     }
-  }
 
-  const categoryName = pathToName(category)
+    // Prepare data for submission
+    const dataToSave: CustomerModel = {
+      ...customer,
+      category: nameToPath(category),
+    }
+
+    try {
+      if (isEditing) {
+        await updateCustomer.mutateAsync({ _id: customerId, ...dataToSave })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'update',
+            title: 'Success',
+            subtitle: 'Customer updated successfully!',
+          },
+        })
+      } else {
+        await createCustomer.mutateAsync(dataToSave)
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'create',
+            title: 'Success',
+            subtitle: 'New customer created successfully!',
+          },
+        })
+      }
+    } catch (error) {
+      console.error('Unable to create/update customer', error)
+      dispatch({
+        type: 'SET_CONFIRMATION_MODAL',
+        payload: {
+          show: true,
+          type: 'delete',
+          title: 'Error',
+          subtitle: `Unable to ${isEditing ? 'update' : 'create'} customer. Please try again.`,
+        },
+      })
+    }
+  }, [customer, isEditing, customerId, updateCustomer, createCustomer, category])
+
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  // Load customer data when editing
+  useEffect(() => {
+    if (customerDataResponse) {
+      const transformedCustomer = transformCustomerResponse(customerDataResponse)
+      dispatch({ type: 'SET_CUSTOMER', payload: transformedCustomer })
+      dispatch({
+        type: 'SET_EDITING_MODE',
+        payload: { isEditing: true, customerId: params.id || '' },
+      })
+    }
+  }, [customerDataResponse, params.id])
+
+  // ============================================================================
+  // MEMOIZED VALUES
+  // ============================================================================
+
+  const categoryDisplayName = useMemo(() => pathToName(category), [category])
+
+  const breadcrumbData = useMemo(
+    () => [
+      { label: 'Home', route: '/dashboard' },
+      { label: `${categoryDisplayName} list`, route: `/customers/${category}` },
+      { label: isEditing ? 'Update' : 'Create' },
+    ],
+    [categoryDisplayName, category, isEditing]
+  )
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   return (
     <div className={bemClass([blk])}>
       <PageHeader
-        title={isEditing ? `Update ${categoryName}` : `Add ${categoryName}`}
+        title={isEditing ? `Update ${categoryDisplayName}` : `Add ${categoryDisplayName}`}
         withBreadCrumb
-        breadCrumbData={[
-          {
-            label: 'Home',
-            route: '/dashboard',
-          },
-          {
-            label: `${categoryName} list`,
-            route: `/customers/${category}`,
-          },
-          {
-            label: isEditing ? 'Update' : 'Create',
-          },
-        ]}
+        breadCrumbData={breadcrumbData}
       />
+
       {isValidationError && (
         <Alert
           type="error"
@@ -121,285 +312,223 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
           className={bemClass([blk, 'margin-bottom'])}
         />
       )}
+
       <div className={bemClass([blk, 'content'])}>
-        <Panel
-          title="Customer details"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Customer Name"
-                name="name"
-                value={customer.name}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    name: value.name?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['name']}
-                invalid={errorMap['name']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Contact"
-                name="contact"
-                value={customer.contact}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    contact: value.contact?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['contact']}
-                invalid={errorMap['contact']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="WhatsApp Number"
-                name="whatsAppNumber"
-                value={customer.whatsAppNumber}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    whatsAppNumber: value.whatsAppNumber?.toString() ?? '',
-                  })
-                }}
-                required
-                errorMessage={errorMap['whatsAppNumber']}
-                invalid={errorMap['whatsAppNumber']}
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Email"
-                name="email"
-                value={customer.email || ''}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    email: value.email?.toString() ?? '',
-                  })
-                }}
-                errorMessage={errorMap['email']}
-                invalid={errorMap['email']}
-              />
-            </Column>
-          </Row>
-        </Panel>
+        {isLoading ? (
+          <Loader type="form" />
+        ) : (
+          <>
+            {getCustomerDataError ? (
+              <>
+                <Alert
+                  type="error"
+                  message="Unable to load customer data. Please try again."
+                  className={bemClass([blk, 'margin-bottom'])}
+                />
+                <Button size="medium" clickHandler={navigateBack}>
+                  Go Back
+                </Button>
+              </>
+            ) : (
+              <>
+                <Panel
+                  title="Customer details"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <Row>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Customer Name"
+                        name="name"
+                        value={customer.name}
+                        changeHandler={value => {
+                          handleCustomerFieldChange('name', value.name?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.name}
+                        invalid={!!validationErrors.name}
+                      />
+                    </Column>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Contact"
+                        name="contact"
+                        value={customer.contact}
+                        changeHandler={value => {
+                          handleCustomerFieldChange('contact', value.contact?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.contact}
+                        invalid={!!validationErrors.contact}
+                      />
+                    </Column>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="WhatsApp Number"
+                        name="whatsAppNumber"
+                        value={customer.whatsAppNumber}
+                        changeHandler={value => {
+                          handleCustomerFieldChange('whatsAppNumber', value.whatsAppNumber?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors.whatsAppNumber}
+                        invalid={!!validationErrors.whatsAppNumber}
+                      />
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Email"
+                        name="email"
+                        value={customer.email || ''}
+                        changeHandler={value => {
+                          handleCustomerFieldChange('email', value.email?.toString() ?? '')
+                        }}
+                        errorMessage={validationErrors.email}
+                        invalid={!!validationErrors.email}
+                      />
+                    </Column>
+                  </Row>
+                </Panel>
 
-        <Panel
-          title="Address Details"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Address Line 1"
-                name="addressLine1"
-                value={customer.address.addressLine1}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    address: {
-                      ...customer.address,
-                      addressLine1: value.addressLine1?.toString() ?? '',
-                    },
-                  })
-                }}
-                required
-                errorMessage={errorMap['address.addressLine1']}
-                invalid={errorMap['address.addressLine1']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Address Line 2"
-                name="addressLine2"
-                value={customer.address.addressLine2}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    address: {
-                      ...customer.address,
-                      addressLine2: value.addressLine2?.toString() ?? '',
-                    },
-                  })
-                }}
-                required
-                errorMessage={errorMap['address.addressLine2']}
-                invalid={errorMap['address.addressLine2']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="City"
-                name="city"
-                value={customer.address.city}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    address: {
-                      ...customer.address,
-                      city: value.city?.toString() ?? '',
-                    },
-                  })
-                }}
-                required
-                errorMessage={errorMap['address.city']}
-                invalid={errorMap['address.city']}
-              />
-            </Column>
-          </Row>
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="State"
-                name="state"
-                value={customer.address.state}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    address: {
-                      ...customer.address,
-                      state: value.state?.toString() ?? '',
-                    },
-                  })
-                }}
-                required
-                errorMessage={errorMap['address.state']}
-                invalid={errorMap['address.state']}
-              />
-            </Column>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <TextInput
-                label="Pin Code"
-                name="pinCode"
-                value={customer.address.pinCode}
-                changeHandler={value => {
-                  setCustomer({
-                    ...customer,
-                    address: {
-                      ...customer.address,
-                      pinCode: value.pinCode?.toString() ?? '',
-                    },
-                  })
-                }}
-                required
-                errorMessage={errorMap['address.pinCode']}
-                invalid={errorMap['address.pinCode']}
-              />
-            </Column>
-          </Row>
-        </Panel>
+                <Panel
+                  title="Address Details"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <Row>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Address Line 1"
+                        name="addressLine1"
+                        value={customer.address.addressLine1}
+                        changeHandler={value => {
+                          handleAddressFieldChange('addressLine1', value.addressLine1?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors['address.addressLine1']}
+                        invalid={!!validationErrors['address.addressLine1']}
+                      />
+                    </Column>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Address Line 2"
+                        name="addressLine2"
+                        value={customer.address.addressLine2}
+                        changeHandler={value => {
+                          handleAddressFieldChange('addressLine2', value.addressLine2?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors['address.addressLine2']}
+                        invalid={!!validationErrors['address.addressLine2']}
+                      />
+                    </Column>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="City"
+                        name="city"
+                        value={customer.address.city}
+                        changeHandler={value => {
+                          handleAddressFieldChange('city', value.city?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors['address.city']}
+                        invalid={!!validationErrors['address.city']}
+                      />
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="State"
+                        name="state"
+                        value={customer.address.state}
+                        changeHandler={value => {
+                          handleAddressFieldChange('state', value.state?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors['address.state']}
+                        invalid={!!validationErrors['address.state']}
+                      />
+                    </Column>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <TextInput
+                        label="Pin Code"
+                        name="pinCode"
+                        value={customer.address.pinCode}
+                        changeHandler={value => {
+                          handleAddressFieldChange('pinCode', value.pinCode?.toString() ?? '')
+                        }}
+                        required
+                        errorMessage={validationErrors['address.pinCode']}
+                        invalid={!!validationErrors['address.pinCode']}
+                      />
+                    </Column>
+                  </Row>
+                </Panel>
 
-        <Panel
-          title="Comments"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <TextArea
-            className={bemClass([blk, 'margin-bottom'])}
-            name="comment"
-            value={customer.comment || ''}
-            changeHandler={value => {
-              setCustomer({
-                ...customer,
-                comment: value.comment?.toString() ?? '',
-              })
-            }}
-            placeholder="Enter any additional comments or notes here..."
-          />
-        </Panel>
+                <Panel
+                  title="Comments"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextArea
+                    className={bemClass([blk, 'margin-bottom'])}
+                    name="comment"
+                    value={customer.comment || ''}
+                    changeHandler={value => {
+                      handleCustomerFieldChange('comment', value.comment?.toString() ?? '')
+                    }}
+                    placeholder="Enter any additional comments or notes here..."
+                  />
+                </Panel>
 
-        <Panel
-          title="Is active"
-          className={bemClass([blk, 'margin-bottom'])}
-        >
-          <Row>
-            <Column
-              col={4}
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <Toggle
-                name="isActive"
-                checked={customer.isActive}
-                changeHandler={obj => {
-                  setCustomer({
-                    ...customer,
-                    isActive: !!obj.isActive,
-                  })
-                }}
-              />
-            </Column>
-          </Row>
-        </Panel>
+                <Panel
+                  title="Is active"
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <Row>
+                    <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                      <Toggle
+                        name="isActive"
+                        checked={customer.isActive}
+                        changeHandler={obj => {
+                          handleCustomerFieldChange('isActive', !!obj.isActive)
+                        }}
+                      />
+                    </Column>
+                  </Row>
+                </Panel>
 
-        <div className={bemClass([blk, 'action-items'])}>
-          <Button
-            size="medium"
-            category="default"
-            className={bemClass([blk, 'margin-right'])}
-            clickHandler={navigateBack}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="medium"
-            category="primary"
-            clickHandler={submitHandler}
-          >
-            Submit
-          </Button>
-        </div>
+                <div className={bemClass([blk, 'action-items'])}>
+                  <Button
+                    size="medium"
+                    category="default"
+                    className={bemClass([blk, 'margin-right'])}
+                    clickHandler={navigateBack}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="medium"
+                    category="primary"
+                    clickHandler={handleSubmit}
+                  >
+                    {isEditing ? 'Update' : 'Submit'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
-      >
+
+      <Modal show={showConfirmationModal} closeHandler={closeConfirmationModal}>
         <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
+          type={confirmationModal.type}
+          title={confirmationModal.title}
+          subTitle={confirmationModal.subtitle}
           confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
         />
       </Modal>
     </div>

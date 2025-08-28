@@ -1,12 +1,12 @@
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
+import React, { FunctionComponent, useEffect, useMemo, useState, useCallback, useReducer } from 'react'
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
 import { ExpenseModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
 
 import './style.scss'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
-import { useCreateExpenseMutation, useUpdateExpenseMutation } from '@api/queries/expense'
+import { useCreateExpenseMutation, useUpdateExpenseMutation, useExpenseByIdQuery } from '@api/queries/expense'
 import { useVehicleByCategory } from '@api/queries/vehicle'
 import { useStaffByCategory } from '@api/queries/staff'
 import ConfiguredInput from '@base/configured-input'
@@ -14,236 +14,529 @@ import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 
 const blk = 'create-expense'
 
+// ============================================================================
+// TYPESCRIPT INTERFACES & TYPES
+// ============================================================================
+
+interface ExpenseResponseModel extends Omit<ExpenseModel, 'vehicle' | 'staff'> {
+  _id: string
+  vehicle?: string | { _id: string; name?: string } | null
+  staff?: string | { _id: string; name?: string } | null
+}
+
 interface CreateExpenseProps {
   category?: string
 }
 
-const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' }) => {
-  const sampleExpenseModel: ExpenseModel = {
-    type: '',
-    paymentMethod: '',
-    date: null,
-    amount: '', // Initialize as empty string like noOfSeats
-    location: '',
-    vehicleCategory: category === 'vehicle' ? '' : null,
-    vehicle: category === 'vehicle' ? '' : null,
-    staffCategory: category === 'staff' ? '' : null,
-    staff: category === 'staff' ? '' : null,
-    comment: '',
-    category: nameToPath(category),
-  }
+interface SelectOption {
+  key: string
+  value: string
+}
 
+interface ValidationErrors {
+  [key: string]: string
+}
+
+interface ApiErrors {
+  vehicles: string
+  staff: string
+}
+
+interface SelectOptions {
+  vehicles: SelectOption[]
+  staff: SelectOption[]
+}
+
+interface ConfirmationModal {
+  show: boolean
+  type: 'create' | 'update' | 'delete'
+  title: string
+  subtitle: string
+}
+
+// State interface for useReducer
+interface FormState {
+  expense: ExpenseModel
+  isEditing: boolean
+  expenseId: string
+  validationErrors: ValidationErrors
+  isValidationError: boolean
+  showConfirmationModal: boolean
+  confirmationModal: ConfirmationModal
+  apiErrors: ApiErrors
+  selectOptions: SelectOptions
+}
+
+// Action types for useReducer
+type FormAction =
+  | { type: 'SET_EXPENSE'; payload: ExpenseModel }
+  | { type: 'UPDATE_EXPENSE_FIELD'; payload: { field: keyof ExpenseModel; value: any } }
+  | { type: 'UPDATE_VEHICLE_DETAILS'; payload: Partial<Pick<ExpenseModel, 'vehicleCategory' | 'vehicle'>> }
+  | { type: 'UPDATE_STAFF_DETAILS'; payload: Partial<Pick<ExpenseModel, 'staffCategory' | 'staff'>> }
+  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; expenseId: string } }
+  | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
+  | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
+  | { type: 'SET_SELECT_OPTIONS'; payload: { dataType: keyof SelectOptions; options: SelectOption[] } }
+
+type ApiDataType = keyof SelectOptions
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const INITIAL_EXPENSE: ExpenseModel = {
+  type: '',
+  paymentMethod: '',
+  date: null,
+  amount: '',
+  location: '',
+  vehicleCategory: null,
+  vehicle: null,
+  staffCategory: null,
+  staff: null,
+  comment: '',
+  category: '',
+} as const
+
+const API_ERROR_MESSAGES = {
+  vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
+  staff: 'Unable to load staff data. Please check your connection and try again.',
+} as const
+
+const PLACEHOLDER_VALUES = {
+  vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
+  staff: ['Please wait...', 'Unable to load options', 'No staff found'],
+} as const
+
+// ============================================================================
+// REDUCER & INITIAL STATE
+// ============================================================================
+
+const initialState: FormState = {
+  expense: INITIAL_EXPENSE,
+  isEditing: false,
+  expenseId: '',
+  validationErrors: {},
+  isValidationError: false,
+  showConfirmationModal: false,
+  confirmationModal: {
+    show: false,
+    type: 'create',
+    title: '',
+    subtitle: '',
+  },
+  apiErrors: {
+    vehicles: '',
+    staff: '',
+  },
+  selectOptions: {
+    vehicles: [],
+    staff: [],
+  },
+}
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_EXPENSE':
+      return { ...state, expense: action.payload }
+    
+    case 'UPDATE_EXPENSE_FIELD':
+      return {
+        ...state,
+        expense: { ...state.expense, [action.payload.field]: action.payload.value },
+      }
+    
+    case 'UPDATE_VEHICLE_DETAILS':
+      return {
+        ...state,
+        expense: { ...state.expense, ...action.payload },
+      }
+    
+    case 'UPDATE_STAFF_DETAILS':
+      return {
+        ...state,
+        expense: { ...state.expense, ...action.payload },
+      }
+    
+    case 'SET_EDITING_MODE':
+      return {
+        ...state,
+        isEditing: action.payload.isEditing,
+        expenseId: action.payload.expenseId,
+      }
+    
+    case 'SET_VALIDATION_ERRORS':
+      return {
+        ...state,
+        validationErrors: action.payload.errors,
+        isValidationError: action.payload.hasError,
+      }
+    
+    case 'SET_CONFIRMATION_MODAL':
+      return {
+        ...state,
+        showConfirmationModal: action.payload.show,
+        confirmationModal: { ...state.confirmationModal, ...action.payload },
+      }
+    
+    case 'SET_API_ERROR':
+      return {
+        ...state,
+        apiErrors: { ...state.apiErrors, [action.payload.dataType]: action.payload.error },
+      }
+    
+    case 'SET_SELECT_OPTIONS':
+      return {
+        ...state,
+        selectOptions: { ...state.selectOptions, [action.payload.dataType]: action.payload.options },
+      }
+    
+    default:
+      return state
+  }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const extractIdFromResponse = (field: any): string => {
+  if (typeof field === 'string') return field
+  if (field && typeof field === 'object' && field._id) return field._id
+  return ''
+}
+
+const transformExpenseResponse = (response: ExpenseResponseModel, category: string): ExpenseModel => ({
+  type: response.type || '',
+  paymentMethod: response.paymentMethod || '',
+  date: response.date ? new Date(response.date) : null,
+  amount: response.amount || '',
+  location: response.location || '',
+  vehicleCategory: category === 'vehicle' ? (response.vehicleCategory || '') : null,
+  vehicle: category === 'vehicle' ? extractIdFromResponse(response.vehicle) : null,
+  staffCategory: category === 'staff' ? (response.staffCategory || '') : null,
+  staff: category === 'staff' ? extractIdFromResponse(response.staff) : null,
+  comment: response.comment || '',
+  category: response.category || nameToPath(category),
+})
+
+const getSelectOptions = (
+  isLoading: boolean,
+  isError: boolean,
+  options: SelectOption[],
+  loadingText: string,
+  errorText: string,
+  noDataText: string
+): SelectOption[] => {
+  if (isLoading) return [{ key: 'loading', value: loadingText }]
+  if (isError) return [{ key: 'error', value: errorText }]
+  if (options.length > 0) return options
+  return [{ key: 'no-data', value: noDataText }]
+}
+
+const isPlaceholderValue = (value: string, type: ApiDataType): boolean => {
+  const placeholders = PLACEHOLDER_VALUES[type] as readonly string[]
+  return (placeholders as readonly string[]).includes(value)
+}
+
+const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' }) => {
   const navigate = useNavigate()
+  const params = useParams()
+  
+  const [state, dispatch] = useReducer(formReducer, {
+    ...initialState,
+    expense: {
+      ...INITIAL_EXPENSE,
+      vehicleCategory: category === 'vehicle' ? '' : null,
+      vehicle: category === 'vehicle' ? '' : null,
+      staffCategory: category === 'staff' ? '' : null,
+      staff: category === 'staff' ? '' : null,
+      category: nameToPath(category),
+    },
+  })
+  
+  const {
+    expense,
+    isEditing,
+    expenseId,
+    validationErrors,
+    isValidationError,
+    showConfirmationModal,
+    confirmationModal,
+    apiErrors,
+    selectOptions,
+  } = state
+
+  // API Hooks
   const createExpense = useCreateExpenseMutation()
   const updateExpense = useUpdateExpenseMutation()
-
-  const [expense, setExpense] = useState<ExpenseModel>(sampleExpenseModel)
-  
-  // Vehicle category path for API queries
-  const vehicleCategoryPath = useMemo(() => {
-    return category === 'vehicle' && expense.vehicleCategory
+  const { data: expenseDataResponse, isLoading, error: getExpenseDataError } = useExpenseByIdQuery(params.id || '')
+  // Memoized category paths for API calls
+  const categoryPaths = useMemo(() => ({
+    vehicle: category === 'vehicle' && expense.vehicleCategory
       ? nameToPath(expense.vehicleCategory)
-      : ''
-  }, [category, expense.vehicleCategory])
-
-  // Staff category path for API queries  
-  const staffCategoryPath = useMemo(() => {
-    return category === 'staff' && expense.staffCategory
+      : '',
+    staff: category === 'staff' && expense.staffCategory
       ? nameToPath(expense.staffCategory)
-      : ''
-  }, [category, expense.staffCategory])
+      : '',
+  }), [category, expense.vehicleCategory, expense.staffCategory])
 
-  // Fetch vehicles by category when vehicle category is selected
-  const {
-    data: vehicles,
-    error: vehiclesError,
-    isLoading: vehiclesLoading,
-    isError: vehiclesIsError
-  } = useVehicleByCategory(vehicleCategoryPath)
+  // API Queries with conditional fetching
+  const vehiclesQuery = useVehicleByCategory(categoryPaths.vehicle)
+  const staffQuery = useStaffByCategory(categoryPaths.staff)
 
-  // Fetch staff by category when staff category is selected
-  const {
-    data: staffMembers,
-    error: staffError,
-    isLoading: staffLoading,
-    isError: staffIsError
-  } = useStaffByCategory(staffCategoryPath)
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [expenseId, setExpenseId] = useState('')
+  const handleExpenseFieldChange = useCallback(
+    <K extends keyof ExpenseModel>(field: K, value: ExpenseModel[K]) => {
+      dispatch({ type: 'UPDATE_EXPENSE_FIELD', payload: { field, value } })
+    },
+    []
+  )
 
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New expense created successfully!')
+  const handleVehicleDetailsChange = useCallback((updates: Partial<Pick<ExpenseModel, 'vehicleCategory' | 'vehicle'>>) => {
+    dispatch({ type: 'UPDATE_VEHICLE_DETAILS', payload: updates })
+  }, [])
 
-  const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
-  const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
+  const handleStaffDetailsChange = useCallback((updates: Partial<Pick<ExpenseModel, 'staffCategory' | 'staff'>>) => {
+    dispatch({ type: 'UPDATE_STAFF_DETAILS', payload: updates })
+  }, [])
 
-  // API Error states
-  const [apiErrors, setApiErrors] = useState({
-    vehicles: '',
-    staff: ''
-  })
-
-  // Generic function to handle API responses and errors
-  const handleApiResponse = (
-    data: any,
-    error: any,
-    isError: boolean,
-    errorKey: 'vehicles' | 'staff',
-    setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
-    mapFunction: (item: any) => { key: any; value: any }
-  ) => {
-    if (isError) {
-      const userFriendlyMessages = {
-        vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
-        staff: 'Unable to load staff data. Please check your connection and try again.'
+  const handleApiResponse = useCallback(
+    <T extends { _id: string; name?: string }>(
+      data: { data?: T[] } | undefined,
+      error: any,
+      isError: boolean,
+      dataType: ApiDataType,
+      mapFunction: (item: T) => SelectOption
+    ) => {
+      if (isError && error) {
+        dispatch({
+          type: 'SET_API_ERROR',
+          payload: { dataType, error: API_ERROR_MESSAGES[dataType] },
+        })
+      } else if (data?.data && data.data.length > 0) {
+        const options = data.data.map(mapFunction)
+        dispatch({ type: 'SET_SELECT_OPTIONS', payload: { dataType, options } })
+      } else {
+        dispatch({ type: 'SET_SELECT_OPTIONS', payload: { dataType, options: [] } })
       }
-      setApiErrors(prev => ({
-        ...prev,
-        [errorKey]: userFriendlyMessages[errorKey]
-      }))
-      setOptions([])
-    } else if (data?.data?.length > 0) {
-      const options = data.data.map(mapFunction)
-      setOptions(options)
-      setApiErrors(prev => ({
-        ...prev,
-        [errorKey]: ''
-      }))
-    } else {
-      setOptions([])
-      setApiErrors(prev => ({
-        ...prev,
-        [errorKey]: ''
-      }))
-    }
-  }
+    },
+    []
+  )
 
-  // Generate options for SelectInput based on loading/error states
-  const getSelectOptions = (
-    isLoading: boolean,
-    isError: boolean,
-    options: { key: any; value: any }[],
-    loadingText: string,
-    errorText: string,
-    noDataText: string
-  ) => {
-    if (isLoading) return [{ key: 'loading', value: loadingText }]
-    if (isError) return [{ key: 'error', value: errorText }]
-    if (options.length > 0) return options
-    return [{ key: 'no-data', value: noDataText }]
-  }
-
-  // Check if a value should be ignored in change handlers
-  const isPlaceholderValue = (value: string, type: 'vehicles' | 'staff') => {
-    const placeholders = {
-      vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
-      staff: ['Please wait...', 'Unable to load options', 'No staff found']
-    }
-    return placeholders[type].includes(value)
-  }
-
-  // Unified function to update vehicle details
-  const updateVehicleDetails = (updates: Partial<Pick<ExpenseModel, 'vehicleCategory' | 'vehicle'>>) => {
-    setExpense(prev => ({
-      ...prev,
-      ...updates
-    }))
-  }
-
-  // Unified function to update staff details
-  const updateStaffDetails = (updates: Partial<Pick<ExpenseModel, 'staffCategory' | 'staff'>>) => {
-    setExpense(prev => ({
-      ...prev,
-      ...updates
-    }))
-  }
-
-  const [errorMap, setErrorMap] = useState<Record<string, any>>(sampleExpenseModel)
-  const [isValidationError, setIsValidationError] = useState(false)
-
-  useEffect(() => {
-    if (category === 'vehicle') {
-      handleApiResponse(
-        vehicles,
-        vehiclesError,
-        vehiclesIsError,
-        'vehicles',
-        setVehicleOptions,
-        (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name })
-      )
-    }
-  }, [vehicles, vehiclesError, vehiclesIsError, category])
-
-  useEffect(() => {
-    if (category === 'staff') {
-      handleApiResponse(
-        staffMembers,
-        staffError,
-        staffIsError,
-        'staff',
-        setStaffOptions,
-        (staffMember: { _id: any; name: any }) => ({ key: staffMember._id, value: staffMember.name })
-      )
-    }
-  }, [staffMembers, staffError, staffIsError, category])
-
-  const navigateBack = () => {
+  const navigateBack = useCallback(() => {
     navigate(`/expenses/${category}`)
-  }
+  }, [navigate, category])
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
+  const closeConfirmationModal = useCallback(() => {
+    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
+  }, [])
 
-  const submitHandler = async () => {
-    // Check for API errors before validation
+  const handleSubmit = useCallback(async () => {
+    // Check for API errors
     const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
     if (hasApiErrors) {
-      console.log('Cannot submit: API errors present', apiErrors)
+      console.error('Cannot submit: API errors present', apiErrors)
       return
     }
 
+    // Validate form
     const validationSchema = createValidationSchema(expense)
     const { isValid, errorMap } = validatePayload(validationSchema, expense)
 
-    setIsValidationError(!isValid)
-    setErrorMap(errorMap)
-    if (isValid) {
-      setIsValidationError(false)
-      try {
-        if (isEditing) {
-          // await updateExpense.mutateAsync({ _id: expenseId, ...expense })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Expense updated successfully!')
-        } else {
-          await createExpense.mutateAsync({ ...expense, category: nameToPath(category) })
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New Expense created successfully!')
-        }
+    dispatch({
+      type: 'SET_VALIDATION_ERRORS',
+      payload: { errors: errorMap, hasError: !isValid },
+    })
 
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
-      } catch (error) {
-        console.log('Unable to create/update expense', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Error')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} expense. Please try again.`)
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
-      }
-    } else {
-      console.log('Create Expense: Validation Error', errorMap)
+    if (!isValid) {
+      console.error('Validation Error', errorMap)
+      return
     }
-  }
+
+    try {
+      if (isEditing) {
+        await updateExpense.mutateAsync({ _id: expenseId, ...expense })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'update',
+            title: 'Success',
+            subtitle: 'Expense updated successfully!',
+          },
+        })
+      } else {
+        await createExpense.mutateAsync({ ...expense, category: nameToPath(category) })
+        dispatch({
+          type: 'SET_CONFIRMATION_MODAL',
+          payload: {
+            show: true,
+            type: 'create',
+            title: 'Success',
+            subtitle: 'New expense created successfully!',
+          },
+        })
+      }
+
+      setTimeout(() => {
+        dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: true } })
+      }, 500)
+    } catch (error) {
+      console.error('Unable to create/update expense', error)
+      dispatch({
+        type: 'SET_CONFIRMATION_MODAL',
+        payload: {
+          show: true,
+          type: 'delete',
+          title: 'Error',
+          subtitle: `Unable to ${isEditing ? 'update' : 'create'} expense. Please try again.`,
+        },
+      })
+    }
+  }, [apiErrors, expense, isEditing, expenseId, updateExpense, createExpense, category])
+
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  // Load expense data when editing
+  useEffect(() => {
+    if (expenseDataResponse) {
+      const transformedExpense = transformExpenseResponse(expenseDataResponse, category)
+      dispatch({ type: 'SET_EXPENSE', payload: transformedExpense })
+      dispatch({
+        type: 'SET_EDITING_MODE',
+        payload: { isEditing: true, expenseId: params.id || '' },
+      })
+    }
+  }, [expenseDataResponse, params.id, category])
+
+  // Handle vehicles data
+  useEffect(() => {
+    if (category === 'vehicle') {
+      handleApiResponse(
+        vehiclesQuery.data,
+        vehiclesQuery.error,
+        vehiclesQuery.isError,
+        'vehicles',
+        (vehicle: { _id: string; name: string }) => ({
+          key: vehicle._id,
+          value: vehicle.name,
+        })
+      )
+    }
+  }, [vehiclesQuery.data, vehiclesQuery.error, vehiclesQuery.isError, category, handleApiResponse])
+
+  // Handle staff data
+  useEffect(() => {
+    if (category === 'staff') {
+      handleApiResponse(
+        staffQuery.data,
+        staffQuery.error,
+        staffQuery.isError,
+        'staff',
+        (staffMember: { _id: string; name: string }) => ({
+          key: staffMember._id,
+          value: staffMember.name,
+        })
+      )
+    }
+  }, [staffQuery.data, staffQuery.error, staffQuery.isError, category, handleApiResponse])
+
+  // ============================================================================
+  // MEMOIZED VALUES
+  // ============================================================================
+
+  const categoryDisplayName = useMemo(() => pathToName(category), [category])
+
+  const breadcrumbData = useMemo(
+    () => [
+      { label: 'Home', route: '/dashboard' },
+      { label: `${categoryDisplayName} Expenses`, route: `/expenses/${category}` },
+      { label: `${isEditing ? 'Edit' : 'New'} ${categoryDisplayName} Expense` },
+    ],
+    [categoryDisplayName, category, isEditing]
+  )
+
+  const vehicleSelectOptions = useMemo(
+    () =>
+      getSelectOptions(
+        vehiclesQuery.isLoading,
+        vehiclesQuery.isError,
+        selectOptions.vehicles,
+        'Please wait...',
+        'Unable to load options',
+        'No vehicles found'
+      ),
+    [vehiclesQuery.isLoading, vehiclesQuery.isError, selectOptions.vehicles]
+  )
+
+  const staffSelectOptions = useMemo(
+    () =>
+      getSelectOptions(
+        staffQuery.isLoading,
+        staffQuery.isError,
+        selectOptions.staff,
+        'Please wait...',
+        'Unable to load options',
+        'No staff found'
+      ),
+    [staffQuery.isLoading, staffQuery.isError, selectOptions.staff]
+  )
+
+  const selectedVehicleValue = useMemo(() => {
+    const vehicleId = expense.vehicle
+    if (!vehicleId || !selectOptions.vehicles.length) return ''
+    const option = selectOptions.vehicles.find(opt => opt.key === vehicleId)
+    return option?.value || ''
+  }, [expense.vehicle, selectOptions.vehicles])
+
+  const selectedStaffValue = useMemo(() => {
+    const staffId = expense.staff
+    if (!staffId || !selectOptions.staff.length) return ''
+    const option = selectOptions.staff.find(opt => opt.key === staffId)
+    return option?.value || ''
+  }, [expense.staff, selectOptions.staff])
+
+  const hasApiErrors = useMemo(
+    () => Object.values(apiErrors).some(error => error !== ''),
+    [apiErrors]
+  )
+
+  // ============================================================================
+  // SELECT CHANGE HANDLERS
+  // ============================================================================
+
+  const handleVehicleChange = useCallback(
+    (value: { vehicle?: string }) => {
+      const vehicleValue = value.vehicle?.toString() || ''
+      if (isPlaceholderValue(vehicleValue, 'vehicles')) return
+
+      const selectedOption = selectOptions.vehicles.find(option => option.value === vehicleValue)
+      handleVehicleDetailsChange({ vehicle: selectedOption?.key || '' })
+    },
+    [selectOptions.vehicles, handleVehicleDetailsChange]
+  )
+
+  const handleStaffChange = useCallback(
+    (value: { staff?: string }) => {
+      const staffValue = value.staff?.toString() || ''
+      if (isPlaceholderValue(staffValue, 'staff')) return
+
+      const selectedOption = selectOptions.staff.find(option => option.value === staffValue)
+      handleStaffDetailsChange({ staff: selectedOption?.key || '' })
+    },
+    [selectOptions.staff, handleStaffDetailsChange]
+  )
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   return (
     <>
@@ -253,23 +546,9 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
             color="gray-darker"
             typography="l"
           >
-            {`${isEditing ? 'Edit' : 'New'} ${pathToName(category)} Expense`}
+            {`${isEditing ? 'Edit' : 'New'} ${categoryDisplayName} Expense`}
           </Text>
-          <Breadcrumb
-            data={[
-              {
-                label: 'Home',
-                route: '/dashboard',
-              },
-              {
-                label: `${pathToName(category)} Expenses`,
-                route: `/expenses/${category}`,
-              },
-              {
-                label: `${isEditing ? 'Edit' : 'New'} ${pathToName(category)} Expense`,
-              },
-            ]}
-          />
+          <Breadcrumb data={breadcrumbData} />
         </div>
         {isValidationError && (
           <Alert
@@ -278,7 +557,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
             className={bemClass([blk, 'margin-bottom'])}
           />
         )}
-        {(apiErrors.vehicles || apiErrors.staff) && (
+        {hasApiErrors && (
           <Alert
             type="error"
             message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
@@ -302,14 +581,11 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   type={CONFIGURED_INPUT_TYPES.SELECT}
                   value={expense.type}
                   changeHandler={value => {
-                    setExpense({
-                      ...expense,
-                      type: value.type?.toString() ?? '',
-                    })
+                    handleExpenseFieldChange('type', value.type?.toString() ?? '')
                   }}
                   required
-                  errorMessage={errorMap['type']}
-                  invalid={errorMap['type']}
+                  errorMessage={validationErrors['type']}
+                  invalid={!!validationErrors['type']}
                 />
               </Column>
               <Column
@@ -323,14 +599,11 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   type={CONFIGURED_INPUT_TYPES.SELECT}
                   value={expense.paymentMethod}
                   changeHandler={value => {
-                    setExpense({
-                      ...expense,
-                      paymentMethod: value.paymentMethod?.toString() ?? '',
-                    })
+                    handleExpenseFieldChange('paymentMethod', value.paymentMethod?.toString() ?? '')
                   }}
                   required
-                  errorMessage={errorMap['paymentMethod']}
-                  invalid={errorMap['paymentMethod']}
+                  errorMessage={validationErrors['paymentMethod']}
+                  invalid={!!validationErrors['paymentMethod']}
                 />
               </Column>
               <Column
@@ -343,14 +616,11 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   type="date"
                   value={expense.date ? new Date(expense.date).toISOString().slice(0, 10) : ''}
                   changeHandler={value => {
-                    setExpense({
-                      ...expense,
-                      date: value.date ? new Date(value.date) : null,
-                    })
+                    handleExpenseFieldChange('date', value.date ? new Date(value.date) : null)
                   }}
                   required
-                  errorMessage={errorMap['date']}
-                  invalid={errorMap['date']}
+                  errorMessage={validationErrors['date']}
+                  invalid={!!validationErrors['date']}
                 />
               </Column>
             </Row>
@@ -365,14 +635,11 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   type="number"
                   value={expense.amount ?? ''}
                   changeHandler={value => {
-                    setExpense({
-                      ...expense,
-                      amount: value.amount ? Number(value.amount) : '',
-                    })
+                    handleExpenseFieldChange('amount', value.amount ? Number(value.amount) : '')
                   }}
                   required
-                  errorMessage={errorMap['amount']}
-                  invalid={errorMap['amount']}
+                  errorMessage={validationErrors['amount']}
+                  invalid={!!validationErrors['amount']}
                 />
               </Column>
               <Column
@@ -384,14 +651,11 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   name="location"
                   value={expense.location}
                   changeHandler={value => {
-                    setExpense({
-                      ...expense,
-                      location: value.location?.toString() ?? '',
-                    })
+                    handleExpenseFieldChange('location', value.location?.toString() ?? '')
                   }}
                   required
-                  errorMessage={errorMap['location']}
-                  invalid={errorMap['location']}
+                  errorMessage={validationErrors['location']}
+                  invalid={!!validationErrors['location']}
                 />
               </Column>
             </Row>
@@ -414,14 +678,14 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                     name="vehicleCategory"
                     value={expense.vehicleCategory || ''}
                     changeHandler={value => {
-                      updateVehicleDetails({
+                      handleVehicleDetailsChange({
                         vehicleCategory: value.vehicleCategory?.toString() ?? '',
                         vehicle: '' // Reset vehicle when category changes
                       })
                     }}
                     required
-                    errorMessage={errorMap['vehicleCategory']}
-                    invalid={errorMap['vehicleCategory']}
+                    errorMessage={validationErrors['vehicleCategory']}
+                    invalid={!!validationErrors['vehicleCategory']}
                   />
                 </Column>
                 <Column
@@ -431,29 +695,13 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   <SelectInput
                     label="Vehicle"
                     name="vehicle"
-                    options={getSelectOptions(
-                      vehiclesLoading,
-                      vehiclesIsError,
-                      vehicleOptions,
-                      'Please wait...',
-                      'Unable to load options',
-                      'No vehicles found'
-                    )}
-                    value={
-                      expense.vehicle 
-                        ? (vehicleOptions.find((option: any) => option.key === expense.vehicle) as any)?.value ?? ''
-                        : ''
-                    }
-                    changeHandler={value => {
-                      if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
-                      
-                      const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
-                      updateVehicleDetails({ vehicle: selectedOption?.key ?? '' })
-                    }}
+                    options={vehicleSelectOptions}
+                    value={selectedVehicleValue}
+                    changeHandler={handleVehicleChange}
                     required
-                    errorMessage={errorMap['vehicle']}
-                    invalid={errorMap['vehicle']}
-                    disabled={!expense.vehicleCategory || vehiclesLoading || vehiclesIsError}
+                    errorMessage={validationErrors['vehicle']}
+                    invalid={!!validationErrors['vehicle']}
+                    disabled={!expense.vehicleCategory || vehiclesQuery.isLoading || vehiclesQuery.isError}
                   />
                 </Column>
               </Row>
@@ -477,14 +725,14 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                     configToUse="Staff category"
                     type={CONFIGURED_INPUT_TYPES.SELECT}
                     changeHandler={value => {
-                      updateStaffDetails({
+                      handleStaffDetailsChange({
                         staffCategory: value.staffCategory?.toString() ?? '',
                         staff: '' // Reset staff when category changes
                       })
                     }}
                     required
-                    errorMessage={errorMap['staffCategory']}
-                    invalid={errorMap['staffCategory']}
+                    errorMessage={validationErrors['staffCategory']}
+                    invalid={!!validationErrors['staffCategory']}
                   />
                 </Column>
                 <Column
@@ -494,29 +742,13 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                   <SelectInput
                     label="Staff"
                     name="staff"
-                    options={getSelectOptions(
-                      staffLoading,
-                      staffIsError,
-                      staffOptions,
-                      'Please wait...',
-                      'Unable to load options',
-                      'No staff found'
-                    )}
-                    value={
-                      expense.staff && staffOptions.length > 0
-                        ? (staffOptions.find((option: any) => option.key === expense.staff) as any)?.value ?? ''
-                        : expense.staff ?? ''
-                    }
-                    changeHandler={value => {
-                      if (isPlaceholderValue(value.staff?.toString() || '', 'staff')) return
-                      
-                      const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
-                      updateStaffDetails({ staff: selectedOption?.key ?? '' })
-                    }}
+                    options={staffSelectOptions}
+                    value={selectedStaffValue}
+                    changeHandler={handleStaffChange}
                     required
-                    errorMessage={errorMap['staff']}
-                    invalid={errorMap['staff']}
-                    disabled={!expense.staffCategory || staffLoading || staffIsError}
+                    errorMessage={validationErrors['staff']}
+                    invalid={!!validationErrors['staff']}
+                    disabled={!expense.staffCategory || staffQuery.isLoading || staffQuery.isError}
                   />
                 </Column>
               </Row>
@@ -532,10 +764,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
               name="comment"
               value={expense.comment}
               changeHandler={value => {
-                setExpense({
-                  ...expense,
-                  comment: value.comment?.toString() ?? '',
-                })
+                handleExpenseFieldChange('comment', value.comment?.toString() ?? '')
               }}
               placeholder="Enter any additional comments or notes here..."
             />
@@ -553,7 +782,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
             <Button
               size="medium"
               category="primary"
-              clickHandler={submitHandler}
+              clickHandler={handleSubmit}
             >
               {isEditing ? 'Update' : 'Submit'}
             </Button>
@@ -562,18 +791,14 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
       </div>
       <Modal
         show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
+        closeHandler={closeConfirmationModal}
       >
         <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
+          type={confirmationModal.type}
+          title={confirmationModal.title}
+          subTitle={confirmationModal.subtitle}
           confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
+          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
         />
       </Modal>
     </>

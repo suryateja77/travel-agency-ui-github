@@ -14,6 +14,10 @@ const CategoryCustomers: FunctionComponent = () => {
         path="create"
         element={<CreateCustomer category={params.category} />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateCustomer category={params.category} />}
+      />
     </Routes>
   )
 }

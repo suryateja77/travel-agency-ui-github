@@ -17,6 +17,10 @@ const CategoryExpenses: FunctionComponent<ExpensesProps> = () => {
         path="create"
         element={<CreateExpense category={params.category} />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateExpense category={params.category} />}
+      />
     </Routes>
   )
 }
