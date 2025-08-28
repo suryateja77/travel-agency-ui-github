@@ -1,6 +1,6 @@
 import { FunctionComponent, useReducer, useEffect, useMemo, useCallback } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Text, Breadcrumb } from '@base'
-import { StaffModel } from '@types'
+import { INITIAL_STAFF, StaffModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 
 import './style.scss'
@@ -53,30 +53,6 @@ type FormAction =
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; staffId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const INITIAL_STAFF: StaffModel = {
-  name: '',
-  contact: '',
-  whatsAppNumber: '',
-  email: '',
-  joiningDate: null,
-  salary: '',
-  license: '',
-  isActive: true,
-  comment: '',
-  address: {
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    state: '',
-    pinCode: '',
-  },
-  category: '',
-} as const
 
 // ============================================================================
 // REDUCER & INITIAL STATE

@@ -124,7 +124,7 @@ export interface StaffModel {
   category: string
 }
 
-export const sampleStaffModel: StaffModel = {
+export const INITIAL_STAFF: StaffModel = {
   name: '',
   contact: '',
   whatsAppNumber: '',
@@ -142,7 +142,7 @@ export const sampleStaffModel: StaffModel = {
     pinCode: '',
   },
   category: '',
-}
+} as const
 
 // --------------------------------------------------------------------------------------------------------
 
