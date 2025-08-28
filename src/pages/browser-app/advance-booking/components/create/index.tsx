@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
 import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert, ConfirmationPopup, Modal } from '@base'
-import { AdvanceBookingModel, CustomerModel } from '@types'
+import { AdvanceBookingModel, CustomerModel, INITIAL_ADVANCE_BOOKING } from '@types'
 import { bemClass, validatePayload } from '@utils'
 
 import './style.scss'
@@ -60,20 +60,6 @@ type FormAction =
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-
-const INITIAL_ADVANCE_BOOKING: AdvanceBookingModel = {
-  customerType: 'existing',
-  pickUpLocation: '',
-  dropOffLocation: '',
-  pickUpDateTime: null,
-  noOfSeats: null,
-  hasAc: false,
-  vehicleType: '',
-  customerCategory: null,
-  customer: null,
-  customerDetails: null,
-  comment: '',
-} as const
 
 const INITIAL_CUSTOMER_DETAILS = {
   name: '',

@@ -41,8 +41,10 @@ const AdvanceBookingList: FunctionComponent<Props> = () => {
   const columns = [
     {
       label: 'Pickup Date',
-      custom: ({ pickUpDateTime }: { pickUpDateTime: string }) => (
-        <>{formatDate(pickUpDateTime)}</>
+      custom: ({ _id, pickUpDateTime }: { _id: string; pickUpDateTime: string }) => (
+        <Anchor asLink href={`/advance-booking/${_id}/detail`}>
+          {formatDate(pickUpDateTime)}
+        </Anchor>
       ),
     },
     {

@@ -2,6 +2,7 @@ import React, { FunctionComponent } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import AdvanceBookingList from './components/list'
 import CreateAdvanceBooking from './components/create'
+import AdvanceBookingDetail from './components/detail'
 
 interface AdvanceBookingsProps {}
 
@@ -19,6 +20,10 @@ const AdvanceBookings: FunctionComponent<AdvanceBookingsProps> = () => {
       <Route
         path=":id/edit"
         element={<CreateAdvanceBooking />}
+      />
+      <Route
+        path=":id/detail"
+        element={<AdvanceBookingDetail />}
       />
     </Routes>
   )

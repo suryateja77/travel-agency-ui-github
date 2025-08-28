@@ -9,6 +9,7 @@ import { staffDetailsFields } from './model'
 import { StaffModel, INITIAL_STAFF } from '@types'
 import PageDetail from '@base/page-detail'
 import { useStaffByIdQuery } from '@api/queries/staff'
+import { Alert } from '@base'
 
 const blk = 'staff-detail'
 
@@ -17,12 +18,12 @@ interface StaffDetailProps {}
 const StaffDetail: FunctionComponent<StaffDetailProps> = () => {
   const params = useParams()
 
-  const {data: currentStaffData, isLoading} = useStaffByIdQuery(params.id || '')
+  const { data: currentStaffData, isLoading, error } = useStaffByIdQuery(params.id || '')
   const [staffData, setStaffData] = useState<StaffModel>(INITIAL_STAFF)
 
   useEffect(() => {
     if (currentStaffData) {
-        console.log('Fetched staff data:', currentStaffData)
+      console.log('Fetched staff data:', currentStaffData)
       setStaffData(currentStaffData)
     }
   }, [currentStaffData])
@@ -40,8 +41,16 @@ const StaffDetail: FunctionComponent<StaffDetailProps> = () => {
       <div className={bemClass([blk, 'content'])}>
         {isLoading ? (
           <Loader type="form" />
+        ) : error ? (
+          <Alert
+            type="error"
+            message={'Unable to get the details, please try later'}
+          />
         ) : (
-          <PageDetail pageData={staffData} pageDataTemplate={staffDetailsFields} />
+          <PageDetail
+            pageData={staffData}
+            pageDataTemplate={staffDetailsFields}
+          />
         )}
       </div>
     </div>

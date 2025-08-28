@@ -162,6 +162,21 @@ const parseDateTimeFromInput = (value: string): Date | null => {
   return new Date(value)
 }
 
+const formatDateValueForDisplay = (value: Date | null): string => {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const formatBooleanValueForDisplay = (value: boolean): string => {
+  return value ? 'Yes' : 'No'
+}
+
 export { 
   computeValue, 
   bemClass, 
@@ -175,5 +190,7 @@ export {
   pathToName, 
   nameToPath,
   formatDateTimeForInput,
-  parseDateTimeFromInput
+  parseDateTimeFromInput,
+  formatDateValueForDisplay,
+  formatBooleanValueForDisplay
 }

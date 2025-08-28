@@ -286,6 +286,21 @@ export interface AdvanceBookingModel {
   } | null
   comment: string
 }
+
+export const INITIAL_ADVANCE_BOOKING: AdvanceBookingModel = {
+  customerType: 'existing',
+  pickUpLocation: '',
+  dropOffLocation: '',
+  pickUpDateTime: null,
+  noOfSeats: null,
+  hasAc: false,
+  vehicleType: '',
+  customerCategory: null,
+  customer: null,
+  customerDetails: null,
+  comment: '',
+} as const
+
 //
 export interface AdvancePaymentModel {
   staffCategory: string
