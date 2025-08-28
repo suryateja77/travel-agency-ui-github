@@ -17,6 +17,10 @@ const CategoryStaff: FunctionComponent<StaffProps> = () => {
         path="create"
         element={<CreateStaff category={params.category} />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateStaff category={params.category} />}
+      />
     </Routes>
   )
 }
