@@ -360,6 +360,21 @@ export interface VehicleModel {
   isActive: boolean
   comments: string
 }
+
+export const INITIAL_VEHICLE: VehicleModel = {
+  type: '',
+  manufacturer: '',
+  name: '',
+  noOfSeats: '',
+  registrationNo: '',
+  hasAc: false,
+  isMonthlyFixed: false,
+  monthlyFixedDetails: null,
+  category: '',
+  isActive: true,
+  comments: '',
+} as const
+
 //
 export interface StaffModel {
   name: string
