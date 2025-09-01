@@ -327,6 +327,16 @@ export interface AdvancePaymentModel {
   amount: string | number
   comment: string
 }
+
+export const INITIAL_ADVANCE_PAYMENT: AdvancePaymentModel = {
+  staffCategory: '',
+  staff: '',
+  paymentDate: null,
+  paymentMethod: '',
+  amount: '',
+  comment: '',
+} as const
+
 //
 export interface PackageModel {
   category: string

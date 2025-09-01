@@ -46,8 +46,10 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
     },
     {
       label: 'Payment Date',
-      custom: ({ paymentDate }: { paymentDate: string }) => (
-        <>{formatDate(paymentDate)}</>
+      custom: ({ paymentDate, _id }: { paymentDate: string; _id: string }) => (
+        <Anchor asLink href={`/advance-payments/${_id}/detail`}>
+          {formatDate(paymentDate)}
+        </Anchor>
       ),
     },
     {
