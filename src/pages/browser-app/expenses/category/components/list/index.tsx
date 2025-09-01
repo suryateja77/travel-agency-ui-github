@@ -55,8 +55,10 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
     const baseColumns = [
       {
         label: 'Expense Date',
-        custom: ({ date }: { date: string }) => (
-          <>{formatDate(date)}</>
+        custom: ({ _id, date }: { _id: string; date: string }) => (
+          <Anchor asLink href={`/expenses/${category}/${_id}/detail`}>
+            {formatDate(date)}
+          </Anchor>
         ),
       },
       {

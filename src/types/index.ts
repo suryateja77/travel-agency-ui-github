@@ -426,3 +426,17 @@ export interface ExpenseModel {
   comment: string
   category: string
 }
+
+export const INITIAL_EXPENSE: ExpenseModel = {
+  type: '',
+  paymentMethod: '',
+  date: null,
+  amount: '',
+  location: '',
+  vehicleCategory: null,
+  vehicle: null,
+  staffCategory: null,
+  staff: null,
+  comment: '',
+  category: '',
+} as const
