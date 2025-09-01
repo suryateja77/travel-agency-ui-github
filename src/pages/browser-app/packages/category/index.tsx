@@ -2,6 +2,7 @@ import React, { FunctionComponent } from 'react'
 import { Routes, Route, useParams } from 'react-router-dom'
 import PackagesList from './components/list'
 import CreatePackage from './components/create'
+import PackageDetail from './components/detail'
 
 interface PackagesProps {}
 
@@ -22,6 +23,10 @@ const CategoryPackages: FunctionComponent<PackagesProps> = () => {
       <Route
         path=":id/edit"
         element={<CreatePackage category={category} />}
+      />
+      <Route
+        path=":id/detail"
+        element={<PackageDetail />}
       />
     </Routes>
   )

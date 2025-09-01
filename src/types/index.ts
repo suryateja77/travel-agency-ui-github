@@ -322,6 +322,19 @@ export interface PackageModel {
   comment?: string
   isActive: boolean
 }
+
+export const INITIAL_PACKAGE: PackageModel = {
+  category: '',
+  packageCode: '',
+  minimumKm: '',
+  minimumHr: '',
+  baseAmount: '',
+  extraKmPerKmRate: '',
+  extraHrPerHrRate: '',
+  comment: '',
+  isActive: true,
+} as const
+
 //
 export interface VehicleModel {
   type: string
