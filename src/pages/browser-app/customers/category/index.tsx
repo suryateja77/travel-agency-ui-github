@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'react'
 import { Routes, Route, useParams } from 'react-router-dom'
 import { CustomersList, CreateCustomer } from './components'
+import CustomerDetail from './components/detail'
 
 const CategoryCustomers: FunctionComponent = () => {
   const params = useParams()
@@ -17,6 +18,10 @@ const CategoryCustomers: FunctionComponent = () => {
       <Route
         path=":id/edit"
         element={<CreateCustomer category={params.category} />}
+      />
+      <Route
+        path=":id/detail"
+        element={<CustomerDetail />}
       />
     </Routes>
   )

@@ -99,6 +99,23 @@ export interface CustomerModel {
   category: string
 }
 
+export const INITIAL_CUSTOMER: CustomerModel = {
+  name: '',
+  contact: '',
+  whatsAppNumber: '',
+  email: '',
+  address: {
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    pinCode: '',
+  },
+  isActive: true,
+  comment: '',
+  category: '',
+} as const
+
 // --------------------------------------------------------------------------------------------------------
 
 export interface StaffAddress {
