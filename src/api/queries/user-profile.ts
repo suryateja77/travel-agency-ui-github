@@ -1,7 +1,17 @@
-import { patch, post } from '@api'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { patch, post, get } from '@api'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 
 const API_BASE_URL = '/user-profile'
+
+export const useUserProfileQuery = () => {
+  return useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const response = await get(`${API_BASE_URL}`)
+      return response.data
+    },
+  })
+}
 
 export const useUpdateUserProfileMutation = () => {
   const queryClient = useQueryClient()

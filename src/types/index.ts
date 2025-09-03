@@ -24,9 +24,7 @@ export interface Panel {
 export interface Address {
   addressLine1: string
   addressLine2: string
-  landmark: string
   city: string
-  country: string
   state: string
   pinCode: string
 }
@@ -34,9 +32,7 @@ export interface Address {
 const sampleAddress: Address = {
   addressLine1: '',
   addressLine2: '',
-  landmark: '',
   city: '',
-  country: '',
   state: '',
   pinCode: '',
 }
@@ -450,3 +446,39 @@ export const INITIAL_EXPENSE: ExpenseModel = {
   comment: '',
   category: '',
 } as const
+
+//
+
+export interface UserProfile {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  isActive: boolean
+  agencyName: string
+  agencyRegistrationNo: string
+  address: Address
+  primaryContact: string
+  secondaryContact: string
+  websiteLink: string
+  linkedInLink: string
+  facebookLink: string
+  instagramLink: string
+}
+
+export const sampleUserProfile: UserProfile = {
+  id: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  isActive: true,
+  agencyName: '',
+  agencyRegistrationNo: '',
+  address: sampleAddress,
+  primaryContact: '',
+  secondaryContact: '',
+  websiteLink: '',
+  linkedInLink: '',
+  facebookLink: '',
+  instagramLink: '',
+}
