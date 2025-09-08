@@ -23,6 +23,7 @@ import Staff from '@pages/browser-app/staff'
 import CategoryStaff from '@pages/browser-app/staff/category'
 import Customers from '@pages/browser-app/customers'
 import CategoryCustomers from '@pages/browser-app/customers/category'
+import Suppliers from '@pages/browser-app/suppliers'
 
 const blk = 'browse-app'
 
@@ -154,6 +155,10 @@ const BrowseApp = () => {
                 <Route
                   path="/advance-payments/*"
                   element={<AdvancePayments />}
+                />
+                <Route
+                  path="/suppliers/*"
+                  element={<Suppliers />}
                 />
                 <Route
                   path="/settings/*"

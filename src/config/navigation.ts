@@ -9,6 +9,7 @@ import PaymentsIcon from '../images/icons/payments.webp'
 import ReportsIcon from '../images/icons/report.webp'
 import AdvanceBooking from '../images/icons/advance-booking.webp'
 import AdvancePayment from '../images/icons/advance-payment.webp'
+import Supplier from '../images/icons/supplier.webp'
 import SettingsIcon from '../images/icons/business.webp'
 
 import DashboardIconSelected from '../images/icons/dashboard-selected.webp'
@@ -22,6 +23,7 @@ import PaymentsIconSelected from '../images/icons/payments-selected.webp'
 import ReportsIconSelected from '../images/icons/report-selected.webp'
 import AdvanceBookingSelected from '../images/icons/advance-booking-selected.webp'
 import AdvancePaymentSelected from '../images/icons/advance-payment-selected.webp'
+import SupplierSelected from '../images/icons/supplier-selected.webp'
 import SettingsIconSelected from '../images/icons/business-selected.webp'
 
 type SubRoute = {
@@ -191,6 +193,15 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
         image: {
           selected: AdvancePaymentSelected,
           unselected: AdvancePayment,
+        },
+      },
+      {
+        path: '/suppliers',
+        configurable: false,
+        name: 'Suppliers',
+        image: {
+          selected: SupplierSelected,
+          unselected: Supplier,
         },
       },
       {

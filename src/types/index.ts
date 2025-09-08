@@ -446,9 +446,7 @@ export const INITIAL_EXPENSE: ExpenseModel = {
   comment: '',
   category: '',
 } as const
-
 //
-
 export interface UserProfile {
   id: string
   firstName: string
@@ -481,4 +479,26 @@ export const sampleUserProfile: UserProfile = {
   linkedInLink: '',
   facebookLink: '',
   instagramLink: '',
+}
+//
+export interface SupplierModel {
+  companyName: string
+  contact: string
+  whatsAppNumber: string
+  email: string
+  address: Address
+  pointOfContact: PointOfContact
+  isActive: boolean
+  comment?: string
+}
+
+export const INITIAL_SUPPLIER: SupplierModel = {
+  companyName: '',
+  contact: '',
+  whatsAppNumber: '',
+  email: '',
+  address: sampleAddress,
+  pointOfContact: samplePointOfContact,
+  isActive: true,
+  comment: '',
 }
