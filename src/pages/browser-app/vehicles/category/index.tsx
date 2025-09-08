@@ -24,7 +24,7 @@ const CategoryVehicles: FunctionComponent<VehiclesProps> = () => {
       />
       <Route
         path=":id/detail"
-        element={<VehicleDetail />}
+        element={<VehicleDetail category={params.category} />}
       />
     </Routes>
   )

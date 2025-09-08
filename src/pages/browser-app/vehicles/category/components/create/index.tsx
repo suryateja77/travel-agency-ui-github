@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
-import { VehicleModel, CustomerModel, PackageModel, StaffModel } from '@types'
+import { VehicleModel, CustomerModel, PackageModel, StaffModel, SupplierModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
 
 import './style.scss'
@@ -10,6 +10,7 @@ import { useCreateVehicleMutation, useUpdateVehicleMutation, useVehicleByIdQuery
 import { useCustomerByCategory } from '@api/queries/customer'
 import { usePackageByCategory } from '@api/queries/package'
 import { useStaffByCategory } from '@api/queries/staff'
+import { useSuppliersQuery } from '@api/queries/supplier'
 import ConfiguredInput from '@base/configured-input'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 import Loader from '@components/loader'
@@ -20,8 +21,9 @@ const blk = 'create-vehicle'
 // TYPESCRIPT INTERFACES & TYPES
 // ============================================================================
 
-interface VehicleResponseModel extends Omit<VehicleModel, 'monthlyFixedDetails'> {
+interface VehicleResponseModel extends Omit<VehicleModel, 'monthlyFixedDetails' | 'supplier'> {
   _id: string
+  supplier?: SupplierModel | string
   monthlyFixedDetails?: {
     customerCategory: string | null
     customer: CustomerModel | string | null
@@ -62,12 +64,14 @@ interface ApiErrors {
   customers: string
   packages: string
   staff: string
+  suppliers: string
 }
 
 interface SelectOptions {
   customers: SelectOption[]
   packages: SelectOption[]
   staff: SelectOption[]
+  suppliers: SelectOption[]
 }
 
 interface ConfirmationModal {
@@ -114,6 +118,7 @@ const INITIAL_VEHICLE: VehicleModel = {
   noOfSeats: '',
   registrationNo: '',
   hasAc: false,
+  supplier: '',
   isMonthlyFixed: false,
   monthlyFixedDetails: null,
   category: '',
@@ -136,12 +141,14 @@ const API_ERROR_MESSAGES = {
   customers: 'Unable to load customer data. Please check your connection and try again.',
   packages: 'Unable to load package information. Please check your connection and try again.',
   staff: 'Unable to load staff data. Please check your connection and try again.',
+  suppliers: 'Unable to load supplier data. Please check your connection and try again.',
 } as const
 
 const PLACEHOLDER_VALUES = {
   customers: ['Please wait...', 'Unable to load options', 'No customers found'],
   packages: ['Please wait...', 'Unable to load options', 'No packages found'],
   staff: ['Please wait...', 'Unable to load options', 'No staff found'],
+  suppliers: ['Please wait...', 'Unable to load options', 'No suppliers found'],
 } as const
 
 // ============================================================================
@@ -165,11 +172,13 @@ const initialState: FormState = {
     customers: '',
     packages: '',
     staff: '',
+    suppliers: '',
   },
   selectOptions: {
     customers: [],
     packages: [],
     staff: [],
+    suppliers: [],
   },
 }
 
@@ -252,6 +261,7 @@ const transformVehicleResponse = (response: VehicleResponseModel): VehicleModel 
   noOfSeats: response.noOfSeats || '',
   registrationNo: response.registrationNo || '',
   hasAc: response.hasAc || false,
+  supplier: extractIdFromResponse(response.supplier),
   isMonthlyFixed: response.isMonthlyFixed || false,
   monthlyFixedDetails: response.monthlyFixedDetails
     ? {
@@ -332,6 +342,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
   const customersQuery = useCustomerByCategory(categoryPaths.customer)
   const packagesQuery = usePackageByCategory(categoryPaths.package)
   const staffQuery = useStaffByCategory(categoryPaths.staff)
+  const suppliersQuery = useSuppliersQuery()
 
   // ============================================================================
   // HANDLERS
@@ -388,7 +399,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     }
 
     // Validate form
-    const validationSchema = createValidationSchema(vehicle)
+    const validationSchema = createValidationSchema(vehicle, category)
     const { isValid, errorMap } = validatePayload(validationSchema, vehicle)
 
     dispatch({
@@ -503,6 +514,20 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     )
   }, [staffQuery.data, staffQuery.error, staffQuery.isError, handleApiResponse])
 
+  // Handle suppliers data
+  useEffect(() => {
+    handleApiResponse(
+      suppliersQuery.data,
+      suppliersQuery.error,
+      suppliersQuery.isError,
+      'suppliers',
+      (supplier: SupplierModel & { _id: string }) => ({
+        key: supplier._id,
+        value: supplier.companyName,
+      })
+    )
+  }, [suppliersQuery.data, suppliersQuery.error, suppliersQuery.isError, handleApiResponse])
+
   // ============================================================================
   // MEMOIZED VALUES
   // ============================================================================
@@ -557,6 +582,19 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     [staffQuery.isLoading, staffQuery.isError, selectOptions.staff]
   )
 
+  const supplierSelectOptions = useMemo(
+    () =>
+      getSelectOptions(
+        suppliersQuery.isLoading,
+        suppliersQuery.isError,
+        selectOptions.suppliers,
+        'Please wait...',
+        'Unable to load options',
+        'No suppliers found'
+      ),
+    [suppliersQuery.isLoading, suppliersQuery.isError, selectOptions.suppliers]
+  )
+
   const selectedCustomerValue = useMemo(() => {
     const customerId = vehicle.monthlyFixedDetails?.customer
     if (!customerId || !selectOptions.customers.length) return ''
@@ -577,6 +615,13 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     const option = selectOptions.staff.find(opt => opt.key === staffId)
     return option?.value || ''
   }, [vehicle.monthlyFixedDetails?.staff, selectOptions.staff])
+
+  const selectedSupplierValue = useMemo(() => {
+    const supplierId = vehicle.supplier
+    if (!supplierId || !selectOptions.suppliers.length) return ''
+    const option = selectOptions.suppliers.find(opt => opt.key === supplierId)
+    return option?.value || ''
+  }, [vehicle.supplier, selectOptions.suppliers])
 
   const hasApiErrors = useMemo(
     () => Object.values(apiErrors).some(error => error !== ''),
@@ -618,6 +663,17 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
       handleMonthlyFixedDetailsChange({ staff: selectedOption?.key || '' })
     },
     [selectOptions.staff, handleMonthlyFixedDetailsChange]
+  )
+
+  const handleSupplierChange = useCallback(
+    (value: { supplier?: string }) => {
+      const supplierValue = value.supplier?.toString() || ''
+      if (isPlaceholderValue(supplierValue, 'suppliers')) return
+
+      const selectedOption = selectOptions.suppliers.find(option => option.value === supplierValue)
+      handleVehicleFieldChange('supplier', selectedOption?.key || '')
+    },
+    [selectOptions.suppliers, handleVehicleFieldChange]
   )
 
   // ============================================================================
@@ -669,6 +725,23 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
               ) : (
                 <>
                   <Panel title="Vehicle Details" className={bemClass([blk, 'margin-bottom'])}>
+                    {category === 'supplier' && (
+                      <Row>
+                        <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                          <SelectInput
+                            label="Supplier"
+                            name="supplier"
+                            options={supplierSelectOptions}
+                            value={selectedSupplierValue}
+                            changeHandler={handleSupplierChange}
+                            required={category === 'supplier'}
+                            errorMessage={validationErrors.supplier}
+                            invalid={!!validationErrors.supplier}
+                            disabled={suppliersQuery.isLoading || suppliersQuery.isError}
+                          />
+                        </Column>
+                      </Row>
+                    )}
                     <Row>
                       <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
                         <ConfiguredInput

@@ -6,13 +6,16 @@ import './style.scss'
 import { Text, Alert } from '@base'
 import Loader from '@components/loader'
 import { vehicleDetailsFields } from './model'
-import { VehicleModel, INITIAL_VEHICLE, Panel, Field } from '@types'
+import { VehicleModel, SupplierModel, INITIAL_VEHICLE, Panel, Field } from '@types'
 import PageDetail from '@base/page-detail'
 import { useVehicleByIdQuery } from '@api/queries/vehicle'
+import { useSupplierByIdQuery } from '@api/queries/supplier'
 
 const blk = 'vehicle-detail'
 
-interface VehicleDetailProps {}
+interface VehicleDetailProps {
+  category?: string
+}
 
 interface TransformedVehicleData extends Record<string, any> {
   type: string
@@ -21,6 +24,9 @@ interface TransformedVehicleData extends Record<string, any> {
   noOfSeats: string | number
   registrationNo: string
   hasAc: string
+  supplier: {
+    companyName: string
+  }
   isMonthlyFixed: string
   monthlyFixedDetails: {
     customerCategory: string
@@ -37,11 +43,18 @@ interface TransformedVehicleData extends Record<string, any> {
 }
 
 // Transform the vehicle data to handle object references and formatting
-const transformVehicleData = (data: VehicleModel): TransformedVehicleData => {
+const transformVehicleData = (data: VehicleModel, supplierData?: SupplierModel): TransformedVehicleData => {
   return {
     ...data,
     noOfSeats: data.noOfSeats?.toString() || '-',
     hasAc: formatBooleanValueForDisplay(data.hasAc),
+    supplier: (() => {
+      if (supplierData) {
+        return { companyName: supplierData.companyName }
+      }
+      // Fallback display
+      return { companyName: data.supplier || '-' }
+    })(),
     isMonthlyFixed: formatBooleanValueForDisplay(data.isMonthlyFixed),
     // Transform monthly fixed details to preserve object structure for nested paths
     monthlyFixedDetails: data.monthlyFixedDetails ? {
@@ -86,21 +99,46 @@ const transformVehicleData = (data: VehicleModel): TransformedVehicleData => {
   }
 }
 
-// Create filtered template based on isMonthlyFixed
-const createFilteredTemplate = (originalTemplate: Panel[], data: VehicleModel): Panel[] => {
-  return originalTemplate.filter(panel => {
+// Create filtered template based on isMonthlyFixed and category
+const createFilteredTemplate = (originalTemplate: Panel[], data: VehicleModel, category: string): Panel[] => {
+  return originalTemplate.map(panel => {
+    // For Vehicle Details panel, conditionally include supplier field
+    if (panel.panel === 'Vehicle Details') {
+      return {
+        ...panel,
+        fields: panel.fields.filter(field => {
+          // Only include supplier field if category is 'supplier'
+          if (field.path === 'supplier.companyName') {
+            return category === 'supplier'
+          }
+          return true
+        })
+      }
+    }
     // Completely remove monthly fixed panels if isMonthlyFixed is false
     if (panel.panel.includes('Monthly Fixed')) {
-      return data.isMonthlyFixed
+      return data.isMonthlyFixed ? panel : null
     }
-    return true
-  })
+    return panel
+  }).filter(Boolean) as Panel[]
 }
 
-const VehicleDetail: FunctionComponent<VehicleDetailProps> = () => {
+const VehicleDetail: FunctionComponent<VehicleDetailProps> = ({ category = '' }) => {
   const params = useParams()
 
   const { data: currentVehicleData, isLoading, error } = useVehicleByIdQuery(params.id || '')
+  
+  // Get supplier ID from vehicle data
+  const supplierId = currentVehicleData?.supplier && typeof currentVehicleData.supplier === 'string' 
+    ? currentVehicleData.supplier 
+    : ''
+  
+  // Conditionally fetch supplier data only if category is 'supplier' and we have a supplier ID
+  const shouldFetchSupplier = category === 'supplier' && !!supplierId
+  const { data: supplierData, isLoading: isSupplierLoading, error: supplierError } = useSupplierByIdQuery(
+    shouldFetchSupplier ? supplierId : ''
+  )
+  
   const [vehicleData, setVehicleData] = useState<TransformedVehicleData | null>(null)
 
   // Memoize the filtered template based on vehicle data
@@ -108,15 +146,20 @@ const VehicleDetail: FunctionComponent<VehicleDetailProps> = () => {
     if (!currentVehicleData) {
       return vehicleDetailsFields
     }
-    return createFilteredTemplate(vehicleDetailsFields, currentVehicleData)
-  }, [currentVehicleData])
+    return createFilteredTemplate(vehicleDetailsFields, currentVehicleData, category)
+  }, [currentVehicleData, category])
 
   useEffect(() => {
     if (currentVehicleData) {
-      const transformedData = transformVehicleData(currentVehicleData)
+      // If we need supplier data but it's still loading, wait for it
+      if (category === 'supplier' && supplierId && isSupplierLoading) {
+        return
+      }
+      
+      const transformedData = transformVehicleData(currentVehicleData, supplierData || undefined)
       setVehicleData(transformedData)
     }
-  }, [currentVehicleData])
+  }, [currentVehicleData, supplierData, category, supplierId, isSupplierLoading])
 
   return (
     <div className={bemClass([blk])}>
@@ -129,12 +172,12 @@ const VehicleDetail: FunctionComponent<VehicleDetailProps> = () => {
         </Text>
       </div>
       <div className={bemClass([blk, 'content'])}>
-        {isLoading ? (
+        {(isLoading || (category === 'supplier' && supplierId && isSupplierLoading)) ? (
           <Loader type="form" />
-        ) : error ? (
+        ) : (error || (category === 'supplier' && supplierId && supplierError)) ? (
           <Alert
             type="error"
-            message={'Unable to get the vehicle details, please try later'}
+            message={error ? 'Unable to get the vehicle details, please try later' : 'Unable to get the supplier details, please try later'}
           />
         ) : (
           <PageDetail

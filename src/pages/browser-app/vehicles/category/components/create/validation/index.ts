@@ -1,7 +1,7 @@
 import { emailField, emptyField, numberFieldGreaterThanZero } from '@config/validation'
 import { VehicleModel } from '@types'
 
-const createValidationSchema = (vehicleData: VehicleModel) => {
+const createValidationSchema = (vehicleData: VehicleModel, category: string = '') => {
   const conditionalFields = vehicleData.isMonthlyFixed
     ? [
         emptyField('monthlyFixedDetails.customerCategory'),
@@ -15,6 +15,8 @@ const createValidationSchema = (vehicleData: VehicleModel) => {
       ]
     : []
 
+  const supplierField = category === 'supplier' ? [emptyField('supplier')] : []
+
   return [
     emptyField('type'),
     emptyField('manufacturer'),
@@ -25,6 +27,7 @@ const createValidationSchema = (vehicleData: VehicleModel) => {
     emptyField('hasAc'),
     emptyField('isMonthlyFixed'),
     ...conditionalFields,
+    ...supplierField,
   ]
 }
 

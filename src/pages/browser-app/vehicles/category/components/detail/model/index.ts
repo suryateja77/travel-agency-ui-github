@@ -5,6 +5,10 @@ export const vehicleDetailsFields: Panel[] = [
     panel: 'Vehicle Details',
     fields: [
       {
+        label: 'Supplier',
+        path: 'supplier.companyName',
+      },
+      {
         label: 'Vehicle Type',
         path: 'type',
       },

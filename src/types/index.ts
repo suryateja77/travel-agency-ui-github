@@ -366,6 +366,7 @@ export interface VehicleModel {
   noOfSeats: string | number
   registrationNo: string
   hasAc: boolean
+  supplier?: string
   isMonthlyFixed: boolean
   monthlyFixedDetails:
     | null
@@ -391,6 +392,7 @@ export const INITIAL_VEHICLE: VehicleModel = {
   noOfSeats: '',
   registrationNo: '',
   hasAc: false,
+  supplier: '',
   isMonthlyFixed: false,
   monthlyFixedDetails: null,
   category: '',
