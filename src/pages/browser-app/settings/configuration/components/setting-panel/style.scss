@@ -13,8 +13,14 @@
   &__modal-content {
     padding: $space-default;
   }
-  &__modal-title {
+  &__modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: $space-small;
+  }
+  &__modal-title {
+    margin-bottom: 0;
   }
   &__modal-button-container {
     margin-top: $space-small;
@@ -27,6 +33,12 @@
   }
   &__name-input {
     margin-bottom: $space-small;
+  }
+  &__toggle-container {
+    margin-top: $space-small;
+    margin-bottom: $space-small;
+    display: flex;
+    justify-content: flex-end;
   }
   &__table-action {
     width: 80px;

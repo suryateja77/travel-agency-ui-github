@@ -7,6 +7,7 @@ export interface ConfigurationItem {
   name: string
   comment: string
   id: number
+  disabled?: boolean
 }
 
 export interface Configuration {

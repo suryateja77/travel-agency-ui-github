@@ -89,7 +89,7 @@ const CreateConfiguration: FunctionComponent<CreateConfigurationProps> = () => {
               },
               {
                 label: 'Configuration',
-                route: '/settings/configuration',
+                route: '/settings/configurations',
               },
               {
                 label: 'New Configuration',
@@ -130,7 +130,7 @@ const CreateConfiguration: FunctionComponent<CreateConfigurationProps> = () => {
               category="default"
               className={bemClass([blk, 'margin-right'])}
               asLink
-              href="/settings/configuration"
+              href="/settings/configurations"
             >
               Cancel
             </Button>

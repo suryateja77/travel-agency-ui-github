@@ -10,6 +10,7 @@ import TextArea from '@base/text-area'
 import Table from '@base/table'
 import Icon from '@base/icon'
 import ConfirmationPopup from '@base/confirmation-popup'
+import Toggle from '@base/toggle'
 import { useUpdateConfigurationMutation } from '@api/queries/configuration'
 import { validationSchema } from './validation'
 import Alert from '@base/alert'
@@ -18,6 +19,7 @@ interface ConfigItem {
   name: string
   comment: string
   id?: number
+  disabled?: boolean
 }
 
 interface SettingPanelProps {
@@ -34,6 +36,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
   const configModal = {
     configItemName: '',
     configItemComment: '',
+    configItemDisabled: false,
   }
   const [configData, setConfigData] = useState(config)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -42,7 +45,11 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
   const [activeConfigComment, setActiveConfigComment] = useState('')
   const [activeConfigName, setActiveConfigName] = useState('')
   const [activeConfigItemId, setActiveConfigItemId] = useState(0)
-  const [errorMap, setErrorMap] = useState<Record<string, string>>(configModal)
+  const [activeConfigDisabled, setActiveConfigDisabled] = useState(false)
+  const [errorMap, setErrorMap] = useState<Record<string, string>>({
+    configItemName: '',
+    configItemComment: '',
+  })
   const [isValidationError, setIsValidationError] = useState(false)
 
   const [confirmationPopupType, setConfirmationPopupType] = useState<'create' | 'update' | 'delete'>('create')
@@ -62,14 +69,15 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
     {
       label: 'Action',
       className: bemClass([blk, 'table-action']),
-      custom: ({ name, comment, id }: { comment: string; name: string; id: number }) => (
+      custom: ({ name, comment, id, disabled }: { comment: string; name: string; id: number; disabled?: boolean }) => (
         <>
           <Button
             size="small"
             className={bemClass([blk, 'first-button'])}
             clickHandler={() => {
-              handleEditConfigItem(name, comment, id)
+              handleEditConfigItem(name, comment, id, disabled)
             }}
+            disabled={disabled}
           >
             <Icon
               name="pencil"
@@ -87,6 +95,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
                 handleConfirmationPopUp('delete', 'Are you sure?', 'This action cannot be undone and will delete the record')
               }, 200)
             }}
+            disabled={disabled}
           >
             <Icon
               name="trash"
@@ -102,16 +111,18 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
     setModalMode('create')
     setActiveConfigComment('')
     setActiveConfigName('')
+    setActiveConfigDisabled(false)
     setActiveConfigItemId(0)
     if (!showAddModal) {
       setShowAddModal(true)
     }
   }
 
-  const handleEditConfigItem = (configItemName: string, configItemComment: string, id: number) => {
+  const handleEditConfigItem = (configItemName: string, configItemComment: string, id: number, disabled?: boolean) => {
     setModalMode('update')
     setActiveConfigComment(configItemComment)
     setActiveConfigName(configItemName)
+    setActiveConfigDisabled(disabled || false)
     setActiveConfigItemId(id)
     setTimeout(() => {
       if (!showAddModal) {
@@ -134,7 +145,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
 
   const updateItems = (type: 'update' | 'delete' = 'update') => {
     if (type === 'update') {
-      return configData.map(item => (item.id === activeConfigItemId ? { ...item, name: activeConfigName, comment: activeConfigComment } : item))
+      return configData.map(item => (item.id === activeConfigItemId ? { ...item, name: activeConfigName, comment: activeConfigComment, disabled: activeConfigDisabled } : item))
     } else {
       return configData.filter(item => item.id !== activeConfigItemId)
     }
@@ -142,7 +153,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
 
   const removeIdsToConfigItems = (data: Array<ConfigItem>) => {
     return data.map((configItem: ConfigItem, index) => {
-      return { name: configItem.name, comment: configItem.comment }
+      return { name: configItem.name, comment: configItem.comment, disabled: configItem.disabled }
     })
   }
 
@@ -172,7 +183,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
     setErrorMap(errorMap)
     if (isValid) {
       try {
-        const updatedConfigItems = modalMode === 'update' ? updateItems() : [...configData, { name: activeConfigName, comment: activeConfigComment, id: configData.length }]
+        const updatedConfigItems = modalMode === 'update' ? updateItems() : [...configData, { name: activeConfigName, comment: activeConfigComment, disabled: activeConfigDisabled, id: configData.length }]
         await updateConfigurationById({ _id: configId, configurationItems: removeIdsToConfigItems(updatedConfigItems) })
         setConfigData(updatedConfigItems)
         setIsValidationError(false)
@@ -223,13 +234,23 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
         }}
       >
         <div className={bemClass([blk, 'modal-content'])}>
-          <Text
-            tag="p"
-            typography="l"
-            className={bemClass([blk, 'modal-title'])}
-          >
-            Tax type
-          </Text>
+          <div className={bemClass([blk, 'modal-header'])}>
+            <Text
+              tag="p"
+              typography="l"
+              className={bemClass([blk, 'modal-title'])}
+            >
+              Tax type
+            </Text>
+            <Toggle
+              name="configItemDisabled"
+              label="Disable"
+              checked={activeConfigDisabled}
+              changeHandler={(value) => {
+                setActiveConfigDisabled(value.configItemDisabled)
+              }}
+            />
+          </div>
           {isValidationError && (
             <Alert
               type="error"
@@ -262,7 +283,10 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
               clickHandler={() => {
                 if (showAddModal) {
                   setIsValidationError(false)
-                  setErrorMap(configModal)
+                  setErrorMap({
+                    configItemName: '',
+                    configItemComment: '',
+                  })
                   setShowAddModal(false)
                 }
               }}
