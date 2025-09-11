@@ -50,7 +50,7 @@
     &:before {
       position: absolute;
       content: '';
-      border: 1px solid $success;
+      border: 1px solid $primary;
       border-radius: 2px;
     }
 
@@ -71,7 +71,7 @@
 
   &__control:checked + &__label {
     &::before {
-      background: $success;
+      background: $primary;
       transition: background linear 0.2s;
     }
 

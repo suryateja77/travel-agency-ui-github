@@ -161,7 +161,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <RadioGroup
                   question="Vehicle Selection"
                   name="vehicleSelection"
-                  options={['Regular', 'Existing', 'New']}
+                  options={[
+                    { key: 'vehicle-selection-regular', value: 'Regular' },
+                    { key: 'vehicle-selection-existing', value: 'Existing' },
+                    { key: 'vehicle-selection-new', value: 'New' }
+                  ]}
                   value={monthlyFixedRequest.requestDetails.vehicleSelection}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
@@ -182,7 +186,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <RadioGroup
                   question="Staff Selection"
                   name="staffSelection"
-                  options={['Regular', 'Existing', 'New']}
+                  options={[
+                    { key: 'staff-selection-regular', value: 'Regular' },
+                    { key: 'staff-selection-existing', value: 'Existing' },
+                    { key: 'staff-selection-new', value: 'New' }
+                  ]}
                   value={monthlyFixedRequest.requestDetails.staffSelection}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
@@ -503,7 +511,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <RadioGroup
                   question="Include Night Halt in driver salary?"
                   name="includeNightHaltInDriverSalary"
-                  options={['Yes', 'No']}
+                  options={[
+                    { key: 'include-night-halt-yes', value: 'Yes' },
+                    { key: 'include-night-halt-no', value: 'No' }
+                  ]}
                   value={monthlyFixedRequest.otherCharges.nightHalt.includeInDriverSalary ? 'Yes' : 'No'}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
@@ -577,7 +588,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <RadioGroup
                   question="Include Driver Allowance in driver salary?"
                   name="includeDriverAllowanceInDriverSalary"
-                  options={['Yes', 'No']}
+                  options={[
+                    { key: 'include-driver-allowance-yes', value: 'Yes' },
+                    { key: 'include-driver-allowance-no', value: 'No' }
+                  ]}
                   value={monthlyFixedRequest.otherCharges.driverAllowance.includeInDriverSalary ? 'Yes' : 'No'}
                   changeHandler={value => {
                     setMonthlyFixedRequest({

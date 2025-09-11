@@ -342,9 +342,13 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 <RadioGroup
                   question="Customer Type"
                   name="customerType"
-                  options={['existing', 'new']}
+                  options={[
+                    { key: 'customer-type-existing', value: 'existing' },
+                    { key: 'customer-type-new', value: 'new' }
+                  ]}
                   value={regularRequest.customerType}
                   changeHandler={(value) => {
+                    console.log('Customer Type Change:', value)
                     setRegularRequest(prev => ({
                       ...prev,
                       customerType: value.customerType as 'existing' | 'new',
@@ -365,7 +369,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 <RadioGroup
                   question="Vehicle Type"
                   name="vehicleType"
-                  options={['existing', 'new']}
+                  options={[
+                    { key: 'vehicle-type-existing', value: 'existing' },
+                    { key: 'vehicle-type-new', value: 'new' }
+                  ]}
                   value={regularRequest.vehicleType}
                   changeHandler={(value) => {
                     setRegularRequest(prev => ({
@@ -388,7 +395,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 <RadioGroup
                   question="Staff Type"
                   name="staffType"
-                  options={['existing', 'new']}
+                  options={[
+                    { key: 'staff-type-existing', value: 'existing' },
+                    { key: 'staff-type-new', value: 'new' }
+                  ]}
                   value={regularRequest.staffType}
                   changeHandler={(value) => {
                     setRegularRequest(prev => ({
@@ -580,7 +590,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 <RadioGroup
                   question="AC Required"
                   name="ac"
-                  options={['Yes', 'No']}
+                  options={[
+                    { key: 'ac-yes', value: 'Yes' },
+                    { key: 'ac-no', value: 'No' }
+                  ]}
                   value={regularRequest.ac ? 'Yes' : 'No'}
                   changeHandler={value => {
                     setRegularRequest({

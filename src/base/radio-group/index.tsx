@@ -9,7 +9,7 @@ const blk = 'radio-group'
 
 interface RadioGroupProps {
   question?: string
-  options: Array<string>
+  options: Array<{ key: string; value: string }>
   name: string
   changeHandler: (obj: Record<string, string>) => void
   value: string
@@ -34,12 +34,13 @@ const RadioGroup: FunctionComponent<RadioGroupProps> = ({ options, name, errorMe
         {options.map((option, index) => {
           return (
             <RadioInput
-              key={option.toString() + index + 'radio'}
-              id={option}
+              key={option.key + index}
+              id={option.key}
               name={name}
               changeHandler={changeHandler}
-              label={option}
+              label={option.value}
               value={value}
+              option={option}
             />
           )
         })}

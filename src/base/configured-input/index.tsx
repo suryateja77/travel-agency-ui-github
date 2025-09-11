@@ -91,9 +91,7 @@ const ConfiguredInput: FunctionComponent<ConfiguredInputProps> = ({
           <RadioGroup
             question={label}
             name={name}
-            options={inputOptions.map(option => {
-              return option.value
-            })}
+            options={inputOptions}
             changeHandler={changeHandler}
             value={value}
             errorMessage={errorMessage}

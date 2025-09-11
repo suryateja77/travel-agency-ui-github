@@ -78,8 +78,14 @@ const CUSTOMER_CATEGORY_OPTIONS: SelectOption[] = [
   { key: 'operator', value: 'Operator' },
 ] as const
 
-const CUSTOMER_TYPE_OPTIONS: string[] = ['Existing', 'New']
-const AC_OPTIONS: string[] = ['Yes', 'No']
+const CUSTOMER_TYPE_OPTIONS: Array<{ key: string; value: string }> = [
+  { key: 'customer-type-existing', value: 'Existing' },
+  { key: 'customer-type-new', value: 'New' }
+]
+const AC_OPTIONS: Array<{ key: string; value: string }> = [
+  { key: 'ac-yes', value: 'Yes' },
+  { key: 'ac-no', value: 'No' }
+]
 
 // ============================================================================
 // REDUCER & INITIAL STATE
