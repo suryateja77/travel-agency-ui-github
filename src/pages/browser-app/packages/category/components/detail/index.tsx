@@ -6,15 +6,21 @@ import './style.scss'
 import { Text, Alert } from '@base'
 import Loader from '@components/loader'
 import { packageDetailsFields } from './model'
-import { PackageModel, INITIAL_PACKAGE, Panel, Field } from '@types'
+import { PackageModel, SupplierModel, INITIAL_PACKAGE, Panel, Field } from '@types'
 import PageDetail from '@base/page-detail'
 import { usePackageByIdQuery } from '@api/queries/package'
+import { useSupplierByIdQuery } from '@api/queries/supplier'
 
 const blk = 'package-detail'
 
-interface PackageDetailProps {}
+interface PackageDetailProps {
+  category?: string
+}
 
 interface TransformedPackageData extends Record<string, any> {
+  supplier: {
+    companyName: string
+  }
   packageCode: string
   minimumKm: string | number
   minimumHr: string | number
@@ -25,8 +31,8 @@ interface TransformedPackageData extends Record<string, any> {
   isActive: string
 }
 
-// Transform the package data to handle formatting
-const transformPackageData = (data: PackageModel): TransformedPackageData => {
+// Transform the package data to handle object references and formatting
+const transformPackageData = (data: PackageModel, supplierData?: SupplierModel): TransformedPackageData => {
   return {
     ...data,
     minimumKm: data.minimumKm?.toString() || '-',
@@ -34,36 +40,73 @@ const transformPackageData = (data: PackageModel): TransformedPackageData => {
     baseAmount: data.baseAmount?.toString() || '-',
     extraKmPerKmRate: data.extraKmPerKmRate?.toString() || '-',
     extraHrPerHrRate: data.extraHrPerHrRate?.toString() || '-',
+    supplier: (() => {
+      if (supplierData) {
+        return { companyName: supplierData.companyName }
+      }
+      // Fallback display
+      return { companyName: data.supplier || '-' }
+    })(),
     comment: data.comment || '-',
     isActive: formatBooleanValueForDisplay(data.isActive),
   }
 }
 
-// Create filtered template - packages don't have conditional logic like advance booking
-const createFilteredTemplate = (originalTemplate: Panel[], data: PackageModel): Panel[] => {
-  return originalTemplate // No filtering needed for packages
+// Create filtered template based on category
+const createFilteredTemplate = (originalTemplate: Panel[], data: PackageModel, category: string): Panel[] => {
+  return originalTemplate
+    .map(panel => {
+      // For Package details panel, conditionally include supplier field
+      if (panel.panel === 'Package details') {
+        return {
+          ...panel,
+          fields: panel.fields.filter(field => {
+            // Only include supplier field if category is 'supplier'
+            if (field.path === 'supplier.companyName') {
+              return category === 'supplier'
+            }
+            return true
+          }),
+        }
+      }
+      return panel
+    })
+    .filter(Boolean) as Panel[]
 }
 
-const PackageDetail: FunctionComponent<PackageDetailProps> = () => {
+const PackageDetail: FunctionComponent<PackageDetailProps> = ({ category = '' }) => {
   const params = useParams()
 
+  const [supplierId, setSupplierId] = useState<string>('')
   const { data: currentPackageData, isLoading, error } = usePackageByIdQuery(params.id || '')
+
+  const { data: supplierData, isLoading: isSupplierLoading, error: supplierError } = useSupplierByIdQuery(supplierId)
+
   const [packageData, setPackageData] = useState<TransformedPackageData | null>(null)
 
-  // Memoize the filtered template
+  // Memoize the filtered template based on package data
   const filteredTemplate = useMemo(() => {
     if (!currentPackageData) {
       return packageDetailsFields
     }
-    return createFilteredTemplate(packageDetailsFields, currentPackageData)
-  }, [currentPackageData])
+    if (category === 'supplier') {
+      console.log('Setting supplier ID for fetching supplier data:', currentPackageData.supplier)
+      setSupplierId(currentPackageData.supplier || '')
+    }
+    return createFilteredTemplate(packageDetailsFields, currentPackageData, category)
+  }, [currentPackageData, category])
 
   useEffect(() => {
     if (currentPackageData) {
-      const transformedData = transformPackageData(currentPackageData)
+      // If we need supplier data but it's still loading, wait for it
+      if (category === 'supplier' && supplierId && isSupplierLoading) {
+        return
+      }
+
+      const transformedData = transformPackageData(currentPackageData, supplierData || undefined)
       setPackageData(transformedData)
     }
-  }, [currentPackageData])
+  }, [currentPackageData, supplierData, category, supplierId, isSupplierLoading])
 
   return (
     <div className={bemClass([blk])}>
@@ -76,12 +119,12 @@ const PackageDetail: FunctionComponent<PackageDetailProps> = () => {
         </Text>
       </div>
       <div className={bemClass([blk, 'content'])}>
-        {isLoading ? (
+        {isLoading || (category === 'supplier' && supplierId && isSupplierLoading) ? (
           <Loader type="form" />
-        ) : error ? (
+        ) : error || (category === 'supplier' && supplierId && supplierError) ? (
           <Alert
             type="error"
-            message={'Unable to get the package details, please try later'}
+            message={error ? 'Unable to get the package details, please try later' : 'Unable to get the supplier details, please try later'}
           />
         ) : (
           <PageDetail

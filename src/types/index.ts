@@ -338,6 +338,7 @@ export const INITIAL_ADVANCE_PAYMENT: AdvancePaymentModel = {
 //
 export interface PackageModel {
   category: string
+  supplier?: string
   packageCode: string
   minimumKm: string | number
   minimumHr: string | number
@@ -350,6 +351,7 @@ export interface PackageModel {
 
 export const INITIAL_PACKAGE: PackageModel = {
   category: '',
+  supplier: '',
   packageCode: '',
   minimumKm: '',
   minimumHr: '',

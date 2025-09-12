@@ -26,7 +26,7 @@ const CategoryPackages: FunctionComponent<PackagesProps> = () => {
       />
       <Route
         path=":id/detail"
-        element={<PackageDetail />}
+        element={<PackageDetail category={category} />}
       />
     </Routes>
   )

@@ -1,8 +1,8 @@
 import { emptyField, numberFieldGreaterThanZero } from '@config/validation'
 import { PackageModel } from '@types'
 
-const createValidationSchema = (packageData: PackageModel) => {
-  return [
+const createValidationSchema = (packageData: PackageModel, category?: string) => {
+  const baseFields = [
     emptyField('packageCode'),
     emptyField('minimumKm'),
     numberFieldGreaterThanZero('minimumKm'),
@@ -15,6 +15,14 @@ const createValidationSchema = (packageData: PackageModel) => {
     emptyField('extraHrPerHrRate'),
     numberFieldGreaterThanZero('extraHrPerHrRate'),
   ]
+
+  const conditionalFields = []
+
+  if (category === 'supplier') {
+    conditionalFields.push(emptyField('supplier'))
+  }
+
+  return [...baseFields, ...conditionalFields]
 }
 
 export { createValidationSchema }

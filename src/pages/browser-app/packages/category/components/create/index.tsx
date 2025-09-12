@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useState, useMemo, useCallback, useReducer } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb, Text } from '@base'
+import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
 import { PageHeader } from '@components'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
@@ -8,6 +8,7 @@ import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
 import { useCreatePackageMutation, usePackageByIdQuery, useUpdatePackageMutation } from '@api/queries/package'
+import { useSuppliersQuery } from '@api/queries/supplier'
 import Loader from '@components/loader'
 
 const blk = 'create-package'
@@ -35,6 +36,11 @@ interface ConfirmationModal {
   subtitle: string
 }
 
+interface SelectOption {
+  key: string
+  value: string
+}
+
 // State interface for useReducer
 interface FormState {
   package: PackageModel
@@ -44,6 +50,7 @@ interface FormState {
   isValidationError: boolean
   showConfirmationModal: boolean
   confirmationModal: ConfirmationModal
+  supplierOptions: SelectOption[]
 }
 
 // Action types for useReducer
@@ -53,6 +60,7 @@ type FormAction =
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; packageId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
+  | { type: 'SET_SUPPLIER_OPTIONS'; payload: SelectOption[] }
 
 // ============================================================================
 // CONSTANTS
@@ -87,6 +95,7 @@ const initialState: FormState = {
     title: '',
     subtitle: '',
   },
+  supplierOptions: [],
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -121,6 +130,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
         confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
     
+    case 'SET_SUPPLIER_OPTIONS':
+      return {
+        ...state,
+        supplierOptions: action.payload,
+      }
+    
     default:
       return state
   }
@@ -132,6 +147,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
 
 const transformPackageResponse = (response: PackageResponseModel, category: string): PackageModel => ({
   category: response.category || nameToPath(category),
+  supplier: response.supplier || '',
   packageCode: response.packageCode || '',
   minimumKm: response.minimumKm || '',
   minimumHr: response.minimumHr || '',
@@ -162,12 +178,14 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     isValidationError,
     showConfirmationModal,
     confirmationModal,
+    supplierOptions,
   } = state
 
   // API Hooks
   const createPackage = useCreatePackageMutation()
   const updatePackage = useUpdatePackageMutation()
   const { data: packageDataResponse, isLoading, error: getPackageError } = usePackageByIdQuery(params.id || '')
+  const suppliersQuery = useSuppliersQuery()
 
   // ============================================================================
   // HANDLERS
@@ -180,6 +198,17 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     []
   )
 
+  const handleSupplierChange = useCallback(
+    (value: { supplier?: string }) => {
+      const supplierValue = value.supplier?.toString() || ''
+      if (['Please wait...', 'Unable to load options', 'No suppliers found'].includes(supplierValue)) return
+
+      const selectedOption = supplierOptions.find(option => option.value === supplierValue)
+      handlePackageFieldChange('supplier', selectedOption?.key || '')
+    },
+    [supplierOptions, handlePackageFieldChange]
+  )
+
   const navigateBack = useCallback(() => {
     navigate(`/packages/${category}`)
   }, [navigate, category])
@@ -190,7 +219,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
 
   const handleSubmit = useCallback(async () => {
     // Validate form
-    const validationSchema = createValidationSchema(packageData)
+    const validationSchema = createValidationSchema(packageData, category)
     const { isValid, errorMap } = validatePayload(validationSchema, packageData)
 
     dispatch({
@@ -261,6 +290,19 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     }
   }, [packageDataResponse, params.id, category])
 
+  // Handle suppliers data
+  useEffect(() => {
+    if (suppliersQuery.data?.data && suppliersQuery.data.data.length > 0) {
+      const options = suppliersQuery.data.data.map((supplier: any) => ({
+        key: supplier._id,
+        value: supplier.companyName,
+      }))
+      dispatch({ type: 'SET_SUPPLIER_OPTIONS', payload: options })
+    } else {
+      dispatch({ type: 'SET_SUPPLIER_OPTIONS', payload: [] })
+    }
+  }, [suppliersQuery.data])
+
   // ============================================================================
   // MEMOIZED VALUES
   // ============================================================================
@@ -275,6 +317,25 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     ],
     [categoryDisplayName, category, isEditing]
   )
+
+  const supplierSelectOptions = useMemo(
+    () =>
+      suppliersQuery.isLoading
+        ? [{ key: 'loading', value: 'Please wait...' }]
+        : suppliersQuery.isError
+        ? [{ key: 'error', value: 'Unable to load options' }]
+        : supplierOptions.length > 0
+        ? supplierOptions
+        : [{ key: 'no-data', value: 'No suppliers found' }],
+    [suppliersQuery.isLoading, suppliersQuery.isError, supplierOptions]
+  )
+
+  const selectedSupplierValue = useMemo(() => {
+    const supplierId = packageData.supplier
+    if (!supplierId || !supplierOptions.length) return ''
+    const option = supplierOptions.find(opt => opt.key === supplierId)
+    return option?.value || ''
+  }, [packageData.supplier, supplierOptions])
 
   // ============================================================================
   // RENDER
@@ -316,6 +377,23 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
               title="Package details"
               className={bemClass([blk, 'margin-bottom'])}
             >
+              {category === 'supplier' && (
+                <Row>
+                  <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                    <SelectInput
+                      label="Supplier"
+                      name="supplier"
+                      options={supplierSelectOptions}
+                      value={selectedSupplierValue}
+                      changeHandler={handleSupplierChange}
+                      required={category === 'supplier'}
+                      errorMessage={validationErrors.supplier}
+                      invalid={!!validationErrors.supplier}
+                      disabled={suppliersQuery.isLoading || suppliersQuery.isError}
+                    />
+                  </Column>
+                </Row>
+              )}
               <Row>
                 <Column
                   col={4}
