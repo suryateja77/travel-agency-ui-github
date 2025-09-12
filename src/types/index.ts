@@ -175,6 +175,7 @@ export interface RegularRequestModel {
   }
   vehicleCategory: string | null
   supplier: string | null
+  supplierPackage: string | null
   vehicle: string | null
   vehicleDetails: null | {
     ownerName: string
@@ -230,7 +231,7 @@ export interface RegularRequestModel {
   }
   advancedPayment: {
     advancedFromCustomer: string | number
-    advancedToCustomer: string | number
+    advancedToSupplier: string | number
   }
   comment: string
 }
