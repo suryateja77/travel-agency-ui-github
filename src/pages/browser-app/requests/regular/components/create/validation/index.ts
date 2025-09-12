@@ -1,5 +1,6 @@
 import { emailField, emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
 import { RegularRequestModel } from '@types'
+import { nameToPath } from '@utils'
 
 const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   const baseFields = [
@@ -42,8 +43,8 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   // Vehicle type conditional fields
   if (regularRequestData.vehicleType === 'existing') {
     conditionalFields.push(emptyField('vehicleCategory'), emptyField('vehicle'))
-    if (regularRequestData.vehicleCategory === 'supplier') {
-      conditionalFields.push(emptyField('supplier'))
+    if (regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
+      conditionalFields.push(emptyField('supplier'), emptyField('supplierPackage'))
     }
   }
 
