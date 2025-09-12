@@ -9,6 +9,7 @@ import { useCustomerByCategory } from '@api/queries/customer'
 import { useVehicleByCategory } from '@api/queries/vehicle'
 import { useStaffByCategory } from '@api/queries/staff'
 import { usePackageByCategory } from '@api/queries/package'
+import { useSuppliersQuery } from '@api/queries/supplier'
 import ConfiguredInput from '@base/configured-input'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 
@@ -60,6 +61,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     customer: null,
     customerDetails: null,
     vehicleCategory: null,
+    supplier: null,
     vehicle: null,
     vehicleDetails: null,
     ac: false,
@@ -136,6 +138,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   const { data: vehicles, error: vehiclesError, isLoading: vehiclesLoading, isError: vehiclesIsError } = useVehicleByCategory(vehicleCategoryPath)
 
+  const { data: suppliers, error: suppliersError, isLoading: suppliersLoading, isError: suppliersIsError } = useSuppliersQuery()
+
   const { data: staffMembers, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
 
   const { data: packages, error: packagesError, isLoading: packagesLoading, isError: packagesIsError } = usePackageByCategory(packageCategoryPath)
@@ -147,6 +151,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
   const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
+  const [supplierOptions, setSupplierOptions] = useState<{ key: any; value: any }[]>([])
   const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
   const [packageOptions, setPackageOptions] = useState<{ key: any; value: any }[]>([])
 
@@ -154,6 +159,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const [apiErrors, setApiErrors] = useState({
     customers: '',
     vehicles: '',
+    suppliers: '',
     staff: '',
     packages: '',
   })
@@ -163,7 +169,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     data: any,
     error: any,
     isError: boolean,
-    errorKey: 'customers' | 'vehicles' | 'staff' | 'packages',
+    errorKey: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages',
     setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
     mapFunction: (item: any) => { key: any; value: any },
   ) => {
@@ -171,6 +177,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       const userFriendlyMessages = {
         customers: 'Unable to load customer data. Please check your connection and try again.',
         vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
+        suppliers: 'Unable to load supplier data. Please check your connection and try again.',
         staff: 'Unable to load staff data. Please check your connection and try again.',
         packages: 'Unable to load package information. Please check your connection and try again.',
       }
@@ -204,10 +211,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   }
 
   // Check if a value should be ignored in change handlers
-  const isPlaceholderValue = (value: string, type: 'customers' | 'vehicles' | 'staff' | 'packages') => {
+  const isPlaceholderValue = (value: string, type: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages') => {
     const placeholders = {
       customers: ['Please wait...', 'Unable to load options', 'No customers found'],
       vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
+      suppliers: ['Please wait...', 'Unable to load options', 'No suppliers found'],
       staff: ['Please wait...', 'Unable to load options', 'No staff found'],
       packages: ['Please wait...', 'Unable to load options', 'No packages found'],
     }
@@ -228,6 +236,13 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   React.useEffect(() => {
     handleApiResponse(vehicles, vehiclesError, vehiclesIsError, 'vehicles', setVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
   }, [vehicles, vehiclesError, vehiclesIsError])
+
+  React.useEffect(() => {
+    handleApiResponse(suppliers, suppliersError, suppliersIsError, 'suppliers', setSupplierOptions, (supplier: { _id: any; companyName: any }) => ({
+      key: supplier._id,
+      value: supplier.companyName,
+    }))
+  }, [suppliers, suppliersError, suppliersIsError])
 
   React.useEffect(() => {
     handleApiResponse(staffMembers, staffError, staffIsError, 'staff', setStaffOptions, (staffMember: { _id: any; name: any }) => ({
@@ -321,7 +336,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             className={bemClass([blk, 'margin-bottom'])}
           />
         )}
-        {(apiErrors.customers || apiErrors.vehicles || apiErrors.staff || apiErrors.packages) && (
+        {(apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.packages) && (
           <Alert
             type="error"
             message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
@@ -738,54 +753,104 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             className={bemClass([blk, 'margin-bottom'])}
           >
             {regularRequest.vehicleType === 'existing' ? (
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <ConfiguredInput
-                    label="Vehicle Category"
-                    name="vehicleCategory"
-                    configToUse="Vehicle category"
-                    type={CONFIGURED_INPUT_TYPES.SELECT}
-                    value={regularRequest.vehicleCategory || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        vehicleCategory: value.vehicleCategory?.toString() ?? '',
-                        vehicle: null,
-                      })
-                    }}
-                    required
-                    errorMessage={errorMap['vehicleCategory']}
-                    invalid={errorMap['vehicleCategory']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <SelectInput
-                    label="Vehicle"
-                    name="vehicle"
-                    options={getSelectOptions(vehiclesLoading, vehiclesIsError, vehicleOptions, 'Please wait...', 'Unable to load options', 'No vehicles found')}
-                    value={regularRequest.vehicle ? ((vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? '') : ''}
-                    changeHandler={value => {
-                      if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
+              <>
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <ConfiguredInput
+                      label="Vehicle Category"
+                      name="vehicleCategory"
+                      configToUse="Vehicle category"
+                      type={CONFIGURED_INPUT_TYPES.SELECT}
+                      value={regularRequest.vehicleCategory || ''}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                          supplier: null,
+                          vehicle: null,
+                        })
+                      }}
+                      required
+                      errorMessage={errorMap['vehicleCategory']}
+                      invalid={errorMap['vehicleCategory']}
+                    />
+                  </Column>
+                </Row>
+                {regularRequest.vehicleCategory && (
+                  <Row>
+                    {nameToPath(regularRequest.vehicleCategory) === 'supplier' && (
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <SelectInput
+                          label="Supplier"
+                          name="supplier"
+                          options={getSelectOptions(suppliersLoading, suppliersIsError, supplierOptions, 'Please wait...', 'Unable to load options', 'No suppliers found')}
+                          value={regularRequest.supplier ? ((supplierOptions.find((option: any) => option.key === regularRequest.supplier) as any)?.value ?? '') : ''}
+                          changeHandler={value => {
+                            if (isPlaceholderValue(value.supplier?.toString() || '', 'suppliers')) return
+                            const selectedOption = supplierOptions.find((option: any) => option.value === value.supplier) as any
+                            setRegularRequest({
+                              ...regularRequest,
+                              supplier: selectedOption?.key ?? '',
+                              vehicle: null,
+                            })
+                          }}
+                          required
+                          errorMessage={errorMap['supplier']}
+                          invalid={errorMap['supplier']}
+                          disabled={suppliersLoading || suppliersIsError}
+                        />
+                      </Column>
+                    )}
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Vehicle"
+                        name="vehicle"
+                        options={getSelectOptions(
+                          vehiclesLoading,
+                          vehiclesIsError,
+                          nameToPath(regularRequest.vehicleCategory) === 'supplier' && regularRequest.supplier
+                            ? vehicleOptions.filter((option: any) => {
+                                const vehicle = vehicles?.data?.find((v: any) => v._id === option.key)
+                                return vehicle?.supplier === regularRequest.supplier
+                              })
+                            : vehicleOptions,
+                          'Please wait...',
+                          'Unable to load options',
+                          'No vehicles found'
+                        )}
+                        value={regularRequest.vehicle ? ((vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? '') : ''}
+                        changeHandler={value => {
+                          if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
 
-                      const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
-                      setRegularRequest({
-                        ...regularRequest,
-                        vehicle: selectedOption?.key ?? '',
-                      })
-                    }}
-                    required
-                    errorMessage={errorMap['vehicle']}
-                    invalid={errorMap['vehicle']}
-                    disabled={!regularRequest.vehicleCategory || vehiclesLoading || vehiclesIsError}
-                  />
-                </Column>
-              </Row>
+                          const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
+                          setRegularRequest({
+                            ...regularRequest,
+                            vehicle: selectedOption?.key ?? '',
+                          })
+                        }}
+                        required
+                        errorMessage={errorMap['vehicle']}
+                        invalid={errorMap['vehicle']}
+                        disabled={
+                          !regularRequest.vehicleCategory ||
+                          vehiclesLoading ||
+                          vehiclesIsError ||
+                          (nameToPath(regularRequest.vehicleCategory) === 'supplier' && !regularRequest.supplier)
+                        }
+                      />
+                    </Column>
+                  </Row>
+                )}
+              </>
             ) : (
               <>
                 <Row>

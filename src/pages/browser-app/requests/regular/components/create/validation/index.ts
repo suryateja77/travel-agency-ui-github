@@ -42,6 +42,9 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   // Vehicle type conditional fields
   if (regularRequestData.vehicleType === 'existing') {
     conditionalFields.push(emptyField('vehicleCategory'), emptyField('vehicle'))
+    if (regularRequestData.vehicleCategory === 'supplier') {
+      conditionalFields.push(emptyField('supplier'))
+    }
   }
 
   if (regularRequestData.vehicleType === 'new' && regularRequestData.vehicleDetails) {

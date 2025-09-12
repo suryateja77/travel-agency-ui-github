@@ -174,6 +174,7 @@ export interface RegularRequestModel {
     email: string
   }
   vehicleCategory: string | null
+  supplier: string | null
   vehicle: string | null
   vehicleDetails: null | {
     ownerName: string
