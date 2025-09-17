@@ -1,9 +1,9 @@
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle, ReadOnlyText } from '@base'
-import { RegularRequestModel } from '@types'
+import { PackageModel, RegularRequestModel } from '@types'
 import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
 import React, { FunctionComponent, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createValidationSchema } from './validation'
+import { calculateTotalValidationSchema, createValidationSchema } from './validation'
 import { useCreateRegularRequestMutation } from '@api/queries/regular-request'
 import { useCustomerByCategory } from '@api/queries/customer'
 import { useVehicleByCategory } from '@api/queries/vehicle'
@@ -64,6 +64,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     supplier: null,
     vehicle: null,
     vehicleDetails: null,
+    packageFromProvidedVehicle: undefined,
     ac: false,
     packageCategory: null,
     supplierPackage: null,
@@ -109,6 +110,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       advancedFromCustomer: '',
       advancedToSupplier: '',
     },
+    requestTotal: 0,
+    providedVehiclePayment: 0,
+    requestExpense: 0,
+    requestProfit: 0,
+    customerBill: 0,
     comment: '',
   }
 
@@ -134,6 +140,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     return regularRequest.packageCategory ? nameToPath(regularRequest.packageCategory) : ''
   }, [regularRequest.packageCategory])
 
+  const providerPackageCategoryPath = useMemo(() => {
+    return regularRequest.packageFromProvidedVehicle?.packageCategory ? nameToPath(regularRequest.packageFromProvidedVehicle.packageCategory) : ''
+  }, [regularRequest.packageFromProvidedVehicle?.packageCategory])
+
   // API queries
   const { data: customers, error: customersError, isLoading: customersLoading, isError: customersIsError } = useCustomerByCategory(customerCategoryPath)
 
@@ -144,6 +154,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const { data: staffMembers, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
 
   const { data: packages, error: packagesError, isLoading: packagesLoading, isError: packagesIsError } = usePackageByCategory(packageCategoryPath)
+
+  const { data: providerPackages, error: providerPackagesError, isLoading: providerPackagesLoading, isError: providerPackagesIsError } = usePackageByCategory(providerPackageCategoryPath)
 
   const { data: supplierPackages, error: supplierPackagesError, isLoading: supplierPackagesLoading, isError: supplierPackagesIsError } = usePackageByCategory('supplier')
 
@@ -157,6 +169,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const [supplierOptions, setSupplierOptions] = useState<{ key: any; value: any }[]>([])
   const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
   const [packageOptions, setPackageOptions] = useState<{ key: any; value: any }[]>([])
+  const [providerPackageOptions, setProviderPackageOptions] = useState<{ key: any; value: any }[]>([])
   const [supplierPackageOptions, setSupplierPackageOptions] = useState<{ key: any; value: any }[]>([])
 
   // API Error states
@@ -166,6 +179,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     suppliers: '',
     staff: '',
     packages: '',
+    providerPackages: '',
     supplierPackages: '',
   })
 
@@ -174,7 +188,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     data: any,
     error: any,
     isError: boolean,
-    errorKey: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages' | 'supplierPackages',
+    errorKey: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages' | 'providerPackages' | 'supplierPackages',
     setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
     mapFunction: (item: any) => { key: any; value: any },
   ) => {
@@ -185,6 +199,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
         suppliers: 'Unable to load supplier data. Please check your connection and try again.',
         staff: 'Unable to load staff data. Please check your connection and try again.',
         packages: 'Unable to load package information. Please check your connection and try again.',
+        providerPackages: 'Unable to load provider package information. Please check your connection and try again.',
         supplierPackages: 'Unable to load supplier package information. Please check your connection and try again.',
       }
       setApiErrors(prev => ({
@@ -208,6 +223,63 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     }
   }
 
+  // Profit Calculation
+
+  const calculateOtherChargesExpenses = () => {
+    const { toll, parking, nightHalt, driverAllowance } = regularRequest.otherCharges
+    const tollAmount = toll.isChargeableToCustomer ? 0 : Number(toll.amount)
+    const parkingAmount = parking.isChargeableToCustomer ? 0 : Number(parking.amount)
+    const nightHaltAmount = nightHalt.isChargeableToCustomer ? 0 : Number(nightHalt.amount)
+    const driverAllowanceAmount = driverAllowance.isChargeableToCustomer ? 0 : Number(driverAllowance.amount)
+    return Number(tollAmount) + Number(parkingAmount) + Number(nightHaltAmount) + Number(driverAllowanceAmount)
+  }
+  //
+  const calculateOtherChargesForCustomer = () => {
+    const { toll, parking, nightHalt, driverAllowance } = regularRequest.otherCharges
+    const tollAmount = toll.isChargeableToCustomer ? Number(toll.amount) : 0
+    const parkingAmount = parking.isChargeableToCustomer ? Number(parking.amount) : 0
+    const nightHaltAmount = nightHalt.isChargeableToCustomer ? Number(nightHalt.amount) : 0
+    const driverAllowanceAmount = driverAllowance.isChargeableToCustomer ? Number(driverAllowance.amount) : 0
+    return tollAmount + parkingAmount + nightHaltAmount + driverAllowanceAmount
+  }
+  //
+  const requestTotal = (packageDetail: PackageModel) => {
+    const { baseAmount, minimumKm, extraKmPerKmRate, minimumHr, extraHrPerHrRate } = packageDetail
+    const extraKm = (regularRequest.totalKm || 0 - Number(minimumKm)) < 0 ? 0 : regularRequest.totalKm || 0 - Number(minimumKm)
+    const extraHr = (regularRequest.totalHr || 0 - Number(minimumHr)) < 0 ? 0 : regularRequest.totalHr || 0 - Number(minimumHr)
+    const extraKmBilling = extraKm * Number(extraKmPerKmRate)
+    const extraHrBilling = extraHr * Number(extraHrPerHrRate)
+    return Number(baseAmount) + extraKmBilling + extraHrBilling
+  }
+  //
+  // const calculateProfit = () => {
+  //   //
+  //   const { isValid, errorMap } = validatePayload(calculateTotalValidationSchema, regularRequest)
+  //   setRegularRequestErrorMap({ ...regularRequestErrorMap, ...errorMap })
+  //   setIsValidationError(!isValid)
+  //   if (!isValid) {
+  //     return
+  //   }
+  //   const { vehicleType, vehicleCategory, package: customerPackage } = regularRequest
+  //   // The packages are _id, so we need to find the full package details from the respective query data
+  //   const providedVehiclePackageDetails = vehicleType === 'existing' && vehicleCategory === 'supplier' && regularRequest.supplierPackage
+  //   const customerTotal = requestTotal(customerPackage)
+  //   const providedVehicleTotal = vehicleType === 'new' || (vehicleType === 'existing' && vehicleCategory === 'supplier') ? requestTotal(providedVehiclePackageDetails) : 0
+  //   // Calculate other charges
+  //   const otherChargesExpense = calculateOtherChargesExpenses()
+  //   const otherChargesForCustomer = calculateOtherChargesForCustomer()
+  //   const profit = customerTotal - providedVehicleTotal - otherChargesExpense
+
+  //   setRegularRequest(prev => ({
+  //     ...prev,
+  //     requestTotal: customerTotal,
+  //     providedVehiclePayment: providedVehicleTotal,
+  //     requestExpense: otherChargesExpense,
+  //     requestProfit: profit,
+  //     customerBill: customerTotal + otherChargesForCustomer,
+  //   }))
+  // }
+
   // Generate options for SelectInput based on loading/error states
   const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
     if (isLoading) return [{ key: 'loading', value: loadingText }]
@@ -217,19 +289,20 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   }
 
   // Check if a value should be ignored in change handlers
-  const isPlaceholderValue = (value: string, type: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages' | 'supplierPackages') => {
+  const isPlaceholderValue = (value: string, type: 'customers' | 'vehicles' | 'suppliers' | 'staff' | 'packages' | 'providerPackages' | 'supplierPackages') => {
     const placeholders = {
       customers: ['Please wait...', 'Unable to load options', 'No customers found'],
       vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
       suppliers: ['Please wait...', 'Unable to load options', 'No suppliers found'],
       staff: ['Please wait...', 'Unable to load options', 'No staff found'],
       packages: ['Please wait...', 'Unable to load options', 'No packages found'],
+      providerPackages: ['Please wait...', 'Unable to load options', 'No provider packages found'],
       supplierPackages: ['Please wait...', 'Unable to load options', 'No supplier packages found'],
     }
     return placeholders[type].includes(value)
   }
 
-  const [errorMap, setErrorMap] = useState<Record<string, any>>({})
+  const [regularRequestErrorMap, setRegularRequestErrorMap] = useState<Record<string, any>>({})
   const [isValidationError, setIsValidationError] = useState(false)
 
   // useEffect hooks to handle API responses
@@ -263,7 +336,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   }, [packages, packagesError, packagesIsError])
 
   React.useEffect(() => {
-    handleApiResponse(supplierPackages, supplierPackagesError, supplierPackagesIsError, 'supplierPackages', setSupplierPackageOptions, (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode }))
+    handleApiResponse(providerPackages, providerPackagesError, providerPackagesIsError, 'providerPackages', setProviderPackageOptions, (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode }))
+  }, [providerPackages, providerPackagesError, providerPackagesIsError])
+
+  React.useEffect(() => {
+    handleApiResponse(supplierPackages, supplierPackagesError, supplierPackagesIsError, 'supplierPackages', setSupplierPackageOptions, (pkg: { _id: any; packageCode: any }) => ({
+      key: pkg._id,
+      value: pkg.packageCode,
+    }))
   }, [supplierPackages, supplierPackagesError, supplierPackagesIsError])
 
   const navigateBack = () => {
@@ -288,7 +368,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     const { isValid, errorMap } = validatePayload(validationSchema, regularRequest)
 
     setIsValidationError(!isValid)
-    setErrorMap(errorMap)
+    setRegularRequestErrorMap(errorMap)
     if (isValid) {
       setIsValidationError(false)
       try {
@@ -347,7 +427,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             className={bemClass([blk, 'margin-bottom'])}
           />
         )}
-        {(apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.packages || apiErrors.supplierPackages) && (
+        {(apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.packages || apiErrors.providerPackages || apiErrors.supplierPackages) && (
           <Alert
             type="error"
             message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
@@ -370,10 +450,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="customerType"
                   options={[
                     { key: 'customer-type-existing', value: 'existing' },
-                    { key: 'customer-type-new', value: 'new' }
+                    { key: 'customer-type-new', value: 'new' },
                   ]}
                   value={regularRequest.customerType}
-                  changeHandler={(value) => {
+                  changeHandler={value => {
                     console.log('Customer Type Change:', value)
                     setRegularRequest(prev => ({
                       ...prev,
@@ -385,7 +465,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   }}
                   direction="horizontal"
                   required
-                  errorMessage={errorMap['customerType']}
+                  errorMessage={regularRequestErrorMap['customerType']}
                 />
               </Column>
               <Column
@@ -397,21 +477,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="vehicleType"
                   options={[
                     { key: 'vehicle-type-existing', value: 'existing' },
-                    { key: 'vehicle-type-new', value: 'new' }
+                    { key: 'vehicle-type-new', value: 'new' },
                   ]}
                   value={regularRequest.vehicleType}
-                  changeHandler={(value) => {
+                  changeHandler={value => {
                     setRegularRequest(prev => ({
                       ...prev,
                       vehicleType: value.vehicleType as 'existing' | 'new',
                       vehicleCategory: value.vehicleType === 'new' ? null : prev.vehicleCategory,
                       vehicle: value.vehicleType === 'new' ? null : prev.vehicle,
                       vehicleDetails: value.vehicleType === 'existing' ? null : { ownerName: '', ownerContact: '', ownerEmail: '', manufacturer: '', name: '', registrationNo: '' },
+                      packageFromProvidedVehicle: value.vehicleType === 'existing' ? undefined : { packageCategory: '', packageId: '' },
                     }))
                   }}
                   direction="horizontal"
                   required
-                  errorMessage={errorMap['vehicleType']}
+                  errorMessage={regularRequestErrorMap['vehicleType']}
                 />
               </Column>
               <Column
@@ -423,10 +504,10 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="staffType"
                   options={[
                     { key: 'staff-type-existing', value: 'existing' },
-                    { key: 'staff-type-new', value: 'new' }
+                    { key: 'staff-type-new', value: 'new' },
                   ]}
                   value={regularRequest.staffType}
-                  changeHandler={(value) => {
+                  changeHandler={value => {
                     setRegularRequest(prev => ({
                       ...prev,
                       staffType: value.staffType as 'existing' | 'new',
@@ -437,7 +518,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   }}
                   direction="horizontal"
                   required
-                  errorMessage={errorMap['staffType']}
+                  errorMessage={regularRequestErrorMap['staffType']}
                 />
               </Column>
             </Row>
@@ -459,8 +540,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['requestType']}
-                  invalid={errorMap['requestType']}
+                  errorMessage={regularRequestErrorMap['requestType']}
+                  invalid={regularRequestErrorMap['requestType']}
                 />
               </Column>
               <Column
@@ -478,8 +559,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['pickUpLocation']}
-                  invalid={errorMap['pickUpLocation']}
+                  errorMessage={regularRequestErrorMap['pickUpLocation']}
+                  invalid={regularRequestErrorMap['pickUpLocation']}
                 />
               </Column>
               <Column
@@ -497,8 +578,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['dropOffLocation']}
-                  invalid={errorMap['dropOffLocation']}
+                  errorMessage={regularRequestErrorMap['dropOffLocation']}
+                  invalid={regularRequestErrorMap['dropOffLocation']}
                 />
               </Column>
             </Row>
@@ -519,8 +600,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['pickUpDateTime']}
-                  invalid={errorMap['pickUpDateTime']}
+                  errorMessage={regularRequestErrorMap['pickUpDateTime']}
+                  invalid={regularRequestErrorMap['pickUpDateTime']}
                 />
               </Column>
               <Column
@@ -539,8 +620,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['dropDateTime']}
-                  invalid={errorMap['dropDateTime']}
+                  errorMessage={regularRequestErrorMap['dropDateTime']}
+                  invalid={regularRequestErrorMap['dropDateTime']}
                 />
               </Column>
               <Column
@@ -572,8 +653,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['openingKm']}
-                  invalid={errorMap['openingKm']}
+                  errorMessage={regularRequestErrorMap['openingKm']}
+                  invalid={regularRequestErrorMap['openingKm']}
                 />
               </Column>
               <Column
@@ -592,8 +673,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['closingKm']}
-                  invalid={errorMap['closingKm']}
+                  errorMessage={regularRequestErrorMap['closingKm']}
+                  invalid={regularRequestErrorMap['closingKm']}
                 />
               </Column>
               <Column
@@ -618,7 +699,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                   name="ac"
                   options={[
                     { key: 'ac-yes', value: 'Yes' },
-                    { key: 'ac-no', value: 'No' }
+                    { key: 'ac-no', value: 'No' },
                   ]}
                   value={regularRequest.ac ? 'Yes' : 'No'}
                   changeHandler={value => {
@@ -658,8 +739,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['customerCategory']}
-                    invalid={errorMap['customerCategory']}
+                    errorMessage={regularRequestErrorMap['customerCategory']}
+                    invalid={regularRequestErrorMap['customerCategory']}
                   />
                 </Column>
                 <Column
@@ -681,8 +762,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['customer']}
-                    invalid={errorMap['customer']}
+                    errorMessage={regularRequestErrorMap['customer']}
+                    invalid={regularRequestErrorMap['customer']}
                     disabled={!regularRequest.customerCategory || customersLoading || customersIsError}
                   />
                 </Column>
@@ -707,8 +788,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['customerDetails.name']}
-                    invalid={errorMap['customerDetails.name']}
+                    errorMessage={regularRequestErrorMap['customerDetails.name']}
+                    invalid={regularRequestErrorMap['customerDetails.name']}
                   />
                 </Column>
                 <Column
@@ -729,8 +810,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['customerDetails.contact']}
-                    invalid={errorMap['customerDetails.contact']}
+                    errorMessage={regularRequestErrorMap['customerDetails.contact']}
+                    invalid={regularRequestErrorMap['customerDetails.contact']}
                   />
                 </Column>
                 <Column
@@ -751,8 +832,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         },
                       })
                     }}
-                    errorMessage={errorMap['customerDetails.email']}
-                    invalid={errorMap['customerDetails.email']}
+                    errorMessage={regularRequestErrorMap['customerDetails.email']}
+                    invalid={regularRequestErrorMap['customerDetails.email']}
                   />
                 </Column>
               </Row>
@@ -786,8 +867,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleCategory']}
-                      invalid={errorMap['vehicleCategory']}
+                      errorMessage={regularRequestErrorMap['vehicleCategory']}
+                      invalid={regularRequestErrorMap['vehicleCategory']}
                     />
                   </Column>
                 </Row>
@@ -815,8 +896,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                               })
                             }}
                             required
-                            errorMessage={errorMap['supplier']}
-                            invalid={errorMap['supplier']}
+                            errorMessage={regularRequestErrorMap['supplier']}
+                            invalid={regularRequestErrorMap['supplier']}
                             disabled={suppliersLoading || suppliersIsError}
                           />
                         </Column>
@@ -838,9 +919,13 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                                 : [],
                               'Please wait...',
                               'Unable to load options',
-                              'No supplier packages found'
+                              'No supplier packages found',
                             )}
-                            value={regularRequest.supplierPackage ? ((supplierPackageOptions.find((option: any) => option.key === regularRequest.supplierPackage) as any)?.value ?? '') : ''}
+                            value={
+                              regularRequest.supplierPackage
+                                ? ((supplierPackageOptions.find((option: any) => option.key === regularRequest.supplierPackage) as any)?.value ?? '')
+                                : ''
+                            }
                             changeHandler={value => {
                               if (isPlaceholderValue(value.supplierPackage?.toString() || '', 'supplierPackages')) return
 
@@ -851,8 +936,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                               })
                             }}
                             required
-                            errorMessage={errorMap['supplierPackage']}
-                            invalid={errorMap['supplierPackage']}
+                            errorMessage={regularRequestErrorMap['supplierPackage']}
+                            invalid={regularRequestErrorMap['supplierPackage']}
                             disabled={!regularRequest.supplier || supplierPackagesLoading || supplierPackagesIsError}
                           />
                         </Column>
@@ -876,7 +961,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                             : vehicleOptions,
                           'Please wait...',
                           'Unable to load options',
-                          'No vehicles found'
+                          'No vehicles found',
                         )}
                         value={regularRequest.vehicle ? ((vehicleOptions.find((option: any) => option.key === regularRequest.vehicle) as any)?.value ?? '') : ''}
                         changeHandler={value => {
@@ -889,8 +974,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           })
                         }}
                         required
-                        errorMessage={errorMap['vehicle']}
-                        invalid={errorMap['vehicle']}
+                        errorMessage={regularRequestErrorMap['vehicle']}
+                        invalid={regularRequestErrorMap['vehicle']}
                         disabled={
                           !regularRequest.vehicleCategory ||
                           vehiclesLoading ||
@@ -923,8 +1008,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleDetails.ownerName']}
-                      invalid={errorMap['vehicleDetails.ownerName']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.ownerName']}
+                      invalid={regularRequestErrorMap['vehicleDetails.ownerName']}
                     />
                   </Column>
                   <Column
@@ -945,8 +1030,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleDetails.ownerContact']}
-                      invalid={errorMap['vehicleDetails.ownerContact']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.ownerContact']}
+                      invalid={regularRequestErrorMap['vehicleDetails.ownerContact']}
                     />
                   </Column>
                   <Column
@@ -967,8 +1052,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                           },
                         })
                       }}
-                      errorMessage={errorMap['vehicleDetails.ownerEmail']}
-                      invalid={errorMap['vehicleDetails.ownerEmail']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.ownerEmail']}
+                      invalid={regularRequestErrorMap['vehicleDetails.ownerEmail']}
                     />
                   </Column>
                 </Row>
@@ -991,8 +1076,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleDetails.manufacturer']}
-                      invalid={errorMap['vehicleDetails.manufacturer']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.manufacturer']}
+                      invalid={regularRequestErrorMap['vehicleDetails.manufacturer']}
                     />
                   </Column>
                   <Column
@@ -1013,8 +1098,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleDetails.name']}
-                      invalid={errorMap['vehicleDetails.name']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.name']}
+                      invalid={regularRequestErrorMap['vehicleDetails.name']}
                     />
                   </Column>
                   <Column
@@ -1035,14 +1120,76 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         })
                       }}
                       required
-                      errorMessage={errorMap['vehicleDetails.registrationNo']}
-                      invalid={errorMap['vehicleDetails.registrationNo']}
+                      errorMessage={regularRequestErrorMap['vehicleDetails.registrationNo']}
+                      invalid={regularRequestErrorMap['vehicleDetails.registrationNo']}
                     />
                   </Column>
                 </Row>
               </>
             )}
           </Panel>
+
+          {/* Provider Package Details Panel */}
+          {regularRequest.vehicleType === 'new' && (
+            <Panel
+              title="Provider Package Details"
+              className={bemClass([blk, 'margin-bottom'])}
+            >
+              <Row>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <ConfiguredInput
+                    label="Package Category"
+                    name="providerPackageCategory"
+                    configToUse="Package category"
+                    type={CONFIGURED_INPUT_TYPES.SELECT}
+                    value={regularRequest.packageFromProvidedVehicle?.packageCategory || ''}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        packageFromProvidedVehicle: {
+                          packageCategory: value.providerPackageCategory?.toString() ?? '',
+                          packageId: regularRequest.packageFromProvidedVehicle?.packageId ?? '',
+                        },
+                      })
+                    }}
+                    required
+                    errorMessage={regularRequestErrorMap['packageFromProvidedVehicle.packageCategory']}
+                    invalid={regularRequestErrorMap['packageFromProvidedVehicle.packageCategory']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <SelectInput
+                    label="Package"
+                    name="providerPackage"
+                    options={getSelectOptions(providerPackagesLoading, providerPackagesIsError, providerPackageOptions, 'Please wait...', 'Unable to load options', 'No provider packages found')}
+                    value={regularRequest.packageFromProvidedVehicle?.packageId ? ((providerPackageOptions.find((option: any) => option.key === regularRequest.packageFromProvidedVehicle?.packageId) as any)?.value ?? '') : ''}
+                    changeHandler={value => {
+                      if (isPlaceholderValue(value.providerPackage?.toString() || '', 'providerPackages')) return
+
+                      const selectedOption = providerPackageOptions.find((option: any) => option.value === value.providerPackage) as any
+                      setRegularRequest({
+                        ...regularRequest,
+                        packageFromProvidedVehicle: {
+                          packageCategory: regularRequest.packageFromProvidedVehicle?.packageCategory ?? '',
+                          packageId: selectedOption?.key ?? '',
+                        },
+                      })
+                    }}
+                    required
+                    errorMessage={regularRequestErrorMap['packageFromProvidedVehicle.packageId']}
+                    invalid={regularRequestErrorMap['packageFromProvidedVehicle.packageId']}
+                    disabled={!regularRequest.packageFromProvidedVehicle?.packageCategory || providerPackagesLoading || providerPackagesIsError}
+                  />
+                </Column>
+              </Row>
+            </Panel>
+          )}
 
           {/* Staff Details Panel */}
           <Panel
@@ -1069,8 +1216,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['staffCategory']}
-                    invalid={errorMap['staffCategory']}
+                    errorMessage={regularRequestErrorMap['staffCategory']}
+                    invalid={regularRequestErrorMap['staffCategory']}
                   />
                 </Column>
                 <Column
@@ -1092,8 +1239,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['staff']}
-                    invalid={errorMap['staff']}
+                    errorMessage={regularRequestErrorMap['staff']}
+                    invalid={regularRequestErrorMap['staff']}
                     disabled={!regularRequest.staffCategory || staffLoading || staffIsError}
                   />
                 </Column>
@@ -1118,8 +1265,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['staffDetails.name']}
-                    invalid={errorMap['staffDetails.name']}
+                    errorMessage={regularRequestErrorMap['staffDetails.name']}
+                    invalid={regularRequestErrorMap['staffDetails.name']}
                   />
                 </Column>
                 <Column
@@ -1140,8 +1287,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['staffDetails.contact']}
-                    invalid={errorMap['staffDetails.contact']}
+                    errorMessage={regularRequestErrorMap['staffDetails.contact']}
+                    invalid={regularRequestErrorMap['staffDetails.contact']}
                   />
                 </Column>
                 <Column
@@ -1162,8 +1309,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       })
                     }}
                     required
-                    errorMessage={errorMap['staffDetails.license']}
-                    invalid={errorMap['staffDetails.license']}
+                    errorMessage={regularRequestErrorMap['staffDetails.license']}
+                    invalid={regularRequestErrorMap['staffDetails.license']}
                   />
                 </Column>
               </Row>
@@ -1194,8 +1341,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['packageCategory']}
-                  invalid={errorMap['packageCategory']}
+                  errorMessage={regularRequestErrorMap['packageCategory']}
+                  invalid={regularRequestErrorMap['packageCategory']}
                 />
               </Column>
               <Column
@@ -1217,8 +1364,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['package']}
-                  invalid={errorMap['package']}
+                  errorMessage={regularRequestErrorMap['package']}
+                  invalid={regularRequestErrorMap['package']}
                   disabled={!regularRequest.packageCategory || packagesLoading || packagesIsError}
                 />
               </Column>
@@ -1278,8 +1425,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['otherCharges.toll.amount']}
-                  invalid={errorMap['otherCharges.toll.amount']}
+                  errorMessage={regularRequestErrorMap['otherCharges.toll.amount']}
+                  invalid={regularRequestErrorMap['otherCharges.toll.amount']}
                 />
               </Column>
               <Column
@@ -1330,8 +1477,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['otherCharges.parking.amount']}
-                  invalid={errorMap['otherCharges.parking.amount']}
+                  errorMessage={regularRequestErrorMap['otherCharges.parking.amount']}
+                  invalid={regularRequestErrorMap['otherCharges.parking.amount']}
                 />
               </Column>
             </Row>
@@ -1384,8 +1531,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['otherCharges.nightHalt.amount']}
-                  invalid={errorMap['otherCharges.nightHalt.amount']}
+                  errorMessage={regularRequestErrorMap['otherCharges.nightHalt.amount']}
+                  invalid={regularRequestErrorMap['otherCharges.nightHalt.amount']}
                 />
               </Column>
               <Column
@@ -1461,8 +1608,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['otherCharges.driverAllowance.amount']}
-                  invalid={errorMap['otherCharges.driverAllowance.amount']}
+                  errorMessage={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
+                  invalid={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
                 />
               </Column>
               <Column
@@ -1515,8 +1662,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       },
                     })
                   }}
-                  errorMessage={errorMap['advancedPayment.advancedFromCustomer']}
-                  invalid={errorMap['advancedPayment.advancedFromCustomer']}
+                  errorMessage={regularRequestErrorMap['advancedPayment.advancedFromCustomer']}
+                  invalid={regularRequestErrorMap['advancedPayment.advancedFromCustomer']}
                 />
               </Column>
               {regularRequest.vehicleCategory && nameToPath(regularRequest.vehicleCategory) === 'supplier' && (
@@ -1538,8 +1685,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         },
                       })
                     }}
-                    errorMessage={errorMap['advancedPayment.advancedToSupplier']}
-                    invalid={errorMap['advancedPayment.advancedToSupplier']}
+                    errorMessage={regularRequestErrorMap['advancedPayment.advancedToSupplier']}
+                    invalid={regularRequestErrorMap['advancedPayment.advancedToSupplier']}
                   />
                 </Column>
               )}
@@ -1593,8 +1740,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['paymentDetails.status']}
-                  invalid={errorMap['paymentDetails.status']}
+                  errorMessage={regularRequestErrorMap['paymentDetails.status']}
+                  invalid={regularRequestErrorMap['paymentDetails.status']}
                 />
               </Column>
               <Column
@@ -1617,8 +1764,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['paymentDetails.paymentMethod']}
-                  invalid={errorMap['paymentDetails.paymentMethod']}
+                  errorMessage={regularRequestErrorMap['paymentDetails.paymentMethod']}
+                  invalid={regularRequestErrorMap['paymentDetails.paymentMethod']}
                 />
               </Column>
               <Column
@@ -1640,8 +1787,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     })
                   }}
                   required
-                  errorMessage={errorMap['paymentDetails.paymentDate']}
-                  invalid={errorMap['paymentDetails.paymentDate']}
+                  errorMessage={regularRequestErrorMap['paymentDetails.paymentDate']}
+                  invalid={regularRequestErrorMap['paymentDetails.paymentDate']}
                 />
               </Column>
             </Row>
@@ -1677,7 +1824,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             <Button
               size="medium"
               category="primary"
-              clickHandler={() => {}}
+              // clickHandler={calculateProfit}
             >
               Calculate
             </Button>

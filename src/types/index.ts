@@ -185,6 +185,12 @@ export interface RegularRequestModel {
     name: string
     registrationNo: string
   }
+  packageFromProvidedVehicle:
+    | undefined
+    | {
+        packageCategory: string
+        packageId: string
+      }
   ac: boolean
   packageCategory: string | null
   package: string | null
@@ -234,6 +240,11 @@ export interface RegularRequestModel {
     advancedToSupplier: string | number
   }
   comment: string
+  requestTotal: number | null
+  providedVehiclePayment: number | null
+  requestExpense: number | null
+  requestProfit: number | null
+  customerBill: number | null
 }
 //
 export interface MonthlyFixedRequestModel {

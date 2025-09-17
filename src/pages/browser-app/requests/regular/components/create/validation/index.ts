@@ -60,6 +60,10 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
     if (regularRequestData.vehicleDetails.ownerEmail) {
       conditionalFields.push(emailField('vehicleDetails.ownerEmail'))
     }
+    // Provider package validation when vehicle type is new
+    if (regularRequestData.packageFromProvidedVehicle) {
+      conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.packageId'))
+    }
   }
 
   // Staff type conditional fields
