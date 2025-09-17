@@ -51,6 +51,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     return `${diffKm} km${diffKm !== 1 ? 's' : ''}`
   }
 
+  const formatMinutesToDuration = (totalMinutes: number | null): string => {
+    if (!totalMinutes || totalMinutes <= 0) return ''
+
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = Math.floor(totalMinutes % 60)
+
+    if (hours === 0) {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+    } else if (minutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`
+    } else {
+      return `${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`
+    }
+  }
+
   const sampleRegularRequestModel: RegularRequestModel = {
     customerType: 'existing',
     vehicleType: 'existing',
@@ -264,7 +279,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
     // Calculate total distance and time
     const totalKm = closingKm && openingKm ? closingKm - openingKm : 0
-    const totalHr = pickUpDateTime && dropDateTime ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60 * 60) : 0
+    const totalHr = pickUpDateTime && dropDateTime ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60) : 0
     // The packages are _id strings, so we need to find the full package details from the respective query data
     const customerPackage = packages?.data?.find((p: PackageModel) => p._id === customerPackageId)
     let providedVehiclePackage: PackageModel | undefined
@@ -289,6 +304,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     console.log('Profit Calculation:', { customerTotal, providedVehicleTotal, otherChargesExpense, profit, otherChargesForCustomer })
     setRegularRequest(prev => ({
       ...prev,
+      totalKm,
+      totalHr,
       requestTotal: customerTotal,
       providedVehiclePayment: providedVehicleTotal,
       requestExpense: otherChargesExpense,
@@ -362,6 +379,24 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       value: pkg.packageCode,
     }))
   }, [supplierPackages, supplierPackagesError, supplierPackagesIsError])
+
+  // Auto-calculate totalKm when openingKm or closingKm changes
+  React.useEffect(() => {
+    const totalKm = regularRequest.closingKm && regularRequest.openingKm ? regularRequest.closingKm - regularRequest.openingKm : 0
+    setRegularRequest(prev => ({
+      ...prev,
+      totalKm: totalKm > 0 ? totalKm : null,
+    }))
+  }, [regularRequest.openingKm, regularRequest.closingKm])
+
+  // Auto-calculate totalHr when pickUpDateTime or dropDateTime changes
+  React.useEffect(() => {
+    const totalHr = regularRequest.pickUpDateTime && regularRequest.dropDateTime ? (new Date(regularRequest.dropDateTime).getTime() - new Date(regularRequest.pickUpDateTime).getTime()) / (1000 * 60) : 0
+    setRegularRequest(prev => ({
+      ...prev,
+      totalHr: totalHr > 0 ? totalHr : null,
+    }))
+  }, [regularRequest.pickUpDateTime, regularRequest.dropDateTime])
 
   const navigateBack = () => {
     navigate('/requests/regular')
@@ -647,7 +682,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <ReadOnlyText
                   label="Duration"
-                  value={calculateDateTimeDifference(regularRequest.pickUpDateTime, regularRequest.dropDateTime)}
+                  value={regularRequest.totalHr ? formatMinutesToDuration(regularRequest.totalHr) : '-'}
                   color="success"
                   size="jumbo"
                 />
@@ -700,7 +735,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               >
                 <ReadOnlyText
                   label="Total Distance"
-                  value={calculateKmDifference(regularRequest.openingKm, regularRequest.closingKm)}
+                  value={regularRequest.totalKm ? `${regularRequest.totalKm} km` : '-'}
                   color="success"
                   size="jumbo"
                 />

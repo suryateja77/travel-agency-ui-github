@@ -177,6 +177,21 @@ const formatBooleanValueForDisplay = (value: boolean): string => {
   return value ? 'Yes' : 'No'
 }
 
+const formatMinutesToDuration = (totalMinutes: number | null): string => {
+  if (!totalMinutes || totalMinutes <= 0) return '-'
+
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = Math.floor(totalMinutes % 60)
+
+  if (hours === 0) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+  } else if (minutes === 0) {
+    return `${hours} hour${hours !== 1 ? 's' : ''}`
+  } else {
+    return `${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`
+  }
+}
+
 export { 
   computeValue, 
   bemClass, 
@@ -192,5 +207,6 @@ export {
   formatDateTimeForInput,
   parseDateTimeFromInput,
   formatDateValueForDisplay,
-  formatBooleanValueForDisplay
+  formatBooleanValueForDisplay,
+  formatMinutesToDuration
 }
