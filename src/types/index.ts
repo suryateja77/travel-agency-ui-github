@@ -189,7 +189,7 @@ export interface RegularRequestModel {
     | undefined
     | {
         packageCategory: string
-        packageId: string
+        package: string
       }
   ac: boolean
   packageCategory: string | null
@@ -349,6 +349,7 @@ export const INITIAL_ADVANCE_PAYMENT: AdvancePaymentModel = {
 
 //
 export interface PackageModel {
+  _id?: string
   category: string
   supplier?: string
   packageCode: string

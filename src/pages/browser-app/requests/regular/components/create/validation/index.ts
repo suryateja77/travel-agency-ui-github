@@ -78,15 +78,32 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   return [...baseFields, ...conditionalFields]
 }
 
-const calculateTotalValidationSchema = [
-  emptyField('pickUpDateTime'),
-  emptyField('dropDateTime'),
-  dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
-  emptyField('openingKm'),
-  numberFieldGreaterThanZero('openingKm'),
-  emptyField('closingKm'),
-  numberFieldGreaterThanZero('closingKm'),
-  numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
-]
+const calculateTotalValidationSchema = (regularRequestData: RegularRequestModel) => {
+  const baseFields = [
+    emptyField('pickUpDateTime'),
+    emptyField('dropDateTime'),
+    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
+    emptyField('openingKm'),
+    numberFieldGreaterThanZero('openingKm'),
+    emptyField('closingKm'),
+    numberFieldGreaterThanZero('closingKm'),
+    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
+    emptyField('packageCategory'),
+    emptyField('package'),
+  ]
+
+  const conditionalFields = []
+
+  // Package validation based on vehicle type
+  if (regularRequestData.vehicleType === 'existing' && regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
+    conditionalFields.push(emptyField('supplierPackage'))
+  }
+
+  if (regularRequestData.vehicleType === 'new' && regularRequestData.packageFromProvidedVehicle) {
+    conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.package'))
+  }
+
+  return [...baseFields, ...conditionalFields]
+}
 
 export { createValidationSchema, calculateTotalValidationSchema }

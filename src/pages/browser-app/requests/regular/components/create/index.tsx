@@ -243,42 +243,59 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     return tollAmount + parkingAmount + nightHaltAmount + driverAllowanceAmount
   }
   //
-  const requestTotal = (packageDetail: PackageModel) => {
+  const requestTotal = (packageDetail: PackageModel, totalKm: number = 0, totalHr: number = 0) => {
     const { baseAmount, minimumKm, extraKmPerKmRate, minimumHr, extraHrPerHrRate } = packageDetail
-    const extraKm = (regularRequest.totalKm || 0 - Number(minimumKm)) < 0 ? 0 : regularRequest.totalKm || 0 - Number(minimumKm)
-    const extraHr = (regularRequest.totalHr || 0 - Number(minimumHr)) < 0 ? 0 : regularRequest.totalHr || 0 - Number(minimumHr)
+    const extraKm = (totalKm - Number(minimumKm)) < 0 ? 0 : totalKm - Number(minimumKm)
+    const extraHr = (totalHr - Number(minimumHr)) < 0 ? 0 : totalHr - Number(minimumHr)
     const extraKmBilling = extraKm * Number(extraKmPerKmRate)
     const extraHrBilling = extraHr * Number(extraHrPerHrRate)
     return Number(baseAmount) + extraKmBilling + extraHrBilling
   }
   //
-  // const calculateProfit = () => {
-  //   //
-  //   const { isValid, errorMap } = validatePayload(calculateTotalValidationSchema, regularRequest)
-  //   setRegularRequestErrorMap({ ...regularRequestErrorMap, ...errorMap })
-  //   setIsValidationError(!isValid)
-  //   if (!isValid) {
-  //     return
-  //   }
-  //   const { vehicleType, vehicleCategory, package: customerPackage } = regularRequest
-  //   // The packages are _id, so we need to find the full package details from the respective query data
-  //   const providedVehiclePackageDetails = vehicleType === 'existing' && vehicleCategory === 'supplier' && regularRequest.supplierPackage
-  //   const customerTotal = requestTotal(customerPackage)
-  //   const providedVehicleTotal = vehicleType === 'new' || (vehicleType === 'existing' && vehicleCategory === 'supplier') ? requestTotal(providedVehiclePackageDetails) : 0
-  //   // Calculate other charges
-  //   const otherChargesExpense = calculateOtherChargesExpenses()
-  //   const otherChargesForCustomer = calculateOtherChargesForCustomer()
-  //   const profit = customerTotal - providedVehicleTotal - otherChargesExpense
+  const calculateProfit = () => {
+    //
+    const { isValid, errorMap } = validatePayload(calculateTotalValidationSchema(regularRequest), regularRequest)
+    setRegularRequestErrorMap({ ...regularRequestErrorMap, ...errorMap })
+    setIsValidationError(!isValid)
+    if (!isValid) {
+      return
+    }
+    const { vehicleType, vehicleCategory, package: customerPackageId, packageFromProvidedVehicle, supplierPackage: supplierPackageId, openingKm, closingKm, pickUpDateTime, dropDateTime } = regularRequest
 
-  //   setRegularRequest(prev => ({
-  //     ...prev,
-  //     requestTotal: customerTotal,
-  //     providedVehiclePayment: providedVehicleTotal,
-  //     requestExpense: otherChargesExpense,
-  //     requestProfit: profit,
-  //     customerBill: customerTotal + otherChargesForCustomer,
-  //   }))
-  // }
+    // Calculate total distance and time
+    const totalKm = closingKm && openingKm ? closingKm - openingKm : 0
+    const totalHr = pickUpDateTime && dropDateTime ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60 * 60) : 0
+    // The packages are _id strings, so we need to find the full package details from the respective query data
+    const customerPackage = packages?.data?.find((p: PackageModel) => p._id === customerPackageId)
+    let providedVehiclePackage: PackageModel | undefined
+
+    if (vehicleType === 'new' && packageFromProvidedVehicle?.package) {
+      providedVehiclePackage = providerPackages?.data?.find((p: PackageModel) => p._id === packageFromProvidedVehicle.package)
+    } else if (vehicleType === 'existing' && vehicleCategory && nameToPath(vehicleCategory) === 'supplier' && supplierPackageId) {
+      providedVehiclePackage = supplierPackages?.data?.find((p: PackageModel) => p._id === supplierPackageId)
+    }
+
+    if (!customerPackage) {
+      console.error('Customer package not found')
+      return
+    }
+
+    const customerTotal = requestTotal(customerPackage, totalKm, totalHr)
+    const providedVehicleTotal = providedVehiclePackage ? requestTotal(providedVehiclePackage, totalKm, totalHr) : 0
+    // Calculate other charges
+    const otherChargesExpense = calculateOtherChargesExpenses()
+    const otherChargesForCustomer = calculateOtherChargesForCustomer()
+    const profit = customerTotal - providedVehicleTotal - otherChargesExpense
+    console.log('Profit Calculation:', { customerTotal, providedVehicleTotal, otherChargesExpense, profit, otherChargesForCustomer })
+    setRegularRequest(prev => ({
+      ...prev,
+      requestTotal: customerTotal,
+      providedVehiclePayment: providedVehicleTotal,
+      requestExpense: otherChargesExpense,
+      requestProfit: profit,
+      customerBill: customerTotal + otherChargesForCustomer,
+    }))
+  }
 
   // Generate options for SelectInput based on loading/error states
   const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
@@ -487,7 +504,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       vehicleCategory: value.vehicleType === 'new' ? null : prev.vehicleCategory,
                       vehicle: value.vehicleType === 'new' ? null : prev.vehicle,
                       vehicleDetails: value.vehicleType === 'existing' ? null : { ownerName: '', ownerContact: '', ownerEmail: '', manufacturer: '', name: '', registrationNo: '' },
-                      packageFromProvidedVehicle: value.vehicleType === 'existing' ? undefined : { packageCategory: '', packageId: '' },
+                      packageFromProvidedVehicle: value.vehicleType === 'existing' ? undefined : { packageCategory: '', package: '' },
                     }))
                   }}
                   direction="horizontal"
@@ -1151,7 +1168,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest,
                         packageFromProvidedVehicle: {
                           packageCategory: value.providerPackageCategory?.toString() ?? '',
-                          packageId: regularRequest.packageFromProvidedVehicle?.packageId ?? '',
+                          package: regularRequest.packageFromProvidedVehicle?.package ?? '',
                         },
                       })
                     }}
@@ -1168,7 +1185,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     label="Package"
                     name="providerPackage"
                     options={getSelectOptions(providerPackagesLoading, providerPackagesIsError, providerPackageOptions, 'Please wait...', 'Unable to load options', 'No provider packages found')}
-                    value={regularRequest.packageFromProvidedVehicle?.packageId ? ((providerPackageOptions.find((option: any) => option.key === regularRequest.packageFromProvidedVehicle?.packageId) as any)?.value ?? '') : ''}
+                    value={regularRequest.packageFromProvidedVehicle?.package ? ((providerPackageOptions.find((option: any) => option.key === regularRequest.packageFromProvidedVehicle?.package) as any)?.value ?? '') : ''}
                     changeHandler={value => {
                       if (isPlaceholderValue(value.providerPackage?.toString() || '', 'providerPackages')) return
 
@@ -1177,13 +1194,13 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest,
                         packageFromProvidedVehicle: {
                           packageCategory: regularRequest.packageFromProvidedVehicle?.packageCategory ?? '',
-                          packageId: selectedOption?.key ?? '',
+                          package: selectedOption?.key ?? '',
                         },
                       })
                     }}
                     required
-                    errorMessage={regularRequestErrorMap['packageFromProvidedVehicle.packageId']}
-                    invalid={regularRequestErrorMap['packageFromProvidedVehicle.packageId']}
+                    errorMessage={regularRequestErrorMap['packageFromProvidedVehicle.package']}
+                    invalid={regularRequestErrorMap['packageFromProvidedVehicle.package']}
                     disabled={!regularRequest.packageFromProvidedVehicle?.packageCategory || providerPackagesLoading || providerPackagesIsError}
                   />
                 </Column>
@@ -1824,7 +1841,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             <Button
               size="medium"
               category="primary"
-              // clickHandler={calculateProfit}
+              clickHandler={calculateProfit}
             >
               Calculate
             </Button>
