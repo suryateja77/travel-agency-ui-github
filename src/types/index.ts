@@ -240,11 +240,11 @@ export interface RegularRequestModel {
     advancedToSupplier: string | number
   }
   comment: string
-  requestTotal: number | null
-  providedVehiclePayment: number | null
-  requestExpense: number | null
-  requestProfit: number | null
-  customerBill: number | null
+  requestTotal: number
+  providedVehiclePayment: number
+  requestExpense: number
+  requestProfit: number
+  customerBill: number
 }
 //
 export interface MonthlyFixedRequestModel {

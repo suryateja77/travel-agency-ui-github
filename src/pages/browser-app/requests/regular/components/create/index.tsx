@@ -1847,6 +1847,59 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             </Button>
           </div>
 
+          {/* Calculation Results Panel */}
+          <Panel
+            title="Calculation Results"
+            className={bemClass([blk, 'margin-bottom'])}
+          >
+            <Row>
+              <Column
+                col={3}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ReadOnlyText
+                  label="Request Total"
+                  value={`₹${regularRequest.requestTotal.toLocaleString()}`}
+                  color="success"
+                  size="jumbo"
+                />
+              </Column>
+              <Column
+                col={3}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ReadOnlyText
+                  label="Request Expense"
+                  value={`₹${regularRequest.requestExpense.toLocaleString()}`}
+                  color="warning"
+                  size="jumbo"
+                />
+              </Column>
+              <Column
+                col={3}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ReadOnlyText
+                  label="Request Profit"
+                  value={`₹${regularRequest.requestProfit.toLocaleString()}`}
+                  color={regularRequest.requestProfit >= 0 ? "success" : "error"}
+                  size="jumbo"
+                />
+              </Column>
+              <Column
+                col={3}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ReadOnlyText
+                  label="Customer Bill"
+                  value={`₹${regularRequest.customerBill.toLocaleString()}`}
+                  color="primary"
+                  size="jumbo"
+                />
+              </Column>
+            </Row>
+          </Panel>
+
           <div className={bemClass([blk, 'action-items'])}>
             <Button
               size="medium"
