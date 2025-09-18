@@ -16,6 +16,10 @@ const RegularRequests: FunctionComponent<RegularRequestsProps> = () => {
         path="create"
         element={<CreateRegularRequest />}
       />
+      <Route
+        path=":id/edit"
+        element={<CreateRegularRequest />}
+      />
     </Routes>
   )
 }

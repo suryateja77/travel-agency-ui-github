@@ -1,10 +1,10 @@
 import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle, ReadOnlyText } from '@base'
 import { PackageModel, RegularRequestModel } from '@types'
 import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
-import React, { FunctionComponent, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { FunctionComponent, useState, useMemo, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { calculateTotalValidationSchema, createValidationSchema } from './validation'
-import { useCreateRegularRequestMutation } from '@api/queries/regular-request'
+import { useCreateRegularRequestMutation, useUpdateRegularRequestMutation, useRegularRequestByIdQuery } from '@api/queries/regular-request'
 import { useCustomerByCategory } from '@api/queries/customer'
 import { useVehicleByCategory } from '@api/queries/vehicle'
 import { useStaffByCategory } from '@api/queries/staff'
@@ -19,7 +19,101 @@ const blk = 'create-regular-request'
 
 interface CreateRegularRequestProps {}
 
+const extractIdFromResponse = (field: any): string => {
+  if (typeof field === 'string') return field
+  if (field && typeof field === 'object' && field._id) return field._id
+  return ''
+}
+
+const transformRegularRequestResponse = (response: any): RegularRequestModel => {
+  const vehicleType = response.vehicleType || 'existing'
+  const vehicleCategory = response.vehicleCategory || null
+  const isSupplierVehicle = vehicleType === 'existing' && vehicleCategory && nameToPath(vehicleCategory) === 'supplier'
+
+  return {
+  customerType: response.customerType || 'existing',
+  vehicleType,
+  staffType: response.staffType || 'existing',
+  requestType: response.requestType || '',
+
+  customerCategory: response.customerCategory || null,
+  customer: extractIdFromResponse(response.customer),
+  customerDetails: response.customerDetails || null,
+  vehicleCategory,
+  supplier: isSupplierVehicle ? extractIdFromResponse(response.supplier) : null,
+  vehicle: extractIdFromResponse(response.vehicle),
+  vehicleDetails: response.vehicleDetails || null,
+  packageFromProvidedVehicle: response.packageFromProvidedVehicle || undefined,
+  ac: response.ac || false,
+  packageCategory: response.packageCategory || null,
+  supplierPackage: isSupplierVehicle ? extractIdFromResponse(response.supplierPackage) : null,
+  package: extractIdFromResponse(response.package),
+  staffCategory: response.staffCategory || null,
+  staff: extractIdFromResponse(response.staff),
+  staffDetails: response.staffDetails || null,
+  pickUpLocation: response.pickUpLocation || '',
+  dropOffLocation: response.dropOffLocation || '',
+  pickUpDateTime: response.pickUpDateTime ? new Date(response.pickUpDateTime) : null,
+  dropDateTime: response.dropDateTime ? new Date(response.dropDateTime) : null,
+  openingKm: response.openingKm || null,
+  closingKm: response.closingKm || null,
+  totalKm: response.totalKm || null,
+  totalHr: response.totalHr || null,
+
+  paymentDetails: {
+    status: response.paymentDetails?.status || '',
+    paymentMethod: response.paymentDetails?.paymentMethod || '',
+    paymentDate: response.paymentDetails?.paymentDate ? new Date(response.paymentDetails.paymentDate) : null,
+  },
+  otherCharges: {
+    toll: {
+      amount: response.otherCharges?.toll?.amount || '',
+      isChargeableToCustomer: response.otherCharges?.toll?.isChargeableToCustomer || false,
+    },
+    parking: {
+      amount: response.otherCharges?.parking?.amount || '',
+      isChargeableToCustomer: response.otherCharges?.parking?.isChargeableToCustomer || false,
+    },
+    nightHalt: {
+      amount: response.otherCharges?.nightHalt?.amount || '',
+      isChargeableToCustomer: response.otherCharges?.nightHalt?.isChargeableToCustomer || false,
+      isPayableWithSalary: response.otherCharges?.nightHalt?.isPayableWithSalary || false,
+    },
+    driverAllowance: {
+      amount: response.otherCharges?.driverAllowance?.amount || '',
+      isChargeableToCustomer: response.otherCharges?.driverAllowance?.isChargeableToCustomer || false,
+      isPayableWithSalary: response.otherCharges?.driverAllowance?.isPayableWithSalary || false,
+    },
+  },
+  advancedPayment: {
+    advancedFromCustomer: response.advancedPayment?.advancedFromCustomer || '',
+    advancedToSupplier: response.advancedPayment?.advancedToSupplier || '',
+  },
+  requestTotal: response.requestTotal || 0,
+  providedVehiclePayment: response.providedVehiclePayment || 0,
+  requestExpense: response.requestExpense || 0,
+  requestProfit: response.requestProfit || 0,
+  customerBill: response.customerBill || 0,
+  comment: response.comment || '',
+}}
+
 const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () => {
+  const { id } = useParams<{ id: string }>()
+  const isEditing = Boolean(id)
+  const requestId = id || ''
+
+  const { data: regularRequestData, isLoading: isLoadingRequest } = useRegularRequestByIdQuery(requestId)
+
+  const updateRegularRequestMutation = useUpdateRegularRequestMutation()
+
+  // Load data when in edit mode
+  useEffect(() => {
+    if (isEditing && regularRequestData) {
+      const transformedData = transformRegularRequestResponse(regularRequestData)
+      setRegularRequest(transformedData)
+    }
+  }, [isEditing, regularRequestData])
+
   // Helper functions for calculations
   const calculateDateTimeDifference = (startDate: Date | null, endDate: Date | null): string => {
     if (!startDate || !endDate) return ''
@@ -267,14 +361,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     return Number(baseAmount) + extraKmBilling + extraHrBilling
   }
   //
-  const calculateProfit = () => {
-    //
-    const { isValid, errorMap } = validatePayload(calculateTotalValidationSchema(regularRequest), regularRequest)
-    setRegularRequestErrorMap({ ...regularRequestErrorMap, ...errorMap })
-    setIsValidationError(!isValid)
-    if (!isValid) {
-      return
-    }
+  const performCalculation = () => {
     const { vehicleType, vehicleCategory, package: customerPackageId, packageFromProvidedVehicle, supplierPackage: supplierPackageId, openingKm, closingKm, pickUpDateTime, dropDateTime } = regularRequest
 
     // Calculate total distance and time
@@ -312,6 +399,17 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       requestProfit: profit,
       customerBill: customerTotal + otherChargesForCustomer,
     }))
+  }
+
+  const calculateProfit = () => {
+    //
+    const { isValid, errorMap } = validatePayload(calculateTotalValidationSchema(regularRequest), regularRequest)
+    setRegularRequestErrorMap({ ...regularRequestErrorMap, ...errorMap })
+    setIsValidationError(!isValid)
+    if (!isValid) {
+      return
+    }
+    performCalculation()
   }
 
   // Generate options for SelectInput based on loading/error states
@@ -416,6 +514,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       return
     }
 
+    // Ensure profit calculation is performed before submission
+    performCalculation()
+
     const validationSchema = createValidationSchema(regularRequest)
     const { isValid, errorMap } = validatePayload(validationSchema, regularRequest)
 
@@ -424,25 +525,32 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     if (isValid) {
       setIsValidationError(false)
       try {
-        await createRegularRequest.mutateAsync(regularRequest)
-        setConfirmationPopUpType('create')
-        setConfirmationPopUpTitle('Success')
-        setConfirmationPopUpSubtitle('New Regular Request created successfully!')
+        if (isEditing) {
+          await updateRegularRequestMutation.mutateAsync({ _id: requestId, ...regularRequest })
+          setConfirmationPopUpType('update')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('Regular Request updated successfully!')
+        } else {
+          await createRegularRequest.mutateAsync(regularRequest)
+          setConfirmationPopUpType('create')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('New Regular Request created successfully!')
+        }
 
         setTimeout(() => {
           setShowConfirmationModal(true)
         }, 500)
       } catch (error) {
-        console.log('Unable to create regular request', error)
+        console.log('Unable to submit regular request', error)
         setConfirmationPopUpType('delete')
         setConfirmationPopUpTitle('Error')
-        setConfirmationPopUpSubtitle('Unable to create regular request. Please try again.')
+        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} regular request. Please try again.`)
         setTimeout(() => {
           setShowConfirmationModal(true)
         }, 500)
       }
     } else {
-      console.log('Create Regular Request: Validation Error', errorMap)
+      console.log('Submit Regular Request: Validation Error', errorMap)
     }
   }
 
@@ -454,7 +562,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             color="gray-darker"
             typography="l"
           >
-            New Regular Request
+            {isEditing ? 'Edit Regular Request' : 'New Regular Request'}
           </Text>
           <Breadcrumb
             data={[
@@ -467,7 +575,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 route: '/requests/regular',
               },
               {
-                label: 'New Regular Request',
+                label: isEditing ? 'Edit Regular Request' : 'New Regular Request',
               },
             ]}
           />
@@ -1949,7 +2057,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               category="primary"
               clickHandler={submitHandler}
             >
-              Submit
+              {isEditing ? 'Update' : 'Submit'}
             </Button>
           </div>
         </div>
