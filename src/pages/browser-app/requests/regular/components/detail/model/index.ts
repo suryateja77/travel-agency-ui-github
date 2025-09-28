@@ -225,15 +225,36 @@ export const regularRequestDetailsFields: Panel[] = [
     ],
   },
   {
-    panel: 'Advanced Payment',
+    panel: 'Advance from Customer',
     fields: [
       {
-        label: 'Advanced from Customer',
-        path: 'advancedPayment.advancedFromCustomer',
+        label: 'Amount',
+        path: 'advancedPayment.advancedFromCustomer.amount',
       },
       {
-        label: 'Advanced to Supplier',
-        path: 'advancedPayment.advancedToSupplier',
+        label: 'Payment Method',
+        path: 'advancedPayment.advancedFromCustomer.paymentMethod',
+      },
+      {
+        label: 'Payment Date',
+        path: 'advancedPayment.advancedFromCustomer.paymentDate',
+      },
+    ],
+  },
+  {
+    panel: 'Advance to Supplier',
+    fields: [
+      {
+        label: 'Amount',
+        path: 'advancedPayment.advancedToSupplier.amount',
+      },
+      {
+        label: 'Payment Method',
+        path: 'advancedPayment.advancedToSupplier.paymentMethod',
+      },
+      {
+        label: 'Payment Date',
+        path: 'advancedPayment.advancedToSupplier.paymentDate',
       },
     ],
   },

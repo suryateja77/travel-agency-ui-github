@@ -62,7 +62,7 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
     }
     // Provider package validation when vehicle type is new
     if (regularRequestData.packageFromProvidedVehicle) {
-      conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.packageId'))
+      conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.package'))
     }
   }
 
@@ -73,6 +73,26 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
 
   if (regularRequestData.staffType === 'new' && regularRequestData.staffDetails) {
     conditionalFields.push(emptyField('staffDetails.name'), emptyField('staffDetails.contact'), emptyField('staffDetails.license'))
+  }
+
+  // Advanced payment validation - custom logic with proper format
+  const advanceFromCustomerAmount = regularRequestData.advancedPayment?.advancedFromCustomer?.amount
+  if (advanceFromCustomerAmount && Number(advanceFromCustomerAmount) > 0) {
+    conditionalFields.push(
+      emptyField('advancedPayment.advancedFromCustomer.paymentMethod'),
+      emptyField('advancedPayment.advancedFromCustomer.paymentDate')
+    )
+  }
+
+  // Advanced to supplier validation (only when supplier vehicles)
+  if (regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
+    const advanceToSupplierAmount = regularRequestData.advancedPayment?.advancedToSupplier?.amount
+    if (advanceToSupplierAmount && Number(advanceToSupplierAmount) > 0) {
+      conditionalFields.push(
+        emptyField('advancedPayment.advancedToSupplier.paymentMethod'),
+        emptyField('advancedPayment.advancedToSupplier.paymentDate')
+      )
+    }
   }
 
   return [...baseFields, ...conditionalFields]

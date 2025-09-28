@@ -103,8 +103,16 @@ interface TransformedRegularRequestData extends Record<string, any> {
     }
   }
   advancedPayment: {
-    advancedFromCustomer: string
-    advancedToSupplier: string
+    advancedFromCustomer: {
+      amount: string
+      paymentMethod: string
+      paymentDate: string
+    }
+    advancedToSupplier: {
+      amount: string
+      paymentMethod: string
+      paymentDate: string
+    } | null
   }
   requestTotal: string
   requestExpense: string
@@ -232,8 +240,16 @@ const transformRegularRequestData = (
       },
     },
     advancedPayment: {
-      advancedFromCustomer: data.advancedPayment.advancedFromCustomer?.toString() || '-',
-      advancedToSupplier: data.advancedPayment.advancedToSupplier?.toString() || '-',
+      advancedFromCustomer: {
+        amount: data.advancedPayment.advancedFromCustomer?.amount?.toString() || '-',
+        paymentMethod: data.advancedPayment.advancedFromCustomer?.paymentMethod || '-',
+        paymentDate: formatDateValueForDisplay(data.advancedPayment.advancedFromCustomer?.paymentDate),
+      },
+      advancedToSupplier: data.advancedPayment.advancedToSupplier ? {
+        amount: data.advancedPayment.advancedToSupplier.amount?.toString() || '-',
+        paymentMethod: data.advancedPayment.advancedToSupplier.paymentMethod || '-',
+        paymentDate: formatDateValueForDisplay(data.advancedPayment.advancedToSupplier.paymentDate),
+      } : null,
     },
     requestTotal: `₹${data.requestTotal.toLocaleString()}`,
     requestExpense: `₹${data.requestExpense.toLocaleString()}`,
@@ -310,19 +326,14 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: RegularRequestM
       }
     }
 
-    // Filter Advanced Payment panel
-    if (panel.panel === 'Advanced Payment') {
-      return {
-        ...panel,
-        fields: panel.fields.filter(field => {
-          // Show advancedToSupplier only for supplier vehicles
-          if (field.path === 'advancedPayment.advancedToSupplier' &&
-              (data.vehicleType === 'new' || nameToPath(data.vehicleCategory || '') !== 'supplier')) {
-            return false
-          }
-          return true
-        })
-      }
+    // Filter Advanced Payment panels
+    if (panel.panel === 'Advance from Customer') {
+      return panel // Always show advance from customer panel
+    }
+
+    if (panel.panel === 'Advance to Supplier') {
+      // Show advance to supplier panel only for supplier vehicles
+      return (data.vehicleType === 'existing' && nameToPath(data.vehicleCategory || '') === 'supplier') ? panel : null
     }
 
     return panel

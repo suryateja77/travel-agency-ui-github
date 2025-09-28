@@ -86,8 +86,16 @@ const transformRegularRequestResponse = (response: any): RegularRequestModel => 
     },
   },
   advancedPayment: {
-    advancedFromCustomer: response.advancedPayment?.advancedFromCustomer || '',
-    advancedToSupplier: response.advancedPayment?.advancedToSupplier || '',
+    advancedFromCustomer: {
+      amount: response.advancedPayment?.advancedFromCustomer?.amount || '',
+      paymentMethod: response.advancedPayment?.advancedFromCustomer?.paymentMethod || '',
+      paymentDate: response.advancedPayment?.advancedFromCustomer?.paymentDate || null,
+    },
+    advancedToSupplier: response.advancedPayment?.advancedToSupplier ? {
+      amount: response.advancedPayment.advancedToSupplier.amount || '',
+      paymentMethod: response.advancedPayment.advancedToSupplier.paymentMethod || '',
+      paymentDate: response.advancedPayment.advancedToSupplier.paymentDate || null,
+    } : null,
   },
   requestTotal: response.requestTotal || 0,
   providedVehiclePayment: response.providedVehiclePayment || 0,
@@ -105,6 +113,24 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const { data: regularRequestData, isLoading: isLoadingRequest } = useRegularRequestByIdQuery(requestId)
 
   const updateRegularRequestMutation = useUpdateRegularRequestMutation()
+
+  // Helper functions for date formatting (date-only, no time)
+  const formatDateForInput = (date: Date | null): string => {
+    if (!date) return ''
+    
+    const localDate = new Date(date)
+    const year = localDate.getFullYear()
+    const month = String(localDate.getMonth() + 1).padStart(2, '0')
+    const day = String(localDate.getDate()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}`
+  }
+
+  const parseDateFromInput = (value: string): Date | null => {
+    if (!value) return null
+    // Create date object at midnight local time
+    return new Date(value + 'T00:00:00')
+  }
 
   // Load data when in edit mode
   useEffect(() => {
@@ -216,8 +242,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       },
     },
     advancedPayment: {
-      advancedFromCustomer: '',
-      advancedToSupplier: '',
+      advancedFromCustomer: {
+        amount: '',
+        paymentMethod: '',
+        paymentDate: null,
+      },
+      advancedToSupplier: null,
     },
     requestTotal: 0,
     providedVehiclePayment: 0,
@@ -1018,12 +1048,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       type={CONFIGURED_INPUT_TYPES.SELECT}
                       value={regularRequest.vehicleCategory || ''}
                       changeHandler={value => {
+                        const newVehicleCategory = value.vehicleCategory?.toString() ?? ''
                         setRegularRequest({
                           ...regularRequest,
-                          vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                          vehicleCategory: newVehicleCategory,
                           supplier: null,
                           supplierPackage: null,
                           vehicle: null,
+                          advancedPayment: {
+                            ...regularRequest.advancedPayment,
+                            advancedToSupplier: nameToPath(newVehicleCategory) === 'supplier' ? {
+                              amount: '',
+                              paymentMethod: '',
+                              paymentDate: null,
+                            } : null,
+                          },
                         })
                       }}
                       required
@@ -1798,9 +1837,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
             </Row>
           </Panel>
 
-          {/* Advanced Payment Panel */}
+          {/* Advance from Customer Panel */}
           <Panel
-            title="Advanced Payment"
+            title="Advance from Customer"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
@@ -1809,49 +1848,180 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Advanced from Customer"
-                  name="advancedFromCustomer"
+                  label="Amount"
+                  name="advancedFromCustomerAmount"
                   type="number"
-                  value={regularRequest.advancedPayment.advancedFromCustomer ?? ''}
+                  value={regularRequest.advancedPayment.advancedFromCustomer.amount ?? ''}
+                  changeHandler={value => {
+                    const amount = value.advancedFromCustomerAmount ? Number(value.advancedFromCustomerAmount) : ''
+                    setRegularRequest({
+                      ...regularRequest,
+                      advancedPayment: {
+                        ...regularRequest.advancedPayment,
+                        advancedFromCustomer: {
+                          ...regularRequest.advancedPayment.advancedFromCustomer,
+                          amount,
+                        },
+                      },
+                    })
+                  }}
+                  errorMessage={regularRequestErrorMap['advancedPayment.advancedFromCustomer.amount']}
+                  invalid={regularRequestErrorMap['advancedPayment.advancedFromCustomer.amount']}
+                />
+              </Column>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <ConfiguredInput
+                  label="Payment Method"
+                  name="advancedFromCustomerPaymentMethod"
+                  configToUse="Payment method"
+                  type={CONFIGURED_INPUT_TYPES.SELECT}
+                  value={regularRequest.advancedPayment.advancedFromCustomer.paymentMethod ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
                       advancedPayment: {
                         ...regularRequest.advancedPayment,
-                        advancedFromCustomer: value.advancedFromCustomer ? Number(value.advancedFromCustomer) : '',
+                        advancedFromCustomer: {
+                          ...regularRequest.advancedPayment.advancedFromCustomer,
+                          paymentMethod: value.advancedFromCustomerPaymentMethod?.toString() || '',
+                        },
                       },
                     })
                   }}
-                  errorMessage={regularRequestErrorMap['advancedPayment.advancedFromCustomer']}
-                  invalid={regularRequestErrorMap['advancedPayment.advancedFromCustomer']}
+                  errorMessage={regularRequestErrorMap['advancedPayment.advancedFromCustomer.paymentMethod']}
+                  invalid={regularRequestErrorMap['advancedPayment.advancedFromCustomer.paymentMethod']}
                 />
               </Column>
-              {regularRequest.vehicleCategory && nameToPath(regularRequest.vehicleCategory) === 'supplier' && (
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <TextInput
+                  label="Payment Date"
+                  name="advancedFromCustomerPaymentDate"
+                  type="date"
+                  value={formatDateForInput(regularRequest.advancedPayment.advancedFromCustomer.paymentDate)}
+                  changeHandler={value => {
+                    setRegularRequest({
+                      ...regularRequest,
+                      advancedPayment: {
+                        ...regularRequest.advancedPayment,
+                        advancedFromCustomer: {
+                          ...regularRequest.advancedPayment.advancedFromCustomer,
+                          paymentDate: parseDateFromInput(value.advancedFromCustomerPaymentDate?.toString() || ''),
+                        },
+                      },
+                    })
+                  }}
+                  errorMessage={regularRequestErrorMap['advancedPayment.advancedFromCustomer.paymentDate']}
+                  invalid={regularRequestErrorMap['advancedPayment.advancedFromCustomer.paymentDate']}
+                />
+              </Column>
+            </Row>
+          </Panel>
+
+          {/* Advance to Supplier Panel - Only shown for supplier vehicles */}
+          {regularRequest.vehicleCategory && nameToPath(regularRequest.vehicleCategory) === 'supplier' && (
+            <Panel
+              title="Advance to Supplier"
+              className={bemClass([blk, 'margin-bottom'])}
+            >
+              <Row>
                 <Column
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
                   <TextInput
-                    label="Advanced to Supplier"
-                    name="advancedToSupplier"
+                    label="Amount"
+                    name="advancedToSupplierAmount"
                     type="number"
-                    value={regularRequest.advancedPayment.advancedToSupplier ?? ''}
+                    value={regularRequest.advancedPayment.advancedToSupplier?.amount ?? ''}
+                    changeHandler={value => {
+                      const amount = value.advancedToSupplierAmount ? Number(value.advancedToSupplierAmount) : ''
+                      setRegularRequest({
+                        ...regularRequest,
+                        advancedPayment: {
+                          ...regularRequest.advancedPayment,
+                          advancedToSupplier: regularRequest.advancedPayment.advancedToSupplier ? {
+                            ...regularRequest.advancedPayment.advancedToSupplier,
+                            amount,
+                          } : {
+                            amount,
+                            paymentMethod: '',
+                            paymentDate: null,
+                          },
+                        },
+                      })
+                    }}
+                    errorMessage={regularRequestErrorMap['advancedPayment.advancedToSupplier.amount']}
+                    invalid={regularRequestErrorMap['advancedPayment.advancedToSupplier.amount']}
+                  />
+                </Column>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <ConfiguredInput
+                    label="Payment Method"
+                    name="advancedToSupplierPaymentMethod"
+                    configToUse="Payment method"
+                    type={CONFIGURED_INPUT_TYPES.SELECT}
+                    value={regularRequest.advancedPayment.advancedToSupplier?.paymentMethod ?? ''}
                     changeHandler={value => {
                       setRegularRequest({
                         ...regularRequest,
                         advancedPayment: {
                           ...regularRequest.advancedPayment,
-                          advancedToSupplier: value.advancedToSupplier ? Number(value.advancedToSupplier) : '',
+                          advancedToSupplier: regularRequest.advancedPayment.advancedToSupplier ? {
+                            ...regularRequest.advancedPayment.advancedToSupplier,
+                            paymentMethod: value.advancedToSupplierPaymentMethod?.toString() || '',
+                          } : {
+                            amount: '',
+                            paymentMethod: value.advancedToSupplierPaymentMethod?.toString() || '',
+                            paymentDate: null,
+                          },
                         },
                       })
                     }}
-                    errorMessage={regularRequestErrorMap['advancedPayment.advancedToSupplier']}
-                    invalid={regularRequestErrorMap['advancedPayment.advancedToSupplier']}
+                    errorMessage={regularRequestErrorMap['advancedPayment.advancedToSupplier.paymentMethod']}
+                    invalid={regularRequestErrorMap['advancedPayment.advancedToSupplier.paymentMethod']}
                   />
                 </Column>
-              )}
-            </Row>
-          </Panel>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <TextInput
+                    label="Payment Date"
+                    name="advancedToSupplierPaymentDate"
+                    type="date"
+                    value={formatDateForInput(regularRequest.advancedPayment.advancedToSupplier?.paymentDate || null)}
+                    changeHandler={value => {
+                      setRegularRequest({
+                        ...regularRequest,
+                        advancedPayment: {
+                          ...regularRequest.advancedPayment,
+                          advancedToSupplier: regularRequest.advancedPayment.advancedToSupplier ? {
+                            ...regularRequest.advancedPayment.advancedToSupplier,
+                            paymentDate: parseDateFromInput(value.advancedToSupplierPaymentDate?.toString() || ''),
+                          } : {
+                            amount: '',
+                            paymentMethod: '',
+                            paymentDate: parseDateFromInput(value.advancedToSupplierPaymentDate?.toString() || ''),
+                          },
+                        },
+                      })
+                    }}
+                    errorMessage={regularRequestErrorMap['advancedPayment.advancedToSupplier.paymentDate']}
+                    invalid={regularRequestErrorMap['advancedPayment.advancedToSupplier.paymentDate']}
+                  />
+                </Column>
+              </Row>
+            </Panel>
+          )}
 
           {/* Payment Details Panel */}
           <Panel

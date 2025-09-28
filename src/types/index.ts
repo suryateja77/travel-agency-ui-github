@@ -236,8 +236,16 @@ export interface RegularRequestModel {
     }
   }
   advancedPayment: {
-    advancedFromCustomer: string | number
-    advancedToSupplier: string | number
+    advancedFromCustomer: {
+      amount: string | number
+      paymentMethod: string | null
+      paymentDate: Date | null
+    }
+    advancedToSupplier: null | {
+      amount: string | number
+      paymentMethod: string | null
+      paymentDate: Date | null
+    }
   }
   comment: string
   requestTotal: number
