@@ -3,11 +3,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/regular-request')
 
-export const useRegularRequestsQuery = () => {
+export const useRegularRequestsQuery = (filters?: Record<string, any>) => {
   return useQuery({
-    queryKey: ['regularRequests'],
+    queryKey: ['regularRequests', filters],
     queryFn: async () => {
-      const response = await get({})
+      let queryParams = {}
+      
+      if (filters && Object.keys(filters).length > 0) {
+        queryParams = {
+          params: {
+            filterData: filters
+          }
+        }
+      }
+      
+      const response = await get(queryParams)
       return response.data
     },
   })

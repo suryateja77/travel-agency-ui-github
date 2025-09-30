@@ -23,7 +23,7 @@ const blk = 'create-vehicle'
 
 interface VehicleResponseModel extends Omit<VehicleModel, 'monthlyFixedDetails' | 'supplier'> {
   _id: string
-  supplier?: SupplierModel | string
+  supplier?: SupplierModel | string | undefined
   monthlyFixedDetails?: {
     customerCategory: string | null
     customer: CustomerModel | string | null
@@ -118,7 +118,6 @@ const INITIAL_VEHICLE: VehicleModel = {
   noOfSeats: '',
   registrationNo: '',
   hasAc: false,
-  supplier: '',
   isMonthlyFixed: false,
   monthlyFixedDetails: null,
   category: '',
