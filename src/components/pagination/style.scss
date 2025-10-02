@@ -1,0 +1,21 @@
+@import '~/src/sass/style';
+
+.pagination {
+  &__content {
+    padding: $space-small 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: $space-default;
+  }
+  &__pages {
+    display: flex;
+    flex-direction: row;
+    gap: $space-small;
+  }
+  &__page-button {
+  }
+}
+
+@include large-up {
+}

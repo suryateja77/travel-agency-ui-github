@@ -9,6 +9,7 @@ import { useRegularRequestsQuery, useDeleteRegularRequestMutation } from '@api/q
 import { useVehicleByCategory } from '@api/queries/vehicle'
 import ConfiguredInput from '@base/configured-input'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
+import { Pagination } from '@components'
 
 const blk = 'regular-requests-list'
 
@@ -22,6 +23,9 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
 
   const [searchFilters, setSearchFilters] = useState<Record<string, any> | undefined>(undefined)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+
   // Category path for API queries
   const vehicleCategoryPath = useMemo(() => {
     return filterData.vehicleCategory ? nameToPath(filterData.vehicleCategory) : ''
@@ -29,7 +33,11 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
 
   // API queries
   const { data: vehicles, error: vehiclesError, isLoading: vehiclesLoading, isError: vehiclesIsError } = useVehicleByCategory(vehicleCategoryPath)
-  const { data: requestsData, isLoading } = useRegularRequestsQuery(searchFilters)
+  const { data: requestsData, isLoading } = useRegularRequestsQuery({
+    ...searchFilters,
+    page: currentPage,
+    limit: 5, // Default page size
+  })
   const deleteRegularRequestMutation = useDeleteRegularRequestMutation()
 
   const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
@@ -93,9 +101,6 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
   useEffect(() => {
     handleApiResponse(vehicles, vehiclesError, vehiclesIsError, 'vehicles', setVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
   }, [vehicles, vehiclesError, vehiclesIsError])
-
-  // Extract data from the response structure
-  const requests = requestsData?.data || []
 
   // Helper functions to get customer and vehicle names
   const getCustomerName = (request: any) => {
@@ -170,7 +175,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     const filters: Record<string, any> = {}
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
     if (filterData.vehicleCategory) filters.vehicleCategory = filterData.vehicleCategory
-    
+
     setSearchFilters(Object.keys(filters).length > 0 ? filters : undefined)
   }
 
@@ -180,17 +185,22 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       vehicle: '',
     })
     setSearchFilters(undefined)
+    setCurrentPage(1) // Reset to first page when clearing
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
   }
 
   return (
     <div className={bemClass([blk])}>
       <PageHeader
         title="Regular Requests"
-        total={requests.length}
+        total={requestsData?.data.length}
         btnRoute="/requests/regular/create"
         btnLabel="New Regular Request"
       />
-      {(apiErrors.vehicles) && (
+      {apiErrors.vehicles && (
         <Alert
           type="error"
           message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
@@ -242,7 +252,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
             col={3}
             className={bemClass([blk, 'button-column'])}
           >
-            <Button 
+            <Button
               size="medium"
               clickHandler={handleSearch}
             >
@@ -261,10 +271,17 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid
           columns={columns}
-          data={requests}
+          data={requestsData?.data || []}
           isLoading={isLoading}
           deleteHandler={handleDeleteRegularRequest}
           editRoute="/requests/regular"
+        />
+      </div>
+      <div className={bemClass([blk, 'pagination'])}>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={requestsData ? requestsData.total : 1}
+          onPageChange={handlePageChange}
         />
       </div>
     </div>
