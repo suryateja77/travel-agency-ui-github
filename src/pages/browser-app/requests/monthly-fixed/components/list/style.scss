@@ -24,6 +24,12 @@
     margin-bottom: 5px;
     margin-right: 0px;
   }
+  &__filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: $space-small;
+    margin-bottom: $space-large;
+  }
 }
 
 @include large-up {
@@ -31,6 +37,15 @@
     &__first-button {
       margin-bottom: 0px;
       margin-right: 5px;
+    }
+    &__filter-section {
+      flex-direction: row;
+    }
+    &__button-column {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: $space-small;
     }
   }
 }

@@ -1,29 +1,149 @@
-import React, { FunctionComponent, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { FunctionComponent, useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { createValidationSchema, calculateTotalValidationSchema } from './validation'
-import { bemClass, validatePayload } from '@utils'
+import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
 import { Breadcrumb, Button, CheckBox, Column, Panel, RadioGroup, Row, SelectInput, Text, TextArea, TextInput, Alert, Modal, ConfirmationPopup, ReadOnlyText } from '@base'
 import { MonthlyFixedRequestModel } from '@types'
 import { ConfiguredInput } from '@base'
 import { useVehicleByCategory } from '@api/queries/vehicle'
-import { nameToPath } from '@utils'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 import { useSuppliersQuery } from '@api/queries/supplier'
 import { usePackageByCategory } from '@api/queries/package'
 import { useStaffByCategory } from '@api/queries/staff'
 import { useCustomerByCategory } from '@api/queries/customer'
-import { useCreateFixedRequestMutation } from '@api/queries/fixed-request'
+import { useCreateFixedRequestMutation, useUpdateFixedRequestMutation, useFixedRequestByIdQuery } from '@api/queries/fixed-request'
 
 import './style.scss'
 
 const blk = 'create-monthly-fixed-request'
 
+const extractIdFromResponse = (field: any): string => {
+  if (typeof field === 'string') return field
+  if (field && typeof field === 'object' && field._id) return field._id
+  return ''
+}
+
+const transformMonthlyFixedRequestResponse = (response: any): MonthlyFixedRequestModel => {
+  return {
+    customerCategory: response.customerCategory || '',
+    customer: extractIdFromResponse(response.customer),
+    vehicleType: response.vehicleType || 'regular',
+    staffType: response.staffType || 'regular',
+    requestType: response.requestType || '',
+    pickUpLocation: response.pickUpLocation || '',
+    dropOffLocation: response.dropOffLocation || '',
+    pickUpDateTime: response.pickUpDateTime ? new Date(response.pickUpDateTime) : null,
+    dropDateTime: response.dropDateTime ? new Date(response.dropDateTime) : null,
+    openingKm: response.openingKm || null,
+    closingKm: response.closingKm || null,
+    totalKm: response.totalKm || null,
+    totalHr: response.totalHr || null,
+    ac: response.ac || false,
+    vehicleCategory: response.vehicleCategory || null,
+    vehicle: extractIdFromResponse(response.vehicle),
+    supplier: extractIdFromResponse(response.supplier),
+    supplierPackage: extractIdFromResponse(response.supplierPackage),
+    vehicleDetails: response.vehicleDetails || null,
+    packageFromProvidedVehicle: response.packageFromProvidedVehicle ? {
+      packageCategory: response.packageFromProvidedVehicle.packageCategory || '',
+      packageId: extractIdFromResponse(response.packageFromProvidedVehicle.package),
+    } : undefined,
+    staffCategory: response.staffCategory || null,
+    staff: extractIdFromResponse(response.staff),
+    staffDetails: response.staffDetails || null,
+    otherCharges: {
+      toll: {
+        amount: response.otherCharges?.toll?.amount || 0,
+        isChargeableToCustomer: response.otherCharges?.toll?.isChargeableToCustomer || false,
+      },
+      parking: {
+        amount: response.otherCharges?.parking?.amount || 0,
+        isChargeableToCustomer: response.otherCharges?.parking?.isChargeableToCustomer || false,
+      },
+      nightHalt: {
+        amount: response.otherCharges?.nightHalt?.amount || 0,
+        isChargeableToCustomer: response.otherCharges?.nightHalt?.isChargeableToCustomer || false,
+        isPayableWithSalary: response.otherCharges?.nightHalt?.isPayableWithSalary || false,
+      },
+      driverAllowance: {
+        amount: response.otherCharges?.driverAllowance?.amount || 0,
+        isChargeableToCustomer: response.otherCharges?.driverAllowance?.isChargeableToCustomer || false,
+        isPayableWithSalary: response.otherCharges?.driverAllowance?.isPayableWithSalary || false,
+      },
+    },
+    advancePayment: {
+      advancedFromCustomer: response.advancePayment?.advancedFromCustomer || 0,
+      advancedToDriver: response.advancePayment?.advancedToDriver || 0,
+    },
+    comment: response.comment || '',
+  }
+}
+
 interface CreateMonthlyFixedRequestProps {}
 
+const sampleMonthlyFixedRequestModel: MonthlyFixedRequestModel = {
+  customerCategory: '',
+  customer: '',
+  vehicleType: 'regular',
+  staffType: 'regular',
+  requestType: '',
+  pickUpLocation: '',
+  dropOffLocation: '',
+  pickUpDateTime: null,
+  dropDateTime: null,
+  openingKm: null,
+  closingKm: null,
+  totalKm: null,
+  totalHr: null,
+  ac: false,
+  vehicleCategory: null,
+  vehicle: null,
+  supplier: null,
+  supplierPackage: null,
+  vehicleDetails: null,
+  packageFromProvidedVehicle: undefined,
+  staffCategory: null,
+  staff: null,
+  staffDetails: null,
+  otherCharges: {
+    toll: {
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    parking: {
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    nightHalt: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+    driverAllowance: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+  },
+  advancePayment: {
+    advancedFromCustomer: 0,
+    advancedToDriver: 0,
+  },
+  comment: '',
+}
+
 const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProps> = () => {
-  const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+
+  const isEditing = Boolean(id)
+  const requestId = id || ''
+
+  const { data: monthlyFixedRequestData, isLoading: isLoadingRequest } = useFixedRequestByIdQuery(requestId)
+
+  const updateMonthlyFixedRequest = useUpdateFixedRequestMutation()
   const createMonthlyFixedRequest = useCreateFixedRequestMutation()
+  const navigate = useNavigate()
 
   const navigateBack = () => {
     navigate('/requests/monthly-fixed')
@@ -98,8 +218,16 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       advancedFromCustomer: 0,
       advancedToDriver: 0,
     },
-    comments: '',
+    comment: '',
   })
+
+  // Load data when in edit mode
+  useEffect(() => {
+    if (isEditing && monthlyFixedRequestData) {
+      const transformedData = transformMonthlyFixedRequestResponse(monthlyFixedRequestData)
+      setMonthlyFixedRequest(transformedData)
+    }
+  }, [isEditing, monthlyFixedRequestData])
 
   // Category paths for API queries
   const vehicleCategoryPath = React.useMemo(() => {
@@ -296,10 +424,18 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     if (isValid) {
       setIsValidationError(false)
       try {
-        await createMonthlyFixedRequest.mutateAsync(monthlyFixedRequest)
-        setConfirmationPopUpType('create')
-        setConfirmationPopUpTitle('Success')
-        setConfirmationPopUpSubtitle('New Monthly Fixed Request created successfully!')
+        if (isEditing) {
+          await updateMonthlyFixedRequest.mutateAsync({ _id: requestId, ...monthlyFixedRequest })
+          setConfirmationPopUpType('update')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('Monthly Fixed Request updated successfully!')
+        } else {
+          await createMonthlyFixedRequest.mutateAsync(monthlyFixedRequest)
+          setConfirmationPopUpType('create')
+          setConfirmationPopUpTitle('Success')
+          setConfirmationPopUpSubtitle('New Monthly Fixed Request created successfully!')
+        }
+
         setTimeout(() => {
           setShowConfirmationModal(true)
         }, 500)
@@ -307,7 +443,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
         console.log('Unable to submit monthly fixed request', error)
         setConfirmationPopUpType('delete')
         setConfirmationPopUpTitle('Error')
-        setConfirmationPopUpSubtitle('Unable to create monthly fixed request. Please try again.')
+        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} monthly fixed request. Please try again.`)
         setTimeout(() => {
           setShowConfirmationModal(true)
         }, 500)
@@ -316,6 +452,15 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       console.log('Submit Monthly Fixed Request: Validation Error', errorMap)
     }
   }
+
+  // Populate form with existing data if in edit mode
+  React.useEffect(() => {
+    if (isEditing && monthlyFixedRequestData) {
+      const transformedData = transformMonthlyFixedRequestResponse(monthlyFixedRequestData)
+      setMonthlyFixedRequest(transformedData)
+    }
+  }, [isEditing, monthlyFixedRequestData])
+
   return (
     <div className={bemClass([blk])}>
       <div className={bemClass([blk, 'header'])}>
@@ -323,7 +468,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           color="gray-darker"
           typography="l"
         >
-          New Monthly Fixed Request
+          {isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request'}
         </Text>
         <Breadcrumb
           data={[
@@ -336,7 +481,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               route: '/requests/monthly-fixed',
             },
             {
-              label: 'New Monthly Fixed Request',
+              label: isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request',
             },
           ]}
         />
@@ -556,11 +701,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   label="Pickup Date and Time"
                   name="pickupDateAndTime"
                   type="datetime-local"
-                  value={monthlyFixedRequest.pickUpDateTime ? new Date(monthlyFixedRequest.pickUpDateTime).toISOString().slice(0, 16) : ''}
+                  value={monthlyFixedRequest.pickUpDateTime ? formatDateTimeForInput(monthlyFixedRequest.pickUpDateTime) : ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      pickUpDateTime: value.pickupDateAndTime ? new Date(value.pickupDateAndTime) : null,
+                      pickUpDateTime: value.pickupDateAndTime ? parseDateTimeFromInput(value.pickupDateAndTime.toString()) : null,
                     })
                   }}
                   required
@@ -576,11 +721,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   label="Dropoff Date and Time"
                   name="dropDateAndTime"
                   type="datetime-local"
-                  value={monthlyFixedRequest.dropDateTime ? new Date(monthlyFixedRequest.dropDateTime).toISOString().slice(0, 16) : ''}
+                  value={monthlyFixedRequest.dropDateTime ? formatDateTimeForInput(monthlyFixedRequest.dropDateTime) : ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      dropDateTime: value.dropDateAndTime ? new Date(value.dropDateAndTime) : null,
+                      dropDateTime: value.dropDateAndTime ? parseDateTimeFromInput(value.dropDateAndTime.toString()) : null,
                     })
                   }}
                   required
@@ -1473,12 +1618,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           >
             <TextArea
               className={bemClass([blk, 'margin-bottom'])}
-              name="comments"
-              value={monthlyFixedRequest.comments}
+              name="comment"
+              value={monthlyFixedRequest.comment}
               changeHandler={value => {
                 setMonthlyFixedRequest({
                   ...monthlyFixedRequest,
-                  comments: value.comments?.toString() ?? '',
+                  comment: value.comment?.toString() ?? '',
                 })
               }}
               placeholder="Enter any additional comments or notes here..."
@@ -1499,7 +1644,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
             category="primary"
             clickHandler={submitHandler}
           >
-            Submit
+            {isEditing ? 'Update' : 'Submit'}
           </Button>
         </div>
       </div>
@@ -1516,7 +1661,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           title={confirmationPopUpTitle}
           subTitle={confirmationPopUpSubtitle}
           confirmButtonText="Okay"
-          confirmHandler={confirmationPopUpType === 'create' ? navigateBack : closeConfirmationPopUp}
+          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
         />
       </Modal>
     </div>

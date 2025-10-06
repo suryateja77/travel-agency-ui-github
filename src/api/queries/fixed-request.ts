@@ -9,11 +9,27 @@ const getByMonthYear = (vehicle: string, month: string | number, year: string | 
   return get(apiUrl)
 }
 
-export const useFixedRequestsQuery = () => {
+export const useFixedRequestsQuery = (params?: Record<string, any>) => {
   return useQuery({
-    queryKey: ['fixedRequests'],
+    queryKey: ['fixedRequests', params],
     queryFn: async () => {
-      const response = await getFixedRequest({})
+      let queryParams: Record<string, any> = {}
+
+      if (params && Object.keys(params).length > 0) {
+        const { page, limit, ...filters } = params
+        if (page !== undefined) {
+          queryParams.page = page
+        }
+        if (limit !== undefined) {
+          queryParams.limit = limit
+        }
+        // Add remaining filters as filterData
+        if (Object.keys(filters).length > 0) {
+          queryParams.filterData = filters
+        }
+      }
+
+      const response = await getFixedRequest({ params: queryParams })
       return response.data
     },
   })
@@ -75,8 +91,8 @@ export const useDeleteFixedRequestMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ _id, ...fixedRequestData }: Record<string, any>) => {
-      await deleteById({ _id, ...fixedRequestData })
+    mutationFn: async (id: String) => {
+      await deleteById({ _id: id })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixedRequests'] })

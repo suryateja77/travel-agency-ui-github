@@ -319,7 +319,7 @@ export interface MonthlyFixedRequestModel {
     advancedFromCustomer: number
     advancedToDriver: number
   }
-  comments: string
+  comment: string
 }
 //
 export interface AdvanceBookingModel {
