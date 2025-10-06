@@ -8,7 +8,7 @@ import PageHeader from '@components/page-header'
 import { useRegularRequestsQuery, useDeleteRegularRequestMutation } from '@api/queries/regular-request'
 import { useVehicleByCategory } from '@api/queries/vehicle'
 import ConfiguredInput from '@base/configured-input'
-import { CONFIGURED_INPUT_TYPES } from '@config/constant'
+import { CONFIGURED_INPUT_TYPES, PAGINATION_TOTAL_ENTRIES_PER_PAGE } from '@config/constant'
 import { Pagination } from '@components'
 
 const blk = 'regular-requests-list'
@@ -280,7 +280,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       <div className={bemClass([blk, 'pagination'])}>
         <Pagination
           currentPage={currentPage}
-          totalPages={requestsData ? requestsData.total : 1}
+          totalPages={requestsData ? Math.ceil(requestsData.total / PAGINATION_TOTAL_ENTRIES_PER_PAGE) : 1}
           onPageChange={handlePageChange}
         />
       </div>

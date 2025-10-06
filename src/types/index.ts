@@ -256,50 +256,68 @@ export interface RegularRequestModel {
 }
 //
 export interface MonthlyFixedRequestModel {
-  customerDetails: {
-    customerCategory: string
-    customerId: string
+  customerCategory: string
+  customer: string
+  vehicleType: string
+  staffType: string
+  requestType: string
+  vehicleCategory: string | null
+  vehicle: string | null
+  supplier: string | null
+  supplierPackage: string | null
+  vehicleDetails: null | {
+    ownerName: string
+    ownerContact: string
+    ownerEmail: string
+    manufacturer: string
+    name: string
+    registrationNo: string
   }
-  requestDetails: {
-    vehicleSelection: string
-    staffSelection: string
-    requestType: string
-    pickupLocation: string
-    dropLocation: string
-    pickupDateAndTime: Date | null
-    dropDateAndTime: Date | null
-    openingKm: number | null
-    closingKm: number | null
-  }
+  pickUpLocation: string
+  dropOffLocation: string
+  pickUpDateTime: Date | null
+  dropDateTime: Date | null
+  openingKm: number | null
+  closingKm: number | null
+  totalKm: number | null
+  totalHr: number | null
+  ac: boolean
   packageFromProvidedVehicle:
     | undefined
     | {
         packageCategory: string
         packageId: string
       }
+  staffCategory: string | null
+  staff: string | null
+  staffDetails: null | {
+    name: string
+    contact: string
+    license: string
+  }
   otherCharges: {
     toll: {
-      charge: number
-      chargeableToCustomer: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
     }
     parking: {
-      charge: number
-      chargeableToCustomer: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
     }
     nightHalt: {
-      charge: number
-      chargeableToCustomer: boolean
-      includeInDriverSalary: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
+      isPayableWithSalary: boolean
     }
     driverAllowance: {
-      charge: number
-      chargeableToCustomer: boolean
-      includeInDriverSalary: boolean
+      amount: string | number
+      isChargeableToCustomer: boolean
+      isPayableWithSalary: boolean
     }
   }
   advancePayment: {
-    advanceFromCustomer: number
-    advanceToDriver: number
+    advancedFromCustomer: number
+    advancedToDriver: number
   }
   comments: string
 }
@@ -393,18 +411,16 @@ export interface VehicleModel {
   hasAc: boolean
   supplier?: string
   isMonthlyFixed: boolean
-  monthlyFixedDetails:
-    | null
-    | {
-        customerCategory: string | null
-        customer: string | null
-        packageCategory: string | null
-        package: string | null
-        staffCategory: string | null
-        staff: string | null
-        contractStartDate: Date | null
-        contractEndDate: Date | null
-      }
+  monthlyFixedDetails: null | {
+    customerCategory: string | null
+    customer: string | null
+    packageCategory: string | null
+    package: string | null
+    staffCategory: string | null
+    staff: string | null
+    contractStartDate: Date | null
+    contractEndDate: Date | null
+  }
   category: string
   isActive: boolean
   comments: string

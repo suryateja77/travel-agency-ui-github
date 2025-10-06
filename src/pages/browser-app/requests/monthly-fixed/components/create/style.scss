@@ -33,14 +33,12 @@
   &__margin-right {
     margin-right: $space-small;
   }
+  &__read-only {
+    margin-bottom: $space-default;
+  }
   &__action-items {
     display: flex;
     justify-content: flex-end;
     padding: $space-default;
-  }
-}
-
-@include large-up {
-  .create-monthly-fixed-request {
   }
 }

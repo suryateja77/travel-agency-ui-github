@@ -4,6 +4,7 @@ const REGEX_PIN_CODE = /^([0-9]{6})+$/
 const REGEX_EMAIL = /^[\w.+]+@\w+(\.\w{2,3})+$/
 const REGEX_NUMBER = /^[0-9]+$/
 const REGEX_NUMBER_GREATER_THAN_ZERO = /^[1-9][0-9]*$/
+const PAGINATION_TOTAL_ENTRIES_PER_PAGE = 5
 
 const USER_ROLE_PERMISSIONS = {
   CREATE: 'CREATE',
@@ -461,4 +462,5 @@ export {
   COUNTRY_CODES,
   CONFIGURED_INPUT_TYPES,
   STATES,
+  PAGINATION_TOTAL_ENTRIES_PER_PAGE,
 }
