@@ -1,6 +1,7 @@
 import React from 'react'
 import { Route, Routes } from 'react-router-dom'
 import BusinessReport from './business'
+import VehicleReport from './vehicle'
 
 const Reports = () => {
   return (
@@ -8,6 +9,10 @@ const Reports = () => {
       <Route
         path="business"
         element={<BusinessReport />}
+      />
+      <Route
+        path="vehicle"
+        element={<VehicleReport />}
       />
     </Routes>
   )
