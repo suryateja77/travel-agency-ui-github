@@ -169,7 +169,7 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
         subRoutes: [
           {
             path: '/business',
-            name: 'Settings',
+            name: 'Business',
           },
           {
             path: '/vehicle',

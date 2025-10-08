@@ -1,0 +1,38 @@
+@import '~/src/sass/style';
+
+.business-report {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: $white;
+  }
+  &__filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: $space-small;
+    margin-bottom: $space-large;
+  }
+  &__totals-section{
+    margin-bottom: $space-default;
+    background-color: $white;
+    padding: $space-small;
+  }
+}
+
+@include large-up {
+  .business-report {
+    &__filter-section {
+      flex-direction: row;
+    }
+    &__button-column {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: $space-small;
+    }
+  }
+}
