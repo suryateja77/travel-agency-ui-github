@@ -3,11 +3,27 @@ import { useQuery } from '@tanstack/react-query'
 
 const { get, getById } = generateAPIMethods('/staff-account')
 
-export const useStaffAccountsQuery = () => {
+export const useStaffAccountsQuery = (params?: Record<string, any>) => {
   return useQuery({
-    queryKey: ['staffAccounts'],
+    queryKey: ['staffAccounts', params],
     queryFn: async () => {
-      const response = await get({})
+      let queryParams: Record<string, any> = {}
+
+      if (params && Object.keys(params).length > 0) {
+        const { month, year, ...filters } = params
+        if (month !== undefined) {
+          queryParams.month = month
+        }
+        if (year !== undefined) {
+          queryParams.year = year
+        }
+        // Add remaining filters as filterData
+        if (Object.keys(filters).length > 0) {
+          queryParams.filterData = filters
+        }
+      }
+
+      const response = await get({ params: queryParams })
       return response.data
     },
   })
