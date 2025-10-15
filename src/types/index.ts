@@ -93,6 +93,10 @@ export interface CustomerModel {
   address: CustomerAddress
   isActive: boolean
   comment?: string
+  monthlyFixedDetails?: null | {
+    staff: string
+    vehicle: string
+  }
   category: string
 }
 
@@ -109,6 +113,7 @@ export const INITIAL_CUSTOMER: CustomerModel = {
     pinCode: '',
   },
   isActive: true,
+  monthlyFixedDetails: null,
   comment: '',
   category: '',
 } as const

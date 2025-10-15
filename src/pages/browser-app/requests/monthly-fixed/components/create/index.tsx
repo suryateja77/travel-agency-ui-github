@@ -11,7 +11,7 @@ import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 import { useSuppliersQuery } from '@api/queries/supplier'
 import { usePackageByCategory } from '@api/queries/package'
 import { useStaffByCategory } from '@api/queries/staff'
-import { useCustomerByCategory } from '@api/queries/customer'
+import { useCustomerByCategory, useCustomerByIdQuery } from '@api/queries/customer'
 import { useCreateFixedRequestMutation, useUpdateFixedRequestMutation, useFixedRequestByIdQuery } from '@api/queries/fixed-request'
 
 import './style.scss'
@@ -139,7 +139,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
   const isEditing = Boolean(id)
   const requestId = id || ''
 
-  const { data: monthlyFixedRequestData, isLoading: isLoadingRequest } = useFixedRequestByIdQuery(requestId)
+  const { data: monthlyFixedRequestData, isLoading: isLoadingRequest, error: monthlyFixedRequestError, isError: monthlyFixedRequestIsError } = useFixedRequestByIdQuery(requestId)
 
   const updateMonthlyFixedRequest = useUpdateFixedRequestMutation()
   const createMonthlyFixedRequest = useCreateFixedRequestMutation()
@@ -223,11 +223,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
 
   // Load data when in edit mode
   useEffect(() => {
-    if (isEditing && monthlyFixedRequestData) {
+    if (isEditing && monthlyFixedRequestData && !monthlyFixedRequestIsError) {
       const transformedData = transformMonthlyFixedRequestResponse(monthlyFixedRequestData)
       setMonthlyFixedRequest(transformedData)
     }
-  }, [isEditing, monthlyFixedRequestData])
+  }, [isEditing, monthlyFixedRequestData, monthlyFixedRequestIsError])
 
   // Category paths for API queries
   const vehicleCategoryPath = React.useMemo(() => {
@@ -261,6 +261,9 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
 
   const { data: providerPackages, error: providerPackagesError, isLoading: providerPackagesLoading, isError: providerPackagesIsError } = usePackageByCategory(providerPackageCategoryPath)
 
+  // Customer details query for monthlyFixedDetails validation
+  const { data: selectedCustomerData, error: selectedCustomerError, isError: selectedCustomerIsError } = useCustomerByIdQuery(monthlyFixedRequest.customer)
+
   const [vehicleOptions, setVehicleOptions] = React.useState<{ key: any; value: any }[]>([])
 
   const [supplierOptions, setSupplierOptions] = React.useState<{ key: any; value: any }[]>([])
@@ -279,6 +282,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     supplierVehicles: '',
     supplierPackages: '',
     providerPackages: '',
+    selectedCustomer: '',
+    monthlyFixedRequest: '',
   })
 
   // Confirmation modal states
@@ -291,13 +296,16 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
   const [monthlyFixedRequestErrorMap, setMonthlyFixedRequestErrorMap] = React.useState<Record<string, any>>({})
   const [isValidationError, setIsValidationError] = React.useState(false)
 
+  // Customer alert states
+  const [customerAlert, setCustomerAlert] = React.useState<string>('')
+
   // Generic function to handle API responses and errors
   const handleApiResponse = (
     data: any,
     error: any,
     isError: boolean,
-    errorKey: 'vehicles' | 'suppliers' | 'staff' | 'customers' | 'supplierVehicles' | 'supplierPackages' | 'providerPackages',
-    setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>>,
+    errorKey: 'vehicles' | 'suppliers' | 'staff' | 'customers' | 'supplierVehicles' | 'supplierPackages' | 'providerPackages' | 'selectedCustomer' | 'monthlyFixedRequest',
+    setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>> | null,
     mapFunction: (item: any) => { key: any; value: any },
   ) => {
     if (isError) {
@@ -309,13 +317,15 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
         supplierVehicles: 'Unable to load supplier vehicle data. Please check your connection and try again.',
         supplierPackages: 'Unable to load supplier package data. Please check your connection and try again.',
         providerPackages: 'Unable to load provider package data. Please check your connection and try again.',
+        selectedCustomer: 'Unable to load selected customer data. Please check your connection and try again.',
+        monthlyFixedRequest: 'Unable to load monthly fixed request data. Please check your connection and try again.',
       }
       setApiErrors(prev => ({
         ...prev,
         [errorKey]: userFriendlyMessages[errorKey],
       }))
-      setOptions([])
-    } else if (data?.data?.length > 0) {
+      if (setOptions) setOptions([])
+    } else if (data?.data?.length > 0 && setOptions) {
       const options = data.data.map(mapFunction)
       setOptions(options)
       setApiErrors(prev => ({
@@ -323,7 +333,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
         [errorKey]: '',
       }))
     } else {
-      setOptions([])
+      if (setOptions) setOptions([])
       setApiErrors(prev => ({
         ...prev,
         [errorKey]: '',
@@ -366,8 +376,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
   }, [supplierPackages, supplierPackagesError, supplierPackagesIsError])
 
   React.useEffect(() => {
-    handleApiResponse(providerPackages, providerPackagesError, providerPackagesIsError, 'providerPackages', setProviderPackageOptions, (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode }))
-  }, [providerPackages, providerPackagesError, providerPackagesIsError])
+    if (!isEditing) {
+      handleApiResponse(selectedCustomerData, selectedCustomerError, selectedCustomerIsError, 'selectedCustomer', null, (item: any) => ({ key: '', value: '' }))
+    }
+  }, [selectedCustomerData, selectedCustomerError, selectedCustomerIsError, isEditing])
 
   // Auto-calculate totalKm when openingKm or closingKm changes
   React.useEffect(() => {
@@ -386,6 +398,52 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       totalHr: totalHr > 0 ? totalHr : null,
     }))
   }, [monthlyFixedRequest.pickUpDateTime, monthlyFixedRequest.dropDateTime])
+
+  // Check customer monthlyFixedDetails and show alerts
+  React.useEffect(() => {
+    const customerData = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData?.data
+    const customerError = isEditing ? monthlyFixedRequestIsError : selectedCustomerIsError
+
+    if (customerData && !customerError && (monthlyFixedRequest.vehicleType === 'regular' || monthlyFixedRequest.staffType === 'regular')) {
+      const customer = customerData
+      const hasMonthlyFixedDetails = customer.monthlyFixedDetails && customer.monthlyFixedDetails !== null
+      const hasVehicle = hasMonthlyFixedDetails && customer.monthlyFixedDetails.vehicle
+      const hasStaff = hasMonthlyFixedDetails && customer.monthlyFixedDetails.staff
+
+      let alertMessage = ''
+
+      if (monthlyFixedRequest.vehicleType === 'regular' && monthlyFixedRequest.staffType === 'regular') {
+        // Both vehicle and staff are regular
+        if (!hasMonthlyFixedDetails || !hasVehicle || !hasStaff) {
+          alertMessage = 'The regular vehicle and staff is not available for the selected customer.'
+        }
+      } else if (monthlyFixedRequest.vehicleType === 'regular') {
+        // Only vehicle is regular
+        if (!hasMonthlyFixedDetails || !hasVehicle) {
+          alertMessage = 'The regular vehicle is not available for the selected customer.'
+        }
+      } else if (monthlyFixedRequest.staffType === 'regular') {
+        // Only staff is regular
+        if (!hasMonthlyFixedDetails || !hasStaff) {
+          alertMessage = 'The regular staff is not available for the selected customer.'
+        }
+      }
+
+      setCustomerAlert(alertMessage)
+    } else if (customerError) {
+      // Clear alert if there's an error fetching customer data
+      setCustomerAlert('')
+    } else {
+      setCustomerAlert('')
+    }
+  }, [isEditing, monthlyFixedRequestData, selectedCustomerData, monthlyFixedRequestIsError, selectedCustomerIsError, monthlyFixedRequest.vehicleType, monthlyFixedRequest.staffType])
+
+  // Clear customer alert when vehicle or staff type changes away from regular
+  React.useEffect(() => {
+    if (monthlyFixedRequest.vehicleType !== 'regular' && monthlyFixedRequest.staffType !== 'regular') {
+      setCustomerAlert('')
+    }
+  }, [monthlyFixedRequest.vehicleType, monthlyFixedRequest.staffType])
 
   // Generate options for SelectInput based on loading/error states
   const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
@@ -423,14 +481,35 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     setMonthlyFixedRequestErrorMap(errorMap)
     if (isValid) {
       setIsValidationError(false)
+
+      // Check for customer alert before proceeding
+      if (customerAlert) {
+        console.log('Cannot submit: Customer alert present', customerAlert)
+        return
+      }
+
+      // Prepare the request data
+      let requestData = { ...monthlyFixedRequest }
+
+      // Assign vehicle and staff from customer's monthlyFixedDetails if they are regular
+      const customerDetails = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData?.data
+      if (customerDetails?.monthlyFixedDetails) {
+        if (monthlyFixedRequest.vehicleType === 'regular' && customerDetails.monthlyFixedDetails.vehicle) {
+          requestData.vehicle = customerDetails.monthlyFixedDetails.vehicle
+        }
+        if (monthlyFixedRequest.staffType === 'regular' && customerDetails.monthlyFixedDetails.staff) {
+          requestData.staff = customerDetails.monthlyFixedDetails.staff
+        }
+      }
+
       try {
         if (isEditing) {
-          await updateMonthlyFixedRequest.mutateAsync({ _id: requestId, ...monthlyFixedRequest })
+          await updateMonthlyFixedRequest.mutateAsync({ _id: requestId, ...requestData })
           setConfirmationPopUpType('update')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('Monthly Fixed Request updated successfully!')
         } else {
-          await createMonthlyFixedRequest.mutateAsync(monthlyFixedRequest)
+          await createMonthlyFixedRequest.mutateAsync(requestData)
           setConfirmationPopUpType('create')
           setConfirmationPopUpTitle('Success')
           setConfirmationPopUpSubtitle('New Monthly Fixed Request created successfully!')
@@ -486,7 +565,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           ]}
         />
       </div>
-      {(apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.customers || apiErrors.supplierVehicles || apiErrors.supplierPackages || apiErrors.providerPackages) && (
+      {(apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.customers || apiErrors.supplierVehicles || apiErrors.supplierPackages || apiErrors.providerPackages || apiErrors.selectedCustomer || apiErrors.monthlyFixedRequest) && (
         <Alert
           type="error"
           message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
@@ -497,6 +576,13 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
         <Alert
           type="error"
           message="There is an error with submission, please correct errors indicated below."
+          className={bemClass([blk, 'margin-bottom'])}
+        />
+      )}
+      {customerAlert && (
+        <Alert
+          type="error"
+          message={customerAlert}
           className={bemClass([blk, 'margin-bottom'])}
         />
       )}
