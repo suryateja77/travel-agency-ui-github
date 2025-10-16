@@ -26,7 +26,7 @@ export interface EntityGridProps {
 
 const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoading = false, deleteHandler, editRoute, routeParams = {} }) => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'delete' | 'create'>('delete')
+  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'delete' | 'update'>('delete')
   const [itemIdToDelete, setItemIdToDelete] = useState('')
 
   const enhancedColumns = [...columns]
@@ -55,6 +55,7 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
               size="small"
               clickHandler={() => {
                 setItemIdToDelete(_id)
+                setConfirmationPopUpType('delete')
                 setTimeout(() => {
                   setShowConfirmationModal(true)
                 }, 100)
@@ -75,8 +76,9 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
     if (deleteHandler) {
       try {
         await deleteHandler(id)
-        setConfirmationPopUpType('create')
-        setShowConfirmationModal(false)
+        setItemIdToDelete('')
+        setConfirmationPopUpType('update')
+        setShowConfirmationModal(true)
       } catch (error) {
         console.error('Error deleting item:', error)
         setShowConfirmationModal(false)

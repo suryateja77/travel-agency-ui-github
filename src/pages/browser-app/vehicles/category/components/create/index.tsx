@@ -23,7 +23,7 @@ const blk = 'create-vehicle'
 
 interface VehicleResponseModel extends Omit<VehicleModel, 'monthlyFixedDetails' | 'supplier'> {
   _id: string
-  supplier?: SupplierModel | string | undefined
+  supplier?: SupplierModel | string | null
   monthlyFixedDetails?: {
     customerCategory: string | null
     customer: CustomerModel | string | null
@@ -122,7 +122,8 @@ const INITIAL_VEHICLE: VehicleModel = {
   monthlyFixedDetails: null,
   category: '',
   isActive: true,
-  comments: '',
+  comment: '',
+  supplier: null,
 } as const
 
 const INITIAL_MONTHLY_FIXED_DETAILS: MonthlyFixedDetails = {
@@ -260,7 +261,7 @@ const transformVehicleResponse = (response: VehicleResponseModel): VehicleModel 
   noOfSeats: response.noOfSeats || '',
   registrationNo: response.registrationNo || '',
   hasAc: response.hasAc || false,
-  supplier: extractIdFromResponse(response.supplier),
+  supplier: response.supplier ? extractIdFromResponse(response.supplier) : null,
   isMonthlyFixed: response.isMonthlyFixed || false,
   monthlyFixedDetails: response.monthlyFixedDetails
     ? {
@@ -280,7 +281,7 @@ const transformVehicleResponse = (response: VehicleResponseModel): VehicleModel 
     : null,
   category: response.category || '',
   isActive: response.isActive !== undefined ? response.isActive : true,
-  comments: response.comments || '',
+  comment: response.comment || '',
 })
 
 const getSelectOptions = (
@@ -1014,10 +1015,10 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                   <Panel title="Comments" className={bemClass([blk, 'margin-bottom'])}>
                     <TextArea
                       className={bemClass([blk, 'margin-bottom'])}
-                      name="comments"
-                      value={vehicle.comments}
+                      name="comment"
+                      value={vehicle.comment}
                       changeHandler={value => {
-                        handleVehicleFieldChange('comments', value.comments?.toString() ?? '')
+                        handleVehicleFieldChange('comment', value.comment?.toString() ?? '')
                       }}
                       placeholder="Enter any additional comments or notes here..."
                     />

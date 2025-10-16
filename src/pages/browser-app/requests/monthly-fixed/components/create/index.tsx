@@ -31,6 +31,7 @@ const transformMonthlyFixedRequestResponse = (response: any): MonthlyFixedReques
     vehicleType: response.vehicleType || 'regular',
     staffType: response.staffType || 'regular',
     requestType: response.requestType || '',
+    requestPackage: response.requestPackage || '',
     pickUpLocation: response.pickUpLocation || '',
     dropOffLocation: response.dropOffLocation || '',
     pickUpDateTime: response.pickUpDateTime ? new Date(response.pickUpDateTime) : null,
@@ -88,6 +89,7 @@ const sampleMonthlyFixedRequestModel: MonthlyFixedRequestModel = {
   vehicleType: 'regular',
   staffType: 'regular',
   requestType: '',
+  requestPackage: '',
   pickUpLocation: '',
   dropOffLocation: '',
   pickUpDateTime: null,
@@ -176,6 +178,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     vehicleType: 'regular',
     staffType: 'regular',
     requestType: '',
+    requestPackage: '',
     pickUpLocation: '',
     dropOffLocation: '',
     pickUpDateTime: null,
@@ -404,7 +407,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     const customerData = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData?.data
     const customerError = isEditing ? monthlyFixedRequestIsError : selectedCustomerIsError
 
-    if (customerData && !customerError && (monthlyFixedRequest.vehicleType === 'regular' || monthlyFixedRequest.staffType === 'regular')) {
+    if (customerData && !customerError) {
       const customer = customerData
       const hasMonthlyFixedDetails = customer.monthlyFixedDetails && customer.monthlyFixedDetails !== null
       const hasVehicle = hasMonthlyFixedDetails && customer.monthlyFixedDetails.vehicle
@@ -412,20 +415,14 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
 
       let alertMessage = ''
 
-      if (monthlyFixedRequest.vehicleType === 'regular' && monthlyFixedRequest.staffType === 'regular') {
-        // Both vehicle and staff are regular
-        if (!hasMonthlyFixedDetails || !hasVehicle || !hasStaff) {
-          alertMessage = 'The regular vehicle and staff is not available for the selected customer.'
+      if (!hasMonthlyFixedDetails) {
+        alertMessage = 'The selected customer does not have monthly fixed details configured. Please select a different customer.'
+      } else {
+        if (monthlyFixedRequest.vehicleType === 'regular' && !hasVehicle) {
+          alertMessage = 'The current customer does not have a regular vehicle assigned to them.'
         }
-      } else if (monthlyFixedRequest.vehicleType === 'regular') {
-        // Only vehicle is regular
-        if (!hasMonthlyFixedDetails || !hasVehicle) {
-          alertMessage = 'The regular vehicle is not available for the selected customer.'
-        }
-      } else if (monthlyFixedRequest.staffType === 'regular') {
-        // Only staff is regular
-        if (!hasMonthlyFixedDetails || !hasStaff) {
-          alertMessage = 'The regular staff is not available for the selected customer.'
+        if (monthlyFixedRequest.staffType === 'regular' && !hasStaff) {
+          alertMessage = alertMessage ? `${alertMessage} Also, the current customer does not have a regular staff assigned to them.` : 'The current customer does not have a regular staff assigned to them.'
         }
       }
 
@@ -438,12 +435,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     }
   }, [isEditing, monthlyFixedRequestData, selectedCustomerData, monthlyFixedRequestIsError, selectedCustomerIsError, monthlyFixedRequest.vehicleType, monthlyFixedRequest.staffType])
 
-  // Clear customer alert when vehicle or staff type changes away from regular
-  React.useEffect(() => {
-    if (monthlyFixedRequest.vehicleType !== 'regular' && monthlyFixedRequest.staffType !== 'regular') {
-      setCustomerAlert('')
-    }
-  }, [monthlyFixedRequest.vehicleType, monthlyFixedRequest.staffType])
+
 
   // Generate options for SelectInput based on loading/error states
   const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
@@ -492,13 +484,16 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       let requestData = { ...monthlyFixedRequest }
 
       // Assign vehicle and staff from customer's monthlyFixedDetails if they are regular
-      const customerDetails = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData?.data
+      const customerDetails = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData
       if (customerDetails?.monthlyFixedDetails) {
         if (monthlyFixedRequest.vehicleType === 'regular' && customerDetails.monthlyFixedDetails.vehicle) {
           requestData.vehicle = customerDetails.monthlyFixedDetails.vehicle
         }
         if (monthlyFixedRequest.staffType === 'regular' && customerDetails.monthlyFixedDetails.staff) {
           requestData.staff = customerDetails.monthlyFixedDetails.staff
+        }
+        if (customerDetails.monthlyFixedDetails.package) {
+          requestData.requestPackage = customerDetails.monthlyFixedDetails.package
         }
       }
 

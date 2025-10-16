@@ -96,6 +96,7 @@ export interface CustomerModel {
   monthlyFixedDetails?: null | {
     staff: string
     vehicle: string
+    package: string
   }
   category: string
 }
@@ -266,6 +267,7 @@ export interface MonthlyFixedRequestModel {
   vehicleType: string
   staffType: string
   requestType: string
+  requestPackage: string
   vehicleCategory: string | null
   vehicle: string | null
   supplier: string | null
@@ -414,7 +416,7 @@ export interface VehicleModel {
   noOfSeats: string | number
   registrationNo: string
   hasAc: boolean
-  supplier?: string
+  supplier: string | null
   isMonthlyFixed: boolean
   monthlyFixedDetails: null | {
     customerCategory: string | null
@@ -428,7 +430,7 @@ export interface VehicleModel {
   }
   category: string
   isActive: boolean
-  comments: string
+  comment: string
 }
 
 export const INITIAL_VEHICLE: VehicleModel = {
@@ -443,7 +445,7 @@ export const INITIAL_VEHICLE: VehicleModel = {
   monthlyFixedDetails: null,
   category: '',
   isActive: true,
-  comments: '',
+  comment: '',
 } as const
 
 //

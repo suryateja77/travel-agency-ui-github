@@ -94,7 +94,7 @@ const transformVehicleData = (data: VehicleModel, supplierData?: SupplierModel):
       contractStartDate: formatDateValueForDisplay(data.monthlyFixedDetails.contractStartDate || null),
       contractEndDate: formatDateValueForDisplay(data.monthlyFixedDetails.contractEndDate || null),
     } : null,
-    comments: data.comments || '-',
+    comments: data.comment || '-',
     isActive: formatBooleanValueForDisplay(data.isActive),
   }
 }

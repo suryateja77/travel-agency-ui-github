@@ -91,11 +91,11 @@ export const vehicleDetailsFields: Panel[] = [
     ],
   },
   {
-    panel: 'Comments',
+    panel: 'Comment',
     fields: [
       {
-        label: 'Comments',
-        path: 'comments',
+        label: 'Comment',
+        path: 'comment',
       },
     ],
   },
