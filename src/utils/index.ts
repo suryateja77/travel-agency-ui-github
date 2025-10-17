@@ -95,7 +95,8 @@ const normalizeWhitespace = (str: string) => {
   return str.trim().replace(/\s+/g, '')
 }
 
-const nameToPath = (name: string): string => {
+const nameToPath = (name: string | null | undefined): string => {
+  if (!name || typeof name !== 'string') return ''
   return name
     .trim()
     .toLowerCase()
@@ -103,7 +104,8 @@ const nameToPath = (name: string): string => {
     .replace(/\s+/g, '-') // Replace spaces with dash
 }
 
-const pathToName = (path: string): string => {
+const pathToName = (path: string | null | undefined): string => {
+  if (!path || typeof path !== 'string') return ''
   return path
     .replace(/-/g, ' ')
     .replace(/\b\w/g, char => char.toUpperCase())

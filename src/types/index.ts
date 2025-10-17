@@ -94,7 +94,9 @@ export interface CustomerModel {
   isActive: boolean
   comment?: string
   monthlyFixedDetails?: null | {
+    staffCategory: string
     staff: string
+    vehicleCategory: string
     vehicle: string
     package: string
   }

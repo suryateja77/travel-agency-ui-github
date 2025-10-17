@@ -2,7 +2,7 @@ import React, { FunctionComponent, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { createValidationSchema, calculateTotalValidationSchema } from './validation'
-import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
+import { bemClass, validatePayload, nameToPath, pathToName, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
 import { Breadcrumb, Button, CheckBox, Column, Panel, RadioGroup, Row, SelectInput, Text, TextArea, TextInput, Alert, Modal, ConfirmationPopup, ReadOnlyText } from '@base'
 import { MonthlyFixedRequestModel } from '@types'
 import { ConfiguredInput } from '@base'
@@ -26,10 +26,10 @@ const extractIdFromResponse = (field: any): string => {
 
 const transformMonthlyFixedRequestResponse = (response: any): MonthlyFixedRequestModel => {
   return {
-    customerCategory: response.customerCategory || '',
+    customerCategory: nameToPath(response.customerCategory || ''),
     customer: extractIdFromResponse(response.customer),
-    vehicleType: response.vehicleType || 'regular',
-    staffType: response.staffType || 'regular',
+    vehicleType: nameToPath(response.vehicleType || 'regular'),
+    staffType: nameToPath(response.staffType || 'regular'),
     requestType: response.requestType || '',
     requestPackage: response.requestPackage || '',
     pickUpLocation: response.pickUpLocation || '',
@@ -41,16 +41,16 @@ const transformMonthlyFixedRequestResponse = (response: any): MonthlyFixedReques
     totalKm: response.totalKm || null,
     totalHr: response.totalHr || null,
     ac: response.ac || false,
-    vehicleCategory: response.vehicleCategory || null,
+    vehicleCategory: nameToPath(response.vehicleCategory || null),
     vehicle: extractIdFromResponse(response.vehicle),
     supplier: extractIdFromResponse(response.supplier),
     supplierPackage: extractIdFromResponse(response.supplierPackage),
     vehicleDetails: response.vehicleDetails || null,
     packageFromProvidedVehicle: response.packageFromProvidedVehicle ? {
-      packageCategory: response.packageFromProvidedVehicle.packageCategory || '',
+      packageCategory: nameToPath(response.packageFromProvidedVehicle.packageCategory || ''),
       packageId: extractIdFromResponse(response.packageFromProvidedVehicle.package),
     } : undefined,
-    staffCategory: response.staffCategory || null,
+    staffCategory: nameToPath(response.staffCategory || null),
     staff: extractIdFromResponse(response.staff),
     staffDetails: response.staffDetails || null,
     otherCharges: {
@@ -86,8 +86,8 @@ interface CreateMonthlyFixedRequestProps {}
 const sampleMonthlyFixedRequestModel: MonthlyFixedRequestModel = {
   customerCategory: '',
   customer: '',
-  vehicleType: 'regular',
-  staffType: 'regular',
+  vehicleType: nameToPath('regular'),
+  staffType: nameToPath('regular'),
   requestType: '',
   requestPackage: '',
   pickUpLocation: '',
@@ -175,8 +175,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
   const [monthlyFixedRequest, setMonthlyFixedRequest] = useState<MonthlyFixedRequestModel>({
     customerCategory: '',
     customer: '',
-    vehicleType: 'regular',
-    staffType: 'regular',
+    vehicleType: nameToPath('regular'),
+    staffType: nameToPath('regular'),
     requestType: '',
     requestPackage: '',
     pickUpLocation: '',
@@ -404,24 +404,22 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
 
   // Check customer monthlyFixedDetails and show alerts
   React.useEffect(() => {
-    const customerData = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData?.data
+    const customerData = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData
     const customerError = isEditing ? monthlyFixedRequestIsError : selectedCustomerIsError
 
     if (customerData && !customerError) {
       const customer = customerData
       const hasMonthlyFixedDetails = customer.monthlyFixedDetails && customer.monthlyFixedDetails !== null
-      const hasVehicle = hasMonthlyFixedDetails && customer.monthlyFixedDetails.vehicle
-      const hasStaff = hasMonthlyFixedDetails && customer.monthlyFixedDetails.staff
 
       let alertMessage = ''
 
       if (!hasMonthlyFixedDetails) {
-        alertMessage = 'The selected customer does not have monthly fixed details configured. Please select a different customer.'
+        alertMessage = 'The current customer does not contain any monthly fixed details.'
       } else {
-        if (monthlyFixedRequest.vehicleType === 'regular' && !hasVehicle) {
+        if (nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('regular') && !customer.monthlyFixedDetails.vehicle) {
           alertMessage = 'The current customer does not have a regular vehicle assigned to them.'
         }
-        if (monthlyFixedRequest.staffType === 'regular' && !hasStaff) {
+        if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('regular') && !customer.monthlyFixedDetails.staff) {
           alertMessage = alertMessage ? `${alertMessage} Also, the current customer does not have a regular staff assigned to them.` : 'The current customer does not have a regular staff assigned to them.'
         }
       }
@@ -483,15 +481,27 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       // Prepare the request data
       let requestData = { ...monthlyFixedRequest }
 
-      // Assign vehicle and staff from customer's monthlyFixedDetails if they are regular
+      // Assign vehicle, staff, and package from customer's monthlyFixedDetails
       const customerDetails = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData
       if (customerDetails?.monthlyFixedDetails) {
-        if (monthlyFixedRequest.vehicleType === 'regular' && customerDetails.monthlyFixedDetails.vehicle) {
+        // Vehicle: Always assign the regular vehicle and vehicleCategory from customer's monthlyFixedDetails, irrespective of vehicleType
+        if (customerDetails.monthlyFixedDetails.vehicle) {
           requestData.vehicle = customerDetails.monthlyFixedDetails.vehicle
         }
-        if (monthlyFixedRequest.staffType === 'regular' && customerDetails.monthlyFixedDetails.staff) {
-          requestData.staff = customerDetails.monthlyFixedDetails.staff
+        if (customerDetails.monthlyFixedDetails.vehicleCategory) {
+          requestData.vehicleCategory = customerDetails.monthlyFixedDetails.vehicleCategory
         }
+        // Staff: Assign based on staffType
+        if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('regular')) {
+          requestData.staff = customerDetails.monthlyFixedDetails.staff || null
+          requestData.staffCategory = customerDetails.monthlyFixedDetails.staffCategory || null
+        } else if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('own')) {
+          // Staff and staffCategory are already set from the form selection
+        } else if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('new')) {
+          requestData.staff = null
+          requestData.staffCategory = null
+        }
+        // Package: Always assign if it exists
         if (customerDetails.monthlyFixedDetails.package) {
           requestData.requestPackage = customerDetails.monthlyFixedDetails.package
         }
@@ -597,11 +607,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   name="customerCategory"
                   configToUse="Customer category"
                   type={CONFIGURED_INPUT_TYPES.SELECT}
-                  value={monthlyFixedRequest.customerCategory}
+                  value={pathToName(monthlyFixedRequest.customerCategory)}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      customerCategory: value.customerCategory.toString(),
+                      customerCategory: nameToPath(value.customerCategory.toString()),
                       customer: '',
                     })
                   }}
@@ -658,12 +668,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      vehicleType: value.vehicleSelection,
-                      vehicleCategory: ['own', 'supplier', 'new'].includes(value.vehicleSelection) ? monthlyFixedRequest.vehicleCategory : null,
-                      vehicle: ['own', 'supplier', 'new'].includes(value.vehicleSelection) ? monthlyFixedRequest.vehicle : null,
-                      supplier: value.vehicleSelection === 'supplier' ? monthlyFixedRequest.supplier : null,
-                      supplierPackage: value.vehicleSelection === 'supplier' ? monthlyFixedRequest.supplierPackage : null,
-                      vehicleDetails: value.vehicleSelection === 'new' ? {
+                      vehicleType: nameToPath(value.vehicleSelection),
+                      vehicleCategory: [nameToPath('own'), nameToPath('supplier'), nameToPath('new')].includes(nameToPath(value.vehicleSelection)) ? monthlyFixedRequest.vehicleCategory : null,
+                      vehicle: [nameToPath('own'), nameToPath('supplier'), nameToPath('new')].includes(nameToPath(value.vehicleSelection)) ? monthlyFixedRequest.vehicle : null,
+                      supplier: nameToPath(value.vehicleSelection) === nameToPath('supplier') ? monthlyFixedRequest.supplier : null,
+                      supplierPackage: nameToPath(value.vehicleSelection) === nameToPath('supplier') ? monthlyFixedRequest.supplierPackage : null,
+                      vehicleDetails: nameToPath(value.vehicleSelection) === nameToPath('new') ? {
                         ownerName: '',
                         ownerContact: '',
                         ownerEmail: '',
@@ -694,10 +704,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      staffType: value.staffSelection,
-                      staffCategory: value.staffSelection === 'own' ? monthlyFixedRequest.staffCategory : null,
-                      staff: value.staffSelection === 'own' ? monthlyFixedRequest.staff : null,
-                      staffDetails: value.staffSelection === 'new' ? {
+                      staffType: nameToPath(value.staffSelection),
+                      staffCategory: nameToPath(value.staffSelection) === nameToPath('own') ? monthlyFixedRequest.staffCategory : null,
+                      staff: nameToPath(value.staffSelection) === nameToPath('own') ? monthlyFixedRequest.staff : null,
+                      staffDetails: nameToPath(value.staffSelection) === nameToPath('new') ? {
                         name: '',
                         contact: '',
                         license: '',
@@ -887,7 +897,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               title="Vehicle Details"
               className={bemClass([blk, 'margin-bottom'])}
             >
-              {monthlyFixedRequest.vehicleType === 'supplier' ? (
+              {nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('supplier') ? (
                 <Row>
                   <Column
                     col={4}
@@ -991,7 +1001,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     />
                   </Column>
                 </Row>
-              ) : monthlyFixedRequest.vehicleType === 'new' ? (
+              ) : nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('new') ? (
                 <>
                   <Row>
                     <Column
@@ -1141,11 +1151,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       name="vehicleCategory"
                       configToUse="Vehicle category"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={monthlyFixedRequest.vehicleCategory || ''}
+                      value={pathToName(monthlyFixedRequest.vehicleCategory || '')}
                       changeHandler={value => {
                         setMonthlyFixedRequest({
                           ...monthlyFixedRequest,
-                          vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                          vehicleCategory: nameToPath(value.vehicleCategory?.toString() ?? ''),
                           vehicle: null,
                         })
                       }}
@@ -1184,7 +1194,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           )}
 
           {/* Provider Package Details Panel - Only shown when vehicle selection is 'new' */}
-          {monthlyFixedRequest.vehicleType === 'new' && (
+          {nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('new') && (
             <Panel
               title="Provider Package Details"
               className={bemClass([blk, 'margin-bottom'])}
@@ -1199,12 +1209,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     name="providerPackageCategory"
                     configToUse="Package category"
                     type={CONFIGURED_INPUT_TYPES.SELECT}
-                    value={monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory || ''}
+                    value={pathToName(monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory || '')}
                     changeHandler={value => {
                       setMonthlyFixedRequest({
                         ...monthlyFixedRequest,
                         packageFromProvidedVehicle: {
-                          packageCategory: value.providerPackageCategory?.toString() ?? '',
+                          packageCategory: nameToPath(value.providerPackageCategory?.toString() ?? ''),
                           packageId: monthlyFixedRequest.packageFromProvidedVehicle?.packageId ?? '',
                         },
                       })
@@ -1251,7 +1261,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               title="Staff Details"
               className={bemClass([blk, 'margin-bottom'])}
             >
-              {monthlyFixedRequest.staffType === 'new' ? (
+              {nameToPath(monthlyFixedRequest.staffType) === nameToPath('new') ? (
                 <Row>
                   <Column
                     col={4}
@@ -1331,11 +1341,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       name="staffCategory"
                       configToUse="Staff category"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={monthlyFixedRequest.staffCategory || ''}
+                      value={pathToName(monthlyFixedRequest.staffCategory || '')}
                       changeHandler={value => {
                         setMonthlyFixedRequest({
                           ...monthlyFixedRequest,
-                          staffCategory: value.staffCategory?.toString() ?? '',
+                          staffCategory: nameToPath(value.staffCategory?.toString() ?? ''),
                           staff: null,
                         })
                       }}

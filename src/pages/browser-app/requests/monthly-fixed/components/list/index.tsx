@@ -179,8 +179,8 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
   const handleSearch = () => {
     const filters: Record<string, any> = {}
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
-    if (filterData.vehicleCategory) filters.vehicleCategory = filterData.vehicleCategory
-
+    if (filterData.vehicleCategory) filters.vehicleCategory = nameToPath(filterData.vehicleCategory)
+    console.log('Applying search filters:', filters)
     setSearchFilters(Object.keys(filters).length > 0 ? filters : undefined)
   }
 

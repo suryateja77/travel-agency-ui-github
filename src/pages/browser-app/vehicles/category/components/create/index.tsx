@@ -14,6 +14,7 @@ import { useSuppliersQuery } from '@api/queries/supplier'
 import ConfiguredInput from '@base/configured-input'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
 import Loader from '@components/loader'
+import { useQueryClient } from '@tanstack/react-query'
 
 const blk = 'create-vehicle'
 
@@ -92,6 +93,7 @@ interface FormState {
   confirmationModal: ConfirmationModal
   apiErrors: ApiErrors
   selectOptions: SelectOptions
+  originalCustomer: string | null
 }
 
 // Action types for useReducer
@@ -99,7 +101,7 @@ type FormAction =
   | { type: 'SET_VEHICLE'; payload: VehicleModel }
   | { type: 'UPDATE_VEHICLE_FIELD'; payload: { field: keyof VehicleModel; value: any } }
   | { type: 'UPDATE_MONTHLY_FIXED_DETAILS'; payload: Partial<MonthlyFixedDetails> }
-  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; vehicleId: string } }
+  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; vehicleId: string; originalCustomer?: string | null } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
@@ -180,6 +182,7 @@ const initialState: FormState = {
     staff: [],
     suppliers: [],
   },
+  originalCustomer: null,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -211,6 +214,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         isEditing: action.payload.isEditing,
         vehicleId: action.payload.vehicleId,
+        originalCustomer: action.payload.originalCustomer || null,
       }
     
     case 'SET_VALIDATION_ERRORS':
@@ -265,11 +269,11 @@ const transformVehicleResponse = (response: VehicleResponseModel): VehicleModel 
   isMonthlyFixed: response.isMonthlyFixed || false,
   monthlyFixedDetails: response.monthlyFixedDetails
     ? {
-        customerCategory: response.monthlyFixedDetails.customerCategory || '',
+        customerCategory: response.monthlyFixedDetails.customerCategory ? nameToPath(response.monthlyFixedDetails.customerCategory) : null,
         customer: extractIdFromResponse(response.monthlyFixedDetails.customer),
-        packageCategory: response.monthlyFixedDetails.packageCategory || '',
+        packageCategory: response.monthlyFixedDetails.packageCategory ? nameToPath(response.monthlyFixedDetails.packageCategory) : null,
         package: extractIdFromResponse(response.monthlyFixedDetails.package),
-        staffCategory: response.monthlyFixedDetails.staffCategory || '',
+        staffCategory: response.monthlyFixedDetails.staffCategory ? nameToPath(response.monthlyFixedDetails.staffCategory) : null,
         staff: extractIdFromResponse(response.monthlyFixedDetails.staff),
         contractStartDate: response.monthlyFixedDetails.contractStartDate 
           ? new Date(response.monthlyFixedDetails.contractStartDate) 
@@ -306,6 +310,7 @@ const isPlaceholderValue = (value: string, type: ApiDataType): boolean => {
 const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' }) => {
   const navigate = useNavigate()
   const params = useParams()
+  const queryClient = useQueryClient()
   
   const [state, dispatch] = useReducer(formReducer, initialState)
   const {
@@ -318,6 +323,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     confirmationModal,
     apiErrors,
     selectOptions,
+    originalCustomer,
   } = state
 
   // API Hooks
@@ -328,13 +334,13 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
   // Memoized category paths for API calls
   const categoryPaths = useMemo(() => ({
     customer: vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.customerCategory
-      ? nameToPath(vehicle.monthlyFixedDetails.customerCategory)
+      ? vehicle.monthlyFixedDetails.customerCategory
       : '',
     package: vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.packageCategory
-      ? nameToPath(vehicle.monthlyFixedDetails.packageCategory)
+      ? vehicle.monthlyFixedDetails.packageCategory
       : '',
     staff: vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.staffCategory
-      ? nameToPath(vehicle.monthlyFixedDetails.staffCategory)
+      ? vehicle.monthlyFixedDetails.staffCategory
       : '',
   }), [vehicle.isMonthlyFixed, vehicle.monthlyFixedDetails])
 
@@ -421,6 +427,15 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     try {
       if (isEditing) {
         await updateVehicle.mutateAsync({ _id: vehicleId, ...dataToSave })
+        // Invalidate customer queries for both old and new customers if they changed
+        const currentCustomer = vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.customer ? vehicle.monthlyFixedDetails.customer : null
+        
+        if (originalCustomer && originalCustomer !== currentCustomer) {
+          queryClient.invalidateQueries({ queryKey: ['customer', originalCustomer] })
+        }
+        if (currentCustomer && currentCustomer !== originalCustomer) {
+          queryClient.invalidateQueries({ queryKey: ['customer', currentCustomer] })
+        }
         dispatch({
           type: 'SET_CONFIRMATION_MODAL',
           payload: {
@@ -432,6 +447,10 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
         })
       } else {
         await createVehicle.mutateAsync({ ...dataToSave, category: nameToPath(category) })
+        // Invalidate customer query if vehicle is monthly fixed and has a customer
+        if (vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.customer) {
+          queryClient.invalidateQueries({ queryKey: ['customer', vehicle.monthlyFixedDetails.customer] })
+        }
         dispatch({
           type: 'SET_CONFIRMATION_MODAL',
           payload: {
@@ -454,7 +473,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
         },
       })
     }
-  }, [apiErrors, vehicle, isEditing, vehicleId, updateVehicle, createVehicle, category])
+  }, [apiErrors, vehicle, isEditing, vehicleId, updateVehicle, createVehicle, category, originalCustomer, queryClient])
 
   // ============================================================================
   // EFFECTS
@@ -467,7 +486,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
       dispatch({ type: 'SET_VEHICLE', payload: transformedVehicle })
       dispatch({
         type: 'SET_EDITING_MODE',
-        payload: { isEditing: true, vehicleId: params.id || '' },
+        payload: { 
+          isEditing: true, 
+          vehicleId: params.id || '', 
+          originalCustomer: transformedVehicle.isMonthlyFixed && transformedVehicle.monthlyFixedDetails?.customer ? transformedVehicle.monthlyFixedDetails.customer : null 
+        },
       })
     }
   }, [vehicleDataResponse, params.id])
@@ -749,9 +772,9 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                           name="type"
                           configToUse="Vehicle type"
                           type={CONFIGURED_INPUT_TYPES.SELECT}
-                          value={vehicle.type}
+                          value={pathToName(vehicle.type)}
                           changeHandler={value => {
-                            handleVehicleFieldChange('type', value.type?.toString() ?? '')
+                            handleVehicleFieldChange('type', nameToPath(value.type?.toString() ?? ''))
                           }}
                           required
                           errorMessage={validationErrors.type}
@@ -856,10 +879,10 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                               configToUse="Customer category"
                               type={CONFIGURED_INPUT_TYPES.SELECT}
                               name="customerCategory"
-                              value={vehicle.monthlyFixedDetails?.customerCategory || ''}
+                              value={pathToName(vehicle.monthlyFixedDetails?.customerCategory || '')}
                               changeHandler={value => {
                                 handleMonthlyFixedDetailsChange({
-                                  customerCategory: value.customerCategory?.toString() ?? '',
+                                  customerCategory: nameToPath(value.customerCategory?.toString() ?? ''),
                                   customer: '', // Reset customer when category changes
                                 })
                               }}
@@ -893,12 +916,12 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                             <ConfiguredInput
                               label="Package Category"
                               name="packageCategory"
-                              value={vehicle.monthlyFixedDetails?.packageCategory ?? ''}
+                              value={pathToName(vehicle.monthlyFixedDetails?.packageCategory ?? '')}
                               configToUse="Package category"
                               type={CONFIGURED_INPUT_TYPES.SELECT}
                               changeHandler={value => {
                                 handleMonthlyFixedDetailsChange({
-                                  packageCategory: value.packageCategory?.toString() ?? '',
+                                  packageCategory: nameToPath(value.packageCategory?.toString() ?? ''),
                                   package: '', // Reset package when category changes
                                 })
                               }}
@@ -932,12 +955,12 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                             <ConfiguredInput
                               label="Staff Category"
                               name="staffCategory"
-                              value={vehicle.monthlyFixedDetails?.staffCategory ?? ''}
+                              value={pathToName(vehicle.monthlyFixedDetails?.staffCategory ?? '')}
                               configToUse="Staff category"
                               type={CONFIGURED_INPUT_TYPES.SELECT}
                               changeHandler={value => {
                                 handleMonthlyFixedDetailsChange({
-                                  staffCategory: value.staffCategory?.toString() ?? '',
+                                  staffCategory: nameToPath(value.staffCategory?.toString() ?? ''),
                                   staff: '', // Reset staff when category changes
                                 })
                               }}
