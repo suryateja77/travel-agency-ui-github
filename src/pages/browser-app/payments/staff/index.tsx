@@ -14,7 +14,7 @@ interface StaffPaymentsProps {}
 const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
   // Get current date for default filter values
   const currentDate = new Date()
-  const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' })
+  const currentMonth = currentDate.toLocaleString('en-US', { month: 'short' })
   const currentYear = currentDate.getFullYear().toString()
 
   const [filterData, setFilterData] = useState({
@@ -33,18 +33,18 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
   ]
 
   const monthOptions = [
-    { key: 'Jan', value: 'January' },
-    { key: 'Feb', value: 'February' },
-    { key: 'Mar', value: 'March' },
-    { key: 'Apr', value: 'April' },
+    { key: 'Jan', value: 'Jan' },
+    { key: 'Feb', value: 'Feb' },
+    { key: 'Mar', value: 'Mar' },
+    { key: 'Apr', value: 'Apr' },
     { key: 'May', value: 'May' },
-    { key: 'Jun', value: 'June' },
-    { key: 'Jul', value: 'July' },
-    { key: 'Aug', value: 'August' },
-    { key: 'Sep', value: 'September' },
-    { key: 'Oct', value: 'October' },
-    { key: 'Nov', value: 'November' },
-    { key: 'Dec', value: 'December' },
+    { key: 'Jun', value: 'Jun' },
+    { key: 'Jul', value: 'Jul' },
+    { key: 'Aug', value: 'Aug' },
+    { key: 'Sep', value: 'Sep' },
+    { key: 'Oct', value: 'Oct' },
+    { key: 'Nov', value: 'Nov' },
+    { key: 'Dec', value: 'Dec' },
   ]
 
   const breadcrumbData = [

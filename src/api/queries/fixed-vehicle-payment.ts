@@ -3,11 +3,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/fixed-vehicle-payment')
 
-export const useFixedVehiclePaymentsQuery = () => {
+export const useFixedVehiclePaymentsQuery = (params?: Record<string, any>) => {
   return useQuery({
-    queryKey: ['fixedVehiclePayments'],
+    queryKey: ['fixedVehiclePayments', params],
     queryFn: async () => {
-      const response = await get({})
+      let queryParams: Record<string, any> = {}
+
+      if (params && Object.keys(params).length > 0) {
+        const { month, year, ...filters } = params
+        if (month !== undefined) {
+          queryParams.month = month
+        }
+        if (year !== undefined) {
+          queryParams.year = year
+        }
+        // Add remaining filters as filterData
+        if (Object.keys(filters).length > 0) {
+          queryParams.filterData = filters
+        }
+      }
+
+      const response = await get({ params: queryParams })
       return response.data
     },
   })
