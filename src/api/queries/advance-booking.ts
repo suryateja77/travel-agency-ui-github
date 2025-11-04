@@ -1,7 +1,7 @@
 import { generateAPIMethods } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/advanced-booking')
+const { get, getById, create, updateById, delete: deleteById, exportExcel, exportCsv } = generateAPIMethods('/advanced-booking')
 
 export const useAdvanceBookingsQuery = () => {
   return useQuery({
