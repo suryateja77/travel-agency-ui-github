@@ -137,6 +137,7 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
         title="Vehicle Payments"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       {error && (
         <Alert

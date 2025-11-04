@@ -221,6 +221,7 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
         title="Vehicle Report"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       {error && (
         <Alert

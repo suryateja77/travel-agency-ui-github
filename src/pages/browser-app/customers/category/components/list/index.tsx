@@ -92,6 +92,7 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredCustomersData.length}
         btnRoute={`/customers/${category}/create`}
         btnLabel={`Add ${categoryName} Customer`}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

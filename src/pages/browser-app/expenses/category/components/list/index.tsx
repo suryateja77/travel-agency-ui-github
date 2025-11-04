@@ -134,6 +134,7 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredExpensesData.length}
         btnRoute={`/expenses/${category}/create`}
         btnLabel={`Add new ${categoryName} Expense`}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

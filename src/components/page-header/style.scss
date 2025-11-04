@@ -26,4 +26,8 @@
     align-items: center;
     gap: 8px;
   }
+
+  &__icon-margin {
+    margin-right: $space-default;
+  }
 }

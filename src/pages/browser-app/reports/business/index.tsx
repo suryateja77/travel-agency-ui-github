@@ -130,6 +130,7 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         title="Business Report"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       {error && (
         <Alert
