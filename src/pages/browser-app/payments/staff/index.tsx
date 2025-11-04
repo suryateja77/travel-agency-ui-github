@@ -122,7 +122,6 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         title="Staff Payments"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       {error && (
         <Alert

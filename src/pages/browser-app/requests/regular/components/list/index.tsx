@@ -199,7 +199,6 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
         total={requestsData?.data.length}
         btnRoute="/requests/regular/create"
         btnLabel="New Regular Request"
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       {apiErrors.vehicles && (
         <Alert

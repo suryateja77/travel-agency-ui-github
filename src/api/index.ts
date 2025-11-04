@@ -39,6 +39,14 @@ const generateAPIMethods = (url: string) => {
     create: async (requestBody: requestBodyType) => await post(url, requestBody),
     updateById: async (requestBody: requestBodyType) => await patch(`${url}/${requestBody._id}`, requestBody),
     delete: async (requestBody: requestBodyType) => await remove(`${url}/${requestBody._id}`, requestBody),
+    exportExcel: async (requestBody: requestBodyType) => await get(`${url}/export/excel`, { 
+      ...requestBody, 
+      responseType: 'blob' 
+    }),
+    exportCsv: async (requestBody: requestBodyType) => await get(`${url}/export/csv`, { 
+      ...requestBody, 
+      responseType: 'blob' 
+    }),
   }
 }
 

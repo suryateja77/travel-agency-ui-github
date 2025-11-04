@@ -102,7 +102,6 @@ const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredPackageData.length}
         btnRoute={`/packages/${category}/create`}
         btnLabel={`Add ${categoryName} Package`}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

@@ -111,7 +111,6 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredStaffData.length}
         btnRoute={`/staff/${category}/create`}
         btnLabel={`Add new ${categoryName}`}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

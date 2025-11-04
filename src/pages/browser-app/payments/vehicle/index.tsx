@@ -6,6 +6,7 @@ import { Alert, Button, Column, Row, SelectInput } from '@base'
 import PageHeader from '@components/page-header'
 import EntityGrid from '@components/entity-grid'
 import { useFixedVehiclePaymentsQuery } from '@api/queries/fixed-vehicle-payment'
+import { downloadFile } from '@utils'
 
 const blk = 'vehicle-payments'
 
@@ -131,6 +132,30 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
     setSearchFilters({})
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-vehicle-payment/export/excel', `vehicle-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.xlsx`, filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-vehicle-payment/export/csv', `vehicle-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.csv`, filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -138,6 +163,8 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
         withBreadCrumb
         breadCrumbData={breadcrumbData}
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {error && (
         <Alert

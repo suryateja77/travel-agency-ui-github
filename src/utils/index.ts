@@ -194,6 +194,51 @@ const formatMinutesToDuration = (totalMinutes: number | null): string => {
   }
 }
 
+/**
+ * Downloads a file from the server using axios with optional filters
+ * @param url - The API endpoint URL (without /api prefix)
+ * @param filename - The filename for the downloaded file
+ * @param filters - Optional filters to include in the request
+ */
+const downloadFile = async (url: string, filename: string, filters: Record<string, any> = {}) => {
+  try {
+    // Import axios here to avoid circular dependencies
+    const axios = (await import('axios')).default
+    
+    const queryParams = new URLSearchParams()
+    
+    // Add filters to query params
+    if (filters.filterData) {
+      queryParams.append('filterData', JSON.stringify(filters.filterData))
+    }
+    if (filters.sort) {
+      queryParams.append('sort', JSON.stringify(filters.sort))
+    }
+    
+    const fullUrl = `/api${url}${queryParams.toString() ? `?${queryParams}` : ''}`
+    
+    const response = await axios.get(fullUrl, {
+      responseType: 'blob',
+      withCredentials: true, // Include cookies for authentication
+    })
+
+    const blob = new Blob([response.data])
+    const downloadUrl = window.URL.createObjectURL(blob)
+    
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (error) {
+    console.error('Download error:', error)
+    throw error // Re-throw to allow component-level error handling
+  }
+}
+
 export { 
   computeValue, 
   bemClass, 
@@ -210,5 +255,6 @@ export {
   parseDateTimeFromInput,
   formatDateValueForDisplay,
   formatBooleanValueForDisplay,
-  formatMinutesToDuration
+  formatMinutesToDuration,
+  downloadFile
 }

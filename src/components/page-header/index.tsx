@@ -23,9 +23,12 @@ export interface PageHeaderProps {
     pdf: boolean
     excel: boolean
   }
+  onExportExcel?: () => void
+  onExportCsv?: () => void
+  onExportPdf?: () => void
 }
 
-const PageHeader: FunctionComponent<PageHeaderProps> = ({ title, total, btnRoute, btnLabel, withBreadCrumb = false, breadCrumbData = [], exportButtonsToShow = { csv: false, pdf: false, excel: false } }) => {
+const PageHeader: FunctionComponent<PageHeaderProps> = ({ title, total, btnRoute, btnLabel, withBreadCrumb = false, breadCrumbData = [], exportButtonsToShow = { csv: false, pdf: false, excel: false }, onExportExcel, onExportCsv, onExportPdf }) => {
   return (
     <div className={bemClass([blk])}>
       <div className={bemClass([blk, 'content'])}>
@@ -58,7 +61,7 @@ const PageHeader: FunctionComponent<PageHeaderProps> = ({ title, total, btnRoute
             <Button
               category="success"
               size="medium"
-              clickHandler={() => {}}
+              clickHandler={onExportExcel || (() => {})}
             >
               <Icon name="file-excel-o" size="14" className={bemClass([blk, 'icon-margin'])} />
               Export to Excel
@@ -68,7 +71,7 @@ const PageHeader: FunctionComponent<PageHeaderProps> = ({ title, total, btnRoute
             <Button
               category="info"
               size="medium"
-              clickHandler={() => {}}
+              clickHandler={onExportCsv || (() => {})}
             >
               <Icon name="file-text-o" size="14" className={bemClass([blk, 'icon-margin'])} />
               Export to CSV
@@ -78,7 +81,7 @@ const PageHeader: FunctionComponent<PageHeaderProps> = ({ title, total, btnRoute
             <Button
               category="error"
               size="medium"
-              clickHandler={() => {}}
+              clickHandler={onExportPdf || (() => {})}
             >
               <Icon name="file-pdf-o" size="14" className={bemClass([blk, 'icon-margin'])} />
               Export to PDF
