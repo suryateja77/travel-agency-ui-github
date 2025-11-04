@@ -1,5 +1,5 @@
 import { FunctionComponent } from 'react'
-import { bemClass } from '@utils'
+import { bemClass, downloadFile } from '@utils'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -68,6 +68,30 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
     await deleteAdvancePaymentMutation.mutateAsync(id)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: {},
+      }
+      await downloadFile('/advanced-payment/export/excel', 'advance-payments.xlsx', filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: {},
+      }
+      await downloadFile('/advanced-payment/export/csv', 'advance-payments.csv', filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -75,6 +99,9 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
         total={advancePaymentsData.length}
         btnRoute="/advance-payments/create"
         btnLabel="Add new Advance Payment"
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid
