@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
-import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath } from '@utils'
+import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile } from '@utils'
 
 import './style.scss'
 import { Alert, Anchor, Button, Column, Row, SelectInput } from '@base'
@@ -174,7 +174,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
   const handleSearch = () => {
     const filters: Record<string, any> = {}
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
-    if (filterData.vehicleCategory) filters.vehicleCategory = filterData.vehicleCategory
+    if (filterData.vehicleCategory) filters.vehicleCategory = nameToPath(filterData.vehicleCategory)
 
     setSearchFilters(Object.keys(filters).length > 0 ? filters : undefined)
   }
@@ -192,6 +192,30 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     setCurrentPage(page)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/regular-request/export/excel', 'regular-requests.xlsx', filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/regular-request/export/csv', 'regular-requests.csv', filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -199,6 +223,9 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
         total={requestsData?.data.length}
         btnRoute="/requests/regular/create"
         btnLabel="New Regular Request"
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {apiErrors.vehicles && (
         <Alert

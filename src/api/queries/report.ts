@@ -1,7 +1,7 @@
 import { generateAPIMethods } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get, getById, create, updateById, delete: deleteById } = generateAPIMethods('/report')
+const { get, getById, create, updateById, delete: deleteById, exportExcel, exportCsv } = generateAPIMethods('/report')
 
 export const useReportsQuery = (params?: Record<string, any>) => {
   return useQuery({

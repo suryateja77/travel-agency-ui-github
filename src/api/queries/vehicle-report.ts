@@ -2,7 +2,7 @@ import { generateAPIMethods } from '@api'
 import { useQuery } from '@tanstack/react-query'
 import { nameToPath } from '@utils'
 
-const { get, getById } = generateAPIMethods('/vehicle-report')
+const { get, getById, exportExcel, exportCsv } = generateAPIMethods('/vehicle-report')
 
 export const useVehicleReportsQuery = (params?: Record<string, any>) => {
   return useQuery({

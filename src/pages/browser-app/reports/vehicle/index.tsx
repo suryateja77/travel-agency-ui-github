@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
-import { bemClass, nameToPath } from '@utils'
+import { bemClass, nameToPath, downloadFile } from '@utils'
 
 import './style.scss'
 import { Alert, Button, Column, Row, SelectInput, Panel, ReadOnlyText } from '@base'
@@ -199,7 +199,7 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
 
   const handleSearch = () => {
     const filters: Record<string, any> = {}
-    if (filterData.vehicleCategory) filters.vehicleCategory = filterData.vehicleCategory
+    if (filterData.vehicleCategory) filters.vehicleCategory = nameToPath(filterData.vehicleCategory)
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
     if (filterData.year) filters.year = filterData.year
 
@@ -215,6 +215,30 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
     setSearchFilters(undefined)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/vehicle-report/export/excel', `vehicle-reports-${filterData.year || 'all'}.xlsx`, filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/vehicle-report/export/csv', `vehicle-reports-${filterData.year || 'all'}.csv`, filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -222,6 +246,8 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
         withBreadCrumb
         breadCrumbData={breadcrumbData}
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {error && (
         <Alert

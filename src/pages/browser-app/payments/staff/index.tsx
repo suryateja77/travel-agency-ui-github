@@ -1,5 +1,5 @@
 import { FunctionComponent, useState } from 'react'
-import { bemClass, pathToName } from '@utils'
+import { bemClass, pathToName, downloadFile } from '@utils'
 
 import './style.scss'
 import { Alert, Button, Column, Row, SelectInput } from '@base'
@@ -116,12 +116,39 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     setSearchFilters({})
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/staff-account/export/excel', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.xlsx`, filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/staff-account/export/csv', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.csv`, filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
         title="Staff Payments"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {error && (
         <Alert

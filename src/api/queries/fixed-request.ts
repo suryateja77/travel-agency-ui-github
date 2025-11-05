@@ -1,7 +1,7 @@
 import { generateAPIMethods, get } from '@api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const { get: getFixedRequest, getById, create, updateById, delete: deleteById } = generateAPIMethods('/fixed-request')
+const { get: getFixedRequest, getById, create, updateById, delete: deleteById, exportExcel, exportCsv } = generateAPIMethods('/fixed-request')
 
 // Custom API method for fetching by vehicle, month, and year
 const getByMonthYear = (vehicle: string, month: string | number, year: string | number) => {

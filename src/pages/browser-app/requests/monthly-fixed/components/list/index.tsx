@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
-import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath } from '@utils'
+import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile } from '@utils'
 
 import './style.scss'
 import { Alert, Anchor, Button, Column, Row, SelectInput } from '@base'
@@ -197,6 +197,30 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
     setCurrentPage(page)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-request/export/excel', 'monthly-fixed-requests.xlsx', filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-request/export/csv', 'monthly-fixed-requests.csv', filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -204,6 +228,9 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
         total={requestsData?.data.length}
         btnRoute="/requests/monthly-fixed/create"
         btnLabel="New Monthly Fixed Request"
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {apiErrors.vehicles && (
         <Alert

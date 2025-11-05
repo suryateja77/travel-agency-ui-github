@@ -1,6 +1,6 @@
 import { FunctionComponent } from 'react'
 import { useParams } from 'react-router-dom'
-import { bemClass, pathToName } from '@utils'
+import { bemClass, pathToName, downloadFile } from '@utils'
 
 import './style.scss'
 import { Anchor, Currency } from '@base'
@@ -104,6 +104,30 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
     await deleteStaffMutation.mutateAsync(id)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: category ? { category } : {},
+      }
+      await downloadFile('/staff/export/excel', `staff-${category || 'all'}.xlsx`, filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: category ? { category } : {},
+      }
+      await downloadFile('/staff/export/csv', `staff-${category || 'all'}.csv`, filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -111,6 +135,9 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredStaffData.length}
         btnRoute={`/staff/${category}/create`}
         btnLabel={`Add new ${categoryName}`}
+        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

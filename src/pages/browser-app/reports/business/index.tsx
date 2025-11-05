@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useMemo } from 'react'
-import { bemClass } from '@utils'
+import { bemClass, downloadFile } from '@utils'
 
 import './style.scss'
 import { Alert, Button, Column, Row, SelectInput, Panel, ReadOnlyText } from '@base'
@@ -124,6 +124,30 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
     setSearchFilters(undefined)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/report/export/excel', `business-reports-${filterData.year || 'all'}.xlsx`, filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/report/export/csv', `business-reports-${filterData.year || 'all'}.csv`, filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -131,6 +155,8 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         withBreadCrumb
         breadCrumbData={breadcrumbData}
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       {error && (
         <Alert

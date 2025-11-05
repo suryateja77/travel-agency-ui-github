@@ -1,5 +1,5 @@
 import { FunctionComponent, useEffect } from 'react'
-import { bemClass } from '@utils'
+import { bemClass, downloadFile } from '@utils'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -58,6 +58,30 @@ const SupplierList: FunctionComponent<Props> = () => {
     await deleteSupplierMutation.mutateAsync(id)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const filters = {
+        filterData: {},
+      }
+      await downloadFile('/supplier/export/excel', 'suppliers.xlsx', filters)
+    } catch (error) {
+      console.error('Excel export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      const filters = {
+        filterData: {},
+      }
+      await downloadFile('/supplier/export/csv', 'suppliers.csv', filters)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -66,6 +90,8 @@ const SupplierList: FunctionComponent<Props> = () => {
         btnRoute="/suppliers/create"
         btnLabel="Add new Supplier"
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        onExportExcel={handleExportExcel}
+        onExportCsv={handleExportCsv}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid
