@@ -221,6 +221,18 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-request/export/pdf', 'monthly-fixed-requests.pdf', filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -231,6 +243,7 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {apiErrors.vehicles && (
         <Alert

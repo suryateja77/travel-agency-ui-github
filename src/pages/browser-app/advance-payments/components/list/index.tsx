@@ -92,6 +92,18 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: {},
+      }
+      await downloadFile('/advanced-payment/export/pdf', 'advance-payments.pdf', filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -102,6 +114,7 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

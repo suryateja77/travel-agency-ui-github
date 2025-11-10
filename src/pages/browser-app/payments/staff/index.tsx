@@ -140,6 +140,18 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/staff-account/export/pdf', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.pdf`, filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -149,6 +161,7 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {error && (
         <Alert

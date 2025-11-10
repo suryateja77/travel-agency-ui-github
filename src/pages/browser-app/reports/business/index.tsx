@@ -148,6 +148,18 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/report/export/pdf', `business-reports-${filterData.year || 'all'}.pdf`, filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -157,6 +169,7 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {error && (
         <Alert

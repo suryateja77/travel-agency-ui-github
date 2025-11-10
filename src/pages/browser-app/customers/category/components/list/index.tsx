@@ -109,6 +109,18 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: category ? { category } : {},
+      }
+      await downloadFile('/customer/export/pdf', `customers-${category || 'all'}.pdf`, filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -119,6 +131,7 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       <div className={bemClass([blk, 'content'])}>
         <EntityGrid

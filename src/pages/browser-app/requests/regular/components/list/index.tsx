@@ -216,6 +216,18 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/regular-request/export/pdf', 'regular-requests.pdf', filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -226,6 +238,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {apiErrors.vehicles && (
         <Alert

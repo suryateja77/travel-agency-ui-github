@@ -239,6 +239,18 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters || {},
+      }
+      await downloadFile('/vehicle-report/export/pdf', `vehicle-reports-${filterData.year || 'all'}.pdf`, filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -248,6 +260,7 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {error && (
         <Alert

@@ -156,6 +156,18 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      const filters = {
+        filterData: searchFilters,
+      }
+      await downloadFile('/fixed-vehicle-payment/export/pdf', `vehicle-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.pdf`, filters)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      // You could add a toast notification here
+    }
+  }
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
@@ -165,6 +177,7 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
         exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
       />
       {error && (
         <Alert
