@@ -196,30 +196,30 @@ const formatMinutesToDuration = (totalMinutes: number | null): string => {
 
 /**
  * Downloads a file from the server using axios with optional filters
- * @param url - The API endpoint URL (without /api prefix)
+ * @param url - The API endpoint URL (without baseURL prefix)
  * @param filename - The filename for the downloaded file
  * @param filters - Optional filters to include in the request
  */
 const downloadFile = async (url: string, filename: string, filters: Record<string, any> = {}) => {
   try {
-    // Import axios here to avoid circular dependencies
-    const axios = (await import('axios')).default
+    // Import the configured API get method to use the correct baseURL
+    const { get } = await import('@api')
     
-    const queryParams = new URLSearchParams()
+    const queryParams: Record<string, any> = {}
     
     // Add filters to query params
     if (filters.filterData) {
-      queryParams.append('filterData', JSON.stringify(filters.filterData))
+      queryParams.filterData = JSON.stringify(filters.filterData)
     }
     if (filters.sort) {
-      queryParams.append('sort', JSON.stringify(filters.sort))
+      queryParams.sort = JSON.stringify(filters.sort)
     }
     
-    const fullUrl = `/api${url}${queryParams.toString() ? `?${queryParams}` : ''}`
-    
-    const response = await axios.get(fullUrl, {
+    // Use the configured API get method which has the correct baseURL
+    const response = await get(url, { 
+      ...queryParams,
       responseType: 'blob',
-      withCredentials: true, // Include cookies for authentication
+      withCredentials: true // Include cookies for authentication
     })
 
     const blob = new Blob([response.data])

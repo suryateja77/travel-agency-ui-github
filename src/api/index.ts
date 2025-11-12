@@ -47,6 +47,10 @@ const generateAPIMethods = (url: string) => {
       ...requestBody, 
       responseType: 'blob' 
     }),
+    exportPdf: async (requestBody: requestBodyType) => await get(`${url}/export/pdf`, { 
+      ...requestBody, 
+      responseType: 'blob' 
+    }),
   }
 }
 
