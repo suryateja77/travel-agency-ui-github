@@ -16,6 +16,50 @@
     gap: $space-small;
     margin-bottom: $space-large;
   }
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  &__modal-content {
+    padding: $space-large;
+    min-width: 500px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+  &__modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-large;
+    flex-shrink: 0;
+  }
+  &__close-button {
+    padding: $space-small;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
+  &__modal-body {
+    flex: 1;
+    overflow: hidden;
+    margin-bottom: $space-large;
+  }
+  &__table-container {
+    height: 100%;
+    overflow-y: auto;
+    border: 1px solid $gray-light;
+    border-radius: 4px;
+  }
+  &__modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
 }
 
 @include large-up {

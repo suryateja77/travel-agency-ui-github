@@ -1,12 +1,11 @@
 import React, { FunctionComponent, useState } from 'react'
-import { bemClass } from '@utils'
+import { bemClass, formatDateValueForDisplay, downloadFile } from '@utils'
 
 import './style.scss'
-import { Alert, Button, Column, Row, SelectInput } from '@base'
+import { Alert, Button, Column, Row, SelectInput, Modal, Icon, Text, Table, Anchor } from '@base'
 import PageHeader from '@components/page-header'
 import EntityGrid from '@components/entity-grid'
 import { useFixedVehiclePaymentsQuery } from '@api/queries/fixed-vehicle-payment'
-import { downloadFile } from '@utils'
 
 const blk = 'vehicle-payments'
 
@@ -28,6 +27,9 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
     year: currentYear,
   })
 
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
+
   const yearOptions = [
     { key: '2024', value: '2024' },
     { key: '2025', value: '2025' },
@@ -48,10 +50,7 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
     { key: 'Dec', value: 'Dec' },
   ]
 
-  const breadcrumbData = [
-    { label: 'Home', route: '/dashboard' },
-    { label: 'Vehicle Payments' },
-  ]
+  const breadcrumbData = [{ label: 'Home', route: '/dashboard' }, { label: 'Vehicle Payments' }]
 
   // API query for fixed vehicle payments data
   const { data: vehiclePaymentsData, isLoading, error } = useFixedVehiclePaymentsQuery(searchFilters)
@@ -101,9 +100,7 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
       custom: ({ requestPackage, totalKm, totalExtraHr, totalToll, totalParking, totalNightHalt, totalDriverAllowance }: any) => {
         if (!requestPackage) return <>₹0</>
 
-        const {
-          baseAmount, minimumKm, extraKmPerKmRate, extraHrPerHrRate,
-        } = requestPackage
+        const { baseAmount, minimumKm, extraKmPerKmRate, extraHrPerHrRate } = requestPackage
 
         const extraKm = minimumKm - (totalKm || 0)
         const extraKmAmount = extraKm > 0 ? extraKm * extraKmPerKmRate : 0
@@ -113,6 +110,20 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
 
         return <>{`₹${totalAmount.toLocaleString()}`}</>
       },
+    },
+    {
+      label: 'Details',
+      custom: (item: any) => (
+        <Button
+          size="small"
+          clickHandler={() => {
+            setSelectedPayment(item)
+            setShowDetailsModal(true)
+          }}
+        >
+          Details
+        </Button>
+      ),
     },
   ]
 
@@ -167,6 +178,64 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
       // You could add a toast notification here
     }
   }
+
+  const requestDetailColumns = [
+    {
+      label: 'Request ID',
+      custom: ({ request }: any) => (
+        <Anchor
+          asLink
+          href={`/requests/monthly-fixed/${request?._id}/detail`}
+        >
+          {request?.requestNo || request?._id || '-'}
+        </Anchor>
+      ),
+    },
+    {
+      label: 'Customer Name',
+      custom: ({ request }: any) => <>{request?.customer?.name || '-'}</>,
+    },
+    {
+      label: 'Pickup',
+      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.pickUpDateTime)}</>,
+    },
+    {
+      label: 'Drop',
+      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.dropDateTime)}</>,
+    },
+    {
+      label: 'Total Km',
+      custom: ({ totalKm }: any) => <>{totalKm || 0}</>,
+    },
+    {
+      label: 'Total Hr',
+      custom: ({ totalHr }: any) => <>{totalHr || 0}</>,
+    },
+    {
+      label: 'Total Extra Km',
+      custom: ({ totalExtraKm }: any) => <>{totalExtraKm || 0}</>,
+    },
+    {
+      label: 'Total Extra Hr',
+      custom: ({ totalExtraHr }: any) => <>{totalExtraHr || 0}</>,
+    },
+    {
+      label: 'Driver Allowance',
+      custom: ({ otherCharges }: any) => <>{`₹${otherCharges?.driverAllowance || 0}`}</>,
+    },
+    {
+      label: 'Night Halt',
+      custom: ({ otherCharges }: any) => <>{`₹${otherCharges?.nightHalt || 0}`}</>,
+    },
+    {
+      label: 'Parking',
+      custom: ({ otherCharges }: any) => <>{`₹${otherCharges?.parking || 0}`}</>,
+    },
+    {
+      label: 'Toll',
+      custom: ({ otherCharges }: any) => <>{`₹${otherCharges?.toll || 0}`}</>,
+    },
+  ]
 
   return (
     <div className={bemClass([blk])}>
@@ -250,6 +319,36 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
           isLoading={isLoading}
         />
       </div>
+
+      <Modal
+        show={showDetailsModal}
+        closeHandler={() => setShowDetailsModal(false)}
+      >
+        <div className={bemClass([blk, 'modal-content'])}>
+          <div className={bemClass([blk, 'modal-header'])}>
+            <Text
+              tag="h2"
+              typography="l"
+              fontWeight="bold"
+              color="black"
+            >
+              Request details
+            </Text>
+          </div>
+          <div className={bemClass([blk, 'modal-body'])}>
+            <div className={bemClass([blk, 'table-container'])}>
+              <Table
+                columns={requestDetailColumns}
+                data={selectedPayment?.requests || []}
+                hoverEffect
+              />
+            </div>
+          </div>
+          <div className={bemClass([blk, 'modal-footer'])}>
+            <Button clickHandler={() => setShowDetailsModal(false)}>Close</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
