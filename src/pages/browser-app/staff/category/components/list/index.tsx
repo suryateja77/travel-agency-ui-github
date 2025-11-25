@@ -147,7 +147,7 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredStaffData.length}
         btnRoute={`/staff/${category}/create`}
         btnLabel={`Add new ${categoryName}`}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

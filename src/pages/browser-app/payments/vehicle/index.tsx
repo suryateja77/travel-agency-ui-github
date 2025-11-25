@@ -125,7 +125,30 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
         </Button>
       ),
     },
+    {
+      label: 'Invoice',
+      custom: (item: any) => (
+        <Button
+          size="small"
+          category="success"
+          clickHandler={() => handleGenerateInvoice(item._id)}
+        >
+          Generate Invoice
+        </Button>
+      ),
+    },
   ]
+
+  const handleGenerateInvoice = async (paymentId: string) => {
+    try {
+      // Use downloadFile utility to download PDF (same pattern as Excel/CSV/PDF exports)
+      const invoiceFilename = `invoice-${paymentId}.pdf`
+      await downloadFile(`/invoice/download/fixed-vehicle-payment?id=${paymentId}`, invoiceFilename)
+    } catch (error) {
+      console.error('Failed to generate invoice:', error)
+      alert('Failed to generate invoice. Please try again.')
+    }
+  }
 
   const handleSearch = () => {
     const filters: Record<string, any> = {}
@@ -243,7 +266,7 @@ const VehiclePayments: FunctionComponent<VehiclePaymentsProps> = () => {
         title="Vehicle Payments"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

@@ -1,0 +1,122 @@
+@import '~/src/sass/style';
+
+.quick-links {
+  background: $white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+
+  &__header {
+    padding: 16px 20px;
+    border-bottom: 1px solid $gray-light;
+    background: $gray-lightest;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: $gray-darker;
+    margin: 0;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    padding: 20px;
+
+    @include medium-down {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  &__card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: $white;
+    border: 2px solid $gray-light;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+
+    &:hover {
+      border-color: var(--card-color, $primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+      .quick-links__card-icon {
+        background: var(--card-color, $primary);
+        color: $white;
+      }
+
+      .quick-links__card-arrow {
+        transform: translateX(4px);
+        color: var(--card-color, $primary);
+      }
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  &__card-icon {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $gray-lightest;
+    color: var(--card-color, $primary);
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    @include medium-down {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+    }
+  }
+
+  &__card-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: $gray-darker;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @include medium-down {
+      font-size: 14px;
+    }
+  }
+
+  &__card-description {
+    font-size: 13px;
+    color: $gray;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @include medium-down {
+      font-size: 12px;
+    }
+  }
+
+  &__card-arrow {
+    color: $gray;
+    transition: all 0.2s;
+  }
+}

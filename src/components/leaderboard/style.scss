@@ -1,0 +1,115 @@
+@import '~/src/sass/style';
+
+.leaderboard {
+  background: $white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid $gray-light;
+    background: $gray-lightest;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: $gray-darker;
+    margin: 0;
+  }
+
+  &__sort-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: $white;
+    border: 1px solid $gray-light;
+    border-radius: 4px;
+    font-size: 13px;
+    color: $gray-dark;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $gray-lightest;
+      border-color: $primary;
+      color: $primary;
+    }
+
+    span {
+      @include medium-down {
+        display: none;
+      }
+    }
+  }
+
+  &__content {
+    flex: 1;
+    overflow: auto;
+  }
+
+  &__rank {
+    font-weight: 600;
+    color: $gray-darker;
+    font-size: 16px;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  &__name {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__subtitle {
+    font-size: 12px;
+    color: $gray;
+  }
+
+  &__category {
+    font-size: 13px;
+    color: $gray-dark;
+    text-transform: capitalize;
+  }
+
+  &__metric {
+    font-weight: 600;
+    color: $success;
+    font-size: 15px;
+    text-align: right;
+  }
+
+  &__empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: $gray;
+    font-size: 14px;
+  }
+
+  // Table overrides
+  .table {
+    tbody tr {
+      &:nth-child(1) .leaderboard__rank {
+        color: $warning;
+        font-size: 18px;
+      }
+      &:nth-child(2) .leaderboard__rank {
+        color: $gray-dark;
+        font-size: 17px;
+      }
+      &:nth-child(3) .leaderboard__rank {
+        color: #cd7f32;
+        font-size: 16px;
+      }
+    }
+  }
+}

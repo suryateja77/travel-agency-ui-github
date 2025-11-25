@@ -554,3 +554,38 @@ export const INITIAL_SUPPLIER: SupplierModel = {
   isActive: true,
   comment: '',
 }
+
+//
+export interface StaffAccountRequest {
+  request: {
+    _id: string
+    requestNo?: string
+    customer?: {
+      name: string
+      _id: string
+    }
+    pickUpDateTime?: Date | string
+    dropDateTime?: Date | string
+    [key: string]: any
+  }
+  nightHalt: number
+  driverAllowance: number
+}
+
+export interface StaffAccountModel {
+  _id: string
+  year: string
+  month: string
+  staff: {
+    _id: string
+    name: string
+    salary: number
+    [key: string]: any
+  }
+  staffCategory: string
+  advancePayment: number
+  totalNightHalt: number
+  totalDriverAllowance: number
+  requests: StaffAccountRequest[]
+  createdAt: Date | string
+}

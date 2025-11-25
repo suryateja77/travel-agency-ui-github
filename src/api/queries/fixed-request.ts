@@ -67,6 +67,8 @@ export const useCreateFixedRequestMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixedRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['fixedVehiclePayments'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
     },
   })
 }
@@ -80,6 +82,8 @@ export const useUpdateFixedRequestMutation = () => {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['fixedRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['fixedVehiclePayments'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
       if (variables && variables._id) {
         queryClient.invalidateQueries({ queryKey: ['fixedRequest', variables._id] })
       }
@@ -96,6 +100,8 @@ export const useDeleteFixedRequestMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixedRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['fixedVehiclePayments'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
     },
   })
 }

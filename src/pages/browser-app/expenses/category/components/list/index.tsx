@@ -170,7 +170,7 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredExpensesData.length}
         btnRoute={`/expenses/${category}/create`}
         btnLabel={`Add new ${categoryName} Expense`}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

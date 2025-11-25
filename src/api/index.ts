@@ -5,7 +5,7 @@ type requestBodyType = Record<string, any>
 axios.defaults.withCredentials = true
 
 const API = axios.create({
-  baseURL: 'https://travel-agency-api-7l66.onrender.com',
+  baseURL: '/api',
   timeout: 20000
 })
 

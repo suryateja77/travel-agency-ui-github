@@ -1,0 +1,114 @@
+@import '~/src/sass/style';
+
+.growth-metric-tile {
+  background: $white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  height: 100%;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  &__period-select {
+    
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  &__icon {
+    color: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: $gray-dark;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__value {
+    font-size: 32px;
+    font-weight: 700;
+    color: $gray-darker;
+    line-height: 1;
+
+    @include large-down {
+      font-size: 28px;
+    }
+
+    @include medium-down {
+      font-size: 24px;
+    }
+  }
+
+  &__growth {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+
+    &--positive {
+      color: $success;
+    }
+
+    &--negative {
+      color: $error;
+    }
+
+    &--neutral {
+      color: $gray;
+    }
+  }
+
+  &__growth-text {
+    font-size: 16px;
+  }
+
+  &__growth-label {
+    font-size: 12px;
+    font-weight: 400;
+    color: $gray;
+    margin-left: 4px;
+  }
+
+  &__footer {
+    padding-top: 12px;
+    border-top: 1px solid $gray-light;
+  }
+
+  &__previous {
+    font-size: 12px;
+    color: $gray;
+  }
+}

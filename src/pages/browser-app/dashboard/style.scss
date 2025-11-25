@@ -1,37 +1,143 @@
 @import '~/src/sass/style';
 
 .dashboard {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: $space-default;
-  
+  padding: 20px;
+  background: $body-bg;
+  min-height: 100vh;
+
+  @include medium-down {
+    padding: 12px;
+  }
+
   &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: $space-default;
-  }
-  
-  &__content {
-    flex: 1;
-    overflow-y: auto;
-  }
-  
-  &__section {
-    margin-bottom: $space-large;
-    
-    h2, h3 {
-      margin-bottom: $space-default;
+    margin-bottom: 24px;
+
+    @include medium-down {
+      margin-bottom: 16px;
     }
   }
-  
-  &__form-group {
-    margin-bottom: $space-default;
-    max-width: 400px;
-    
+
+  &__title {
+    font-size: 28px;
+    font-weight: 700;
+    color: $gray-darker;
+    margin: 0;
+
+    @include large-down {
+      font-size: 24px;
+    }
+
+    @include medium-down {
+      font-size: 20px;
+    }
+  }
+
+  &__section {
+    margin-bottom: 32px;
+
     &:last-child {
       margin-bottom: 0;
+    }
+
+    @include medium-down {
+      margin-bottom: 24px;
+    }
+  }
+
+  &__section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: $gray-darker;
+    margin: 0 0 16px 0;
+
+    @include medium-down {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+  }
+
+  &__growth-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+
+    @include large-down {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    @include medium-down {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  &__charts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+
+    &--three-column {
+      grid-template-columns: repeat(3, 1fr);
+
+      @include large-down {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @include large-down {
+      gap: 16px;
+    }
+
+    @include medium-down {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  &__leaderboards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+
+    @include extra-large {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @include large-down {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    @include medium-down {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  &__loading,
+  &__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: $white;
+    border-radius: 8px;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin: 20px;
+
+    p {
+      font-size: 16px;
+      color: $gray-dark;
+      margin: 0;
+    }
+  }
+
+  &__error {
+    p {
+      color: $error;
     }
   }
 }

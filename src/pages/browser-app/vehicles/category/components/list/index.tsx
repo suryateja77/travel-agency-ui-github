@@ -135,11 +135,7 @@ const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
         total={filteredVehicleData.length}
         btnRoute={`/vehicles/${category}/create`}
         btnLabel={`Add ${categoryName} Vehicle`}
-        exportButtonsToShow={{
-          csv: true,
-          pdf: true,
-          excel: true,
-        }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

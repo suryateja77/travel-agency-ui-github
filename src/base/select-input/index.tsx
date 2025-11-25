@@ -39,6 +39,7 @@ interface SelectInputProps {
   controlClasses?: string
   errorMessage?: string
   changeHandler?: (arg: ChangeArg) => void
+  showPlaceholder?: boolean
 }
 
 const blk = 'select-input'
@@ -64,6 +65,7 @@ const SelectInput: FunctionComponent<SelectInputProps> = ({
   controlClasses = '',
   errorMessage = '',
   changeHandler = () => {},
+  showPlaceholder = true,
 }) => {
   const eltClass = bemClass([
     blk,
@@ -115,7 +117,7 @@ const SelectInput: FunctionComponent<SelectInputProps> = ({
         required={required}
         onChange={handleChange}
       >
-        {placeHolder && <option value="">{placeHolder}</option>}
+        {showPlaceholder && placeHolder && <option value="">{placeHolder}</option>}
         {options.map((item, index) => {
           return (
             <option

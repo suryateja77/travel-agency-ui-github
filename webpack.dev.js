@@ -14,7 +14,7 @@ const devConfig = {
     open: false,
     proxy: [{
       context: ['/api'],
-      target: 'https://travel-agency-api-7l66.onrender.com',
+      target: 'http://localhost:8080',
       pathRewrite: {
         '^/api': ''
       },

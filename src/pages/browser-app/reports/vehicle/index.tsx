@@ -109,8 +109,16 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
 
   const columns = [
     {
-      label: 'Month-Year',
-      custom: ({ month, year }: any) => <>{month && year ? `${month}-${year}` : '-'}</>,
+      label: 'Period',
+      custom: ({ month, year }: any) => {
+        // If month exists, show month-year (monthly view), otherwise show year only (yearly view)
+        if (month && month !== 'null') {
+          return <>{year ? `${month}-${year}` : month}</>
+        } else if (year && year !== 'null') {
+          return <>{year}</>
+        }
+        return <>-</>
+      },
     },
     {
       label: 'Total Local Requests',
@@ -205,6 +213,19 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
 
     setSearchFilters(Object.keys(filters).length > 0 ? filters : undefined)
   }
+  
+  // Determine if Search button should be enabled
+  const isSearchEnabled = () => {
+    // Case 1: Year alone is selected
+    if (filterData.year && !filterData.vehicleCategory && !filterData.vehicle) {
+      return true
+    }
+    // Case 2: Vehicle category and vehicle are selected (with or without year)
+    if (filterData.vehicleCategory && filterData.vehicle) {
+      return true
+    }
+    return false
+  }
 
   const handleClear = () => {
     setFilterData({
@@ -257,7 +278,7 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
         title="Vehicle Report"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
@@ -341,7 +362,7 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
             <Button
               size="medium"
               clickHandler={handleSearch}
-              disabled={!filterData.vehicleCategory || !filterData.vehicle || !filterData.year}
+              disabled={!isSearchEnabled()}
             >
               Search
             </Button>

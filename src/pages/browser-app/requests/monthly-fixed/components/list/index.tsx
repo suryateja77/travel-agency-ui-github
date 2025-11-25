@@ -240,7 +240,7 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
         total={requestsData?.data.length}
         btnRoute="/requests/monthly-fixed/create"
         btnLabel="New Monthly Fixed Request"
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

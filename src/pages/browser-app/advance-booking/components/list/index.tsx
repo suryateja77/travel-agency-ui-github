@@ -145,7 +145,7 @@ const AdvanceBookingList: FunctionComponent<Props> = () => {
         total={advanceBookingsData.length}
         btnRoute="/advance-booking/create"
         btnLabel="Add new Advanced Booking"
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

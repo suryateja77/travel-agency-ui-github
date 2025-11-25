@@ -195,6 +195,41 @@ const formatMinutesToDuration = (totalMinutes: number | null): string => {
 }
 
 /**
+ * Formats a number with Indian locale thousand separators (e.g., 1,00,000)
+ * @param num - The number to format
+ * @param options - Optional formatting options (decimals, etc.)
+ * @returns Formatted number string
+ */
+const formatNumber = (num: number, options?: { round?: boolean }): string => {
+  const numberToFormat = options?.round ? Math.round(num) : num
+  return new Intl.NumberFormat('en-IN').format(numberToFormat)
+}
+
+/**
+ * Generates year options for dropdown (current year and N years back)
+ * @param yearsBack - Number of years to go back from current year (default: 5)
+ * @returns Array of options with key and value as year strings
+ */
+const generateYearOptions = (yearsBack: number = 5): Array<{ key: string; value: string }> => {
+  const currentYear = new Date().getFullYear()
+  return Array.from({ length: yearsBack + 1 }, (_, i) => {
+    const year = currentYear - i
+    return { key: year.toString(), value: year.toString() }
+  })
+}
+
+/**
+ * Generates standard period options (Week/Month) for dropdown
+ * @returns Array of period options
+ */
+const generatePeriodOptions = (): Array<{ key: string; value: string }> => {
+  return [
+    { key: 'week', value: 'week' },
+    { key: 'month', value: 'month' }
+  ]
+}
+
+/**
  * Downloads a file from the server using axios with optional filters
  * @param url - The API endpoint URL (without baseURL prefix)
  * @param filename - The filename for the downloaded file
@@ -256,5 +291,8 @@ export {
   formatDateValueForDisplay,
   formatBooleanValueForDisplay,
   formatMinutesToDuration,
+  formatNumber,
+  generateYearOptions,
+  generatePeriodOptions,
   downloadFile
 }

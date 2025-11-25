@@ -1,8 +1,8 @@
 import { FunctionComponent, useState } from 'react'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, formatDateValueForDisplay } from '@utils'
 
 import './style.scss'
-import { Alert, Button, Column, Row, SelectInput } from '@base'
+import { Alert, Button, Column, Row, SelectInput, Modal, Text, Table, Anchor } from '@base'
 import PageHeader from '@components/page-header'
 import EntityGrid from '@components/entity-grid'
 import { useStaffAccountsQuery } from '@api/queries/staff-account'
@@ -26,6 +26,9 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     month: currentMonth,
     year: currentYear,
   })
+
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
   const yearOptions = [
     { key: '2024', value: '2024' },
@@ -98,6 +101,32 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         return <>{`₹${finalPayout.toLocaleString()}`}</>
       },
     },
+    {
+      label: 'Details',
+      custom: (item: any) => (
+        <Button
+          size="small"
+          clickHandler={() => {
+            setSelectedPayment(item)
+            setShowDetailsModal(true)
+          }}
+        >
+          Details
+        </Button>
+      ),
+    },
+    {
+      label: 'Payout',
+      custom: (item: any) => (
+        <Button
+          size="small"
+          category="success"
+          clickHandler={() => handleDownloadPayout(item._id, item.staff?.name || 'staff')}
+        >
+          Download Payout
+        </Button>
+      ),
+    },
   ]
 
   const handleSearch = () => {
@@ -152,13 +181,61 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     }
   }
 
+  const handleDownloadPayout = async (accountId: string, staffName: string) => {
+    try {
+      const payoutFilename = `payout-${staffName}-${filterData.month}-${filterData.year}.pdf`
+      await downloadFile(`/staff-account/download/payout?id=${accountId}`, payoutFilename)
+    } catch (error) {
+      console.error('Failed to download payout:', error)
+    }
+  }
+
+  const requestDetailColumns = [
+    {
+      label: 'Request ID',
+      custom: ({ request, requestType }: any) => {
+        const route = requestType === 'RegularRequest' 
+          ? `/requests/regular/${request?._id}/detail`
+          : `/requests/monthly-fixed/${request?._id}/detail`
+        return (
+          <Anchor
+            asLink
+            href={route}
+          >
+            {request?.requestNo || request?._id || '-'}
+          </Anchor>
+        )
+      },
+    },
+    {
+      label: 'Customer Name',
+      custom: ({ request }: any) => <>{request?.customer?.name || '-'}</>,
+    },
+    {
+      label: 'Pickup',
+      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.pickUpDateTime)}</>,
+    },
+    {
+      label: 'Drop',
+      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.dropDateTime)}</>,
+    },
+    {
+      label: 'Driver Allowance',
+      custom: ({ driverAllowance }: any) => <>{`₹${driverAllowance || 0}`}</>,
+    },
+    {
+      label: 'Night Halt',
+      custom: ({ nightHalt }: any) => <>{`₹${nightHalt || 0}`}</>,
+    },
+  ]
+
   return (
     <div className={bemClass([blk])}>
       <PageHeader
         title="Staff Payments"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
@@ -234,6 +311,36 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
           isLoading={isLoading}
         />
       </div>
+
+      <Modal
+        show={showDetailsModal}
+        closeHandler={() => setShowDetailsModal(false)}
+      >
+        <div className={bemClass([blk, 'modal-content'])}>
+          <div className={bemClass([blk, 'modal-header'])}>
+            <Text
+              tag="h2"
+              typography="l"
+              fontWeight="bold"
+              color="black"
+            >
+              Request details
+            </Text>
+          </div>
+          <div className={bemClass([blk, 'modal-body'])}>
+            <div className={bemClass([blk, 'table-container'])}>
+              <Table
+                columns={requestDetailColumns}
+                data={selectedPayment?.requests || []}
+                hoverEffect
+              />
+            </div>
+          </div>
+          <div className={bemClass([blk, 'modal-footer'])}>
+            <Button clickHandler={() => setShowDetailsModal(false)}>Close</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

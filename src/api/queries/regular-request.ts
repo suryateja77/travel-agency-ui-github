@@ -49,6 +49,7 @@ export const useCreateRegularRequestMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['regularRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
     },
   })
 }
@@ -62,6 +63,7 @@ export const useUpdateRegularRequestMutation = () => {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['regularRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
       if (variables && variables._id) {
         queryClient.invalidateQueries({ queryKey: ['regularRequest', variables._id] })
       }
@@ -78,6 +80,7 @@ export const useDeleteRegularRequestMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['regularRequests'] })
+      queryClient.invalidateQueries({ queryKey: ['staffAccounts'] })
     },
   })
 }

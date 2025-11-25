@@ -25,7 +25,7 @@ const Icon: FunctionComponent<IconProps> = ({ name, attributes = {}, className =
     },
     className,
   ])
-  const iconClass = `fa ${name ? 'fa-' + name : ''} ${spin ? 'fa-spin' : ''} ${iconScale ? 'fa-' + iconScale : ''}`
+  const iconClass = `fa-solid ${name ? 'fa-' + name : ''} ${spin ? 'fa-spin' : ''} ${iconScale ? 'fa-' + iconScale : ''}`
   return (
     <Tag
       className={eltClass}

@@ -30,8 +30,16 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
 
   const columns = [
     {
-      label: 'Month',
-      custom: ({ month }: any) => <>{month && month !== 'null' ? month : '-'}</>,
+      label: 'Period',
+      custom: ({ month, year }: any) => {
+        // If month exists, show month (monthly view), otherwise show year (yearly view)
+        if (month && month !== 'null') {
+          return <>{month}</>
+        } else if (year && year !== 'null') {
+          return <>{year}</>
+        }
+        return <>-</>
+      },
     },
     {
       label: 'Income',
@@ -166,7 +174,7 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         title="Business Report"
         withBreadCrumb
         breadCrumbData={breadcrumbData}
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

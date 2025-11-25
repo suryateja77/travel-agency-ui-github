@@ -101,7 +101,7 @@ const SupplierList: FunctionComponent<Props> = () => {
         total={suppliersData.length}
         btnRoute="/suppliers/create"
         btnLabel="Add new Supplier"
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}

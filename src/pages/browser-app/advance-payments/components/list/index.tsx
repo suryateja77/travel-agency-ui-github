@@ -111,7 +111,7 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
         total={advancePaymentsData.length}
         btnRoute="/advance-payments/create"
         btnLabel="Add new Advance Payment"
-        exportButtonsToShow={{ csv: true, pdf: true, excel: true }}
+        showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
         onExportPdf={handleExportPdf}
