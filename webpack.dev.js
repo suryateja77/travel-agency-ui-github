@@ -1,12 +1,13 @@
 const { HotModuleReplacementPlugin } = require('webpack')
 const { merge } = require('webpack-merge')
 const commonConfig = require('./webpack.common')
+require('dotenv').config()
 
 const devConfig = {
   mode: 'development',
   devtool: 'inline-source-map',
   devServer: {
-    port: process.env.PORT || 9090,
+    port: process.env.PORT,
     host: '0.0.0.0',
     historyApiFallback: true, // Serve index.html in case of any 404 responses.
     compress: true, // Enable G-zip compression for everything served
@@ -14,7 +15,7 @@ const devConfig = {
     open: false,
     proxy: [{
       context: ['/api'],
-      target: 'https://travel-agency-api-7l66.onrender.com',
+      target: process.env.REACT_APP_API_URL,
       pathRewrite: {
         '^/api': ''
       },

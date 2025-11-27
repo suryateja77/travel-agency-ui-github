@@ -2,86 +2,97 @@ import { FunctionComponent } from 'react'
 
 import './style.scss'
 import { bemClass } from '@utils'
-import Button from '@base/button'
+import { SelectInput, Icon, Text } from '@base'
 
 const blk = 'pagination'
 
 interface PaginationProps {
   currentPage: number
   totalPages: number
+  totalEntries: number
+  entriesPerPage: number
   onPageChange: (page: number) => void
+  onEntriesPerPageChange: (entriesPerPage: number) => void
 }
 
-const Pagination: FunctionComponent<PaginationProps> = ({
-  currentPage,
-  totalPages,
-  onPageChange,
-}) => {
-  // Generate 5 page buttons centered around current page
-  const getPageNumbers = () => {
-    const pages: number[] = []
-    const startPage = Math.max(1, currentPage - 2)
-    const endPage = Math.min(totalPages, startPage + 4)
+const Pagination: FunctionComponent<PaginationProps> = ({ currentPage, totalPages, totalEntries, entriesPerPage, onPageChange, onEntriesPerPageChange }) => {
+  // Calculate current entries range
+  const startEntry = totalEntries === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1
+  const endEntry = Math.min(currentPage * entriesPerPage, totalEntries)
 
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i)
+  // Entries per page options
+  const entriesPerPageOptions = [
+    { key: '5', value: '5' },
+    { key: '10', value: '10' },
+    { key: '20', value: '20' },
+    { key: '50', value: '50' },
+  ]
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1)
     }
-
-    return pages
   }
 
-  const pageNumbers = getPageNumbers()
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1)
+    }
+  }
 
-  if (totalPages <= 1) {
-    return null
+  const handleEntriesPerPageChange = (value: any) => {
+    const newEntriesPerPage = parseInt(value.entriesPerPage)
+    if (!isNaN(newEntriesPerPage)) {
+      onEntriesPerPageChange(newEntriesPerPage)
+      // Reset to first page when changing entries per page
+      onPageChange(1)
+    }
   }
 
   return (
     <div className={bemClass([blk])}>
       <div className={bemClass([blk, 'content'])}>
-        {/* Previous button */}
-        <Button
-          size="small"
-          category="primary"
-          clickHandler={() => {
-            console.log('Previous button clicked')
-            onPageChange(currentPage - 1)
-          }}
-          className={bemClass([blk, 'button'])}
-        >
-          Previous
-        </Button>
+        <SelectInput
+          name="entriesPerPage"
+          options={entriesPerPageOptions}
+          value={entriesPerPage.toString()}
+          changeHandler={handleEntriesPerPageChange}
+          showPlaceholder={false}
+        />
 
-        {/* Page numbers */}
-        <div className={bemClass([blk, 'pages'])}>
-          {pageNumbers.map((page) => (
-            <Button
-              key={page}
-              size="small"
-              category={page === currentPage ? 'primary-outline' : 'primary'}
-              clickHandler={() => {
-                console.log(`Page ${page} button clicked`)
-                onPageChange(page)
-              }}
-              className={bemClass([blk, 'page-button'])}
+        {/* Navigation controls */}
+        <div className={bemClass([blk, 'navigation'])}>
+          {/* Previous button */}
+          <button
+            className={bemClass([blk, 'nav-button', currentPage === 1 ? ['disabled'] : []])}
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            aria-label="Previous page"
+          >
+            <Icon name="chevron-left" />
+          </button>
+
+          {/* Page info */}
+          <div className={bemClass([blk, 'info'])}>
+            <Text
+              typography="xs"
+              fontWeight="semi-bold"
+              color="gray-dark"
             >
-              {page}
-            </Button>
-          ))}
-        </div>
+              {`${startEntry}-${endEntry} of ${totalEntries}`}
+            </Text>
+          </div>
 
-        {/* Next button */}
-        <Button
-          size="small"
-          category="primary"
-          clickHandler={() => {
-            console.log('Next button clicked')
-            onPageChange(currentPage + 1)
-          }}
-          className={bemClass([blk, 'button'])}
-        >
-          Next
-        </Button>
+          {/* Next button */}
+          <button
+            className={bemClass([blk, 'nav-button', currentPage >= totalPages ? ['disabled'] : []])}
+            onClick={handleNext}
+            disabled={currentPage >= totalPages}
+            aria-label="Next page"
+          >
+            <Icon name="chevron-right" />
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -11,9 +11,11 @@
     background-color: $white;
   }
   &__filter-section {
+    background-color: $white;
     display: flex;
     flex-direction: column;
     gap: $space-small;
+    padding: $space-default;
     margin-bottom: $space-large;
   }
   &__margin-bottom {

@@ -1,5 +1,6 @@
 import { FunctionComponent, useState } from 'react'
 import { bemClass, pathToName, downloadFile, formatDateValueForDisplay } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { Alert, Button, Column, Row, SelectInput, Modal, Text, Table, Anchor } from '@base'
@@ -12,6 +13,8 @@ const blk = 'staff-payments'
 interface StaffPaymentsProps {}
 
 const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
+  const { showToast } = useToast()
+  
   // Get current date for default filter values
   const currentDate = new Date()
   const currentMonth = currentDate.toLocaleString('en-US', { month: 'short' })
@@ -151,9 +154,10 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         filterData: searchFilters,
       }
       await downloadFile('/staff-account/export/excel', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.xlsx`, filters)
+      showToast('Excel file downloaded successfully', 'success')
     } catch (error) {
       console.error('Excel export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download Excel file. Please try again.', 'error')
     }
   }
 
@@ -163,9 +167,10 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         filterData: searchFilters,
       }
       await downloadFile('/staff-account/export/csv', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.csv`, filters)
+      showToast('CSV file downloaded successfully', 'success')
     } catch (error) {
       console.error('CSV export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download CSV file. Please try again.', 'error')
     }
   }
 
@@ -175,9 +180,10 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
         filterData: searchFilters,
       }
       await downloadFile('/staff-account/export/pdf', `staff-payments-${filterData.month || 'all'}-${filterData.year || 'all'}.pdf`, filters)
+      showToast('PDF file downloaded successfully', 'success')
     } catch (error) {
       console.error('PDF export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download PDF file. Please try again.', 'error')
     }
   }
 
@@ -185,8 +191,10 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     try {
       const payoutFilename = `payout-${staffName}-${filterData.month}-${filterData.year}.pdf`
       await downloadFile(`/staff-account/download/payout?id=${accountId}`, payoutFilename)
+      showToast('Payout downloaded successfully', 'success')
     } catch (error) {
       console.error('Failed to download payout:', error)
+      showToast('Failed to download payout. Please try again.', 'error')
     }
   }
 
@@ -250,8 +258,7 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
       <div className={bemClass([blk, 'filter-section'])}>
         <Row>
           <Column
-            col={3}
-            className={bemClass([blk, 'margin-bottom'])}
+            col={2}
           >
             <SelectInput
               label="Month"
@@ -267,8 +274,7 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
             />
           </Column>
           <Column
-            col={3}
-            className={bemClass([blk, 'margin-bottom'])}
+            col={2}
           >
             <SelectInput
               label="Year"
@@ -284,7 +290,7 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
             />
           </Column>
           <Column
-            col={3}
+            col={2}
             className={bemClass([blk, 'button-column'])}
           >
             <Button

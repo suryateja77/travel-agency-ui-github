@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { createValidationSchema, calculateTotalValidationSchema } from './validation'
 import { bemClass, validatePayload, nameToPath, pathToName, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
-import { Breadcrumb, Button, CheckBox, Column, Panel, RadioGroup, Row, SelectInput, Text, TextArea, TextInput, Alert, Modal, ConfirmationPopup, ReadOnlyText } from '@base'
+import { useToast } from '@contexts/ToastContext'
+import { Breadcrumb, Button, CheckBox, Column, Panel, RadioGroup, Row, SelectInput, Text, TextArea, TextInput, Alert, ReadOnlyText } from '@base'
 import { MonthlyFixedRequestModel } from '@types'
 import { ConfiguredInput } from '@base'
 import { useVehicleByCategory } from '@api/queries/vehicle'
@@ -151,12 +152,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     navigate('/requests/monthly-fixed')
   }
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
-
   // Helper functions for calculations
   const formatMinutesToDuration = (totalMinutes: number | null): string => {
     if (!totalMinutes || totalMinutes <= 0) return ''
@@ -289,11 +284,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
     monthlyFixedRequest: '',
   })
 
-  // Confirmation modal states
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Success')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New monthly fixed request created successfully!')
+  const { showToast } = useToast()
 
   // Validation states
   const [monthlyFixedRequestErrorMap, setMonthlyFixedRequestErrorMap] = React.useState<Record<string, any>>({})
@@ -510,27 +501,15 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       try {
         if (isEditing) {
           await updateMonthlyFixedRequest.mutateAsync({ _id: requestId, ...requestData })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Monthly Fixed Request updated successfully!')
+          showToast('Monthly fixed request updated successfully!', 'success')
         } else {
           await createMonthlyFixedRequest.mutateAsync(requestData)
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New Monthly Fixed Request created successfully!')
+          showToast('New monthly fixed request created successfully!', 'success')
         }
-
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
+        navigateBack()
       } catch (error) {
         console.log('Unable to submit monthly fixed request', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Error')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} monthly fixed request. Please try again.`)
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
+        showToast(`Unable to ${isEditing ? 'update' : 'create'} monthly fixed request. Please try again.`, 'error')
       }
     } else {
       console.log('Submit Monthly Fixed Request: Validation Error', errorMap)
@@ -1739,22 +1718,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
           </Button>
         </div>
       </div>
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
-      >
-        <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
-        />
-      </Modal>
     </div>
   )
 }

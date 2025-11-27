@@ -1,8 +1,9 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
+import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle } from '@base'
 import { PageHeader } from '@components'
 import { CustomerModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -28,13 +29,6 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   customer: CustomerModel
@@ -42,8 +36,6 @@ interface FormState {
   customerId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
 }
 
 // Action types for useReducer
@@ -53,7 +45,6 @@ type FormAction =
   | { type: 'UPDATE_ADDRESS_FIELD'; payload: { field: keyof CustomerModel['address']; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; customerId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
 
 // ============================================================================
 // CONSTANTS
@@ -86,13 +77,6 @@ const initialState: FormState = {
   customerId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -132,13 +116,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isValidationError: action.payload.hasError,
       }
 
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
-      }
-
     default:
       return state
   }
@@ -168,9 +145,10 @@ const transformCustomerResponse = (response: CustomerResponseModel): CustomerMod
 const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' }) => {
   const navigate = useNavigate()
   const params = useParams()
+  const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { customer, isEditing, customerId, validationErrors, isValidationError, showConfirmationModal, confirmationModal } = state
+  const { customer, isEditing, customerId, validationErrors, isValidationError } = state
 
   // API Hooks
   const createCustomer = useCreateCustomerMutation()
@@ -199,10 +177,6 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
     navigate(`/customers/${category}`)
   }, [navigate, category])
 
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
-
   const handleSubmit = useCallback(async () => {
     // Validate form
     const validationSchema = createValidationSchema(customer)
@@ -227,40 +201,17 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
     try {
       if (isEditing) {
         await updateCustomer.mutateAsync({ _id: customerId, ...dataToSave })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Customer updated successfully!',
-          },
-        })
+        showToast('Customer updated successfully!', 'success')
       } else {
         await createCustomer.mutateAsync(dataToSave)
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New customer created successfully!',
-          },
-        })
+        showToast('New customer created successfully!', 'success')
       }
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update customer', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} customer. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} customer. Please try again.`, 'error')
     }
-  }, [customer, isEditing, customerId, updateCustomer, createCustomer, category])
+  }, [customer, isEditing, customerId, updateCustomer, createCustomer, category, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -521,16 +472,6 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
           </>
         )}
       </div>
-
-      <Modal show={showConfirmationModal} closeHandler={closeConfirmationModal}>
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </div>
   )
 }

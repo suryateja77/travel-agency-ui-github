@@ -1,7 +1,8 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, Alert, Toggle } from '@base'
 import { VehicleModel, CustomerModel, PackageModel, StaffModel, SupplierModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -75,13 +76,6 @@ interface SelectOptions {
   suppliers: SelectOption[]
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   vehicle: VehicleModel
@@ -89,8 +83,6 @@ interface FormState {
   vehicleId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
   apiErrors: ApiErrors
   selectOptions: SelectOptions
   originalCustomer: string | null
@@ -103,7 +95,6 @@ type FormAction =
   | { type: 'UPDATE_MONTHLY_FIXED_DETAILS'; payload: Partial<MonthlyFixedDetails> }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; vehicleId: string; originalCustomer?: string | null } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
   | { type: 'SET_SELECT_OPTIONS'; payload: { dataType: keyof SelectOptions; options: SelectOption[] } }
 
@@ -163,13 +154,6 @@ const initialState: FormState = {
   vehicleId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
   apiErrors: {
     customers: '',
     packages: '',
@@ -222,13 +206,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
-      }
-    
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
     
     case 'SET_API_ERROR':
@@ -319,12 +296,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     vehicleId,
     validationErrors,
     isValidationError,
-    showConfirmationModal,
-    confirmationModal,
     apiErrors,
     selectOptions,
     originalCustomer,
   } = state
+  const { showToast } = useToast()
 
   // API Hooks
   const createVehicle = useCreateVehicleMutation()
@@ -392,10 +368,6 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     navigate(`/vehicles/${category}`)
   }, [navigate, category])
 
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
-
   const handleSubmit = useCallback(async () => {
     // Check for API errors
     const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
@@ -436,44 +408,21 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
         if (currentCustomer && currentCustomer !== originalCustomer) {
           queryClient.invalidateQueries({ queryKey: ['customer', currentCustomer] })
         }
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Vehicle updated successfully!',
-          },
-        })
+        showToast('Vehicle updated successfully!', 'success')
       } else {
         await createVehicle.mutateAsync({ ...dataToSave, category: nameToPath(category) })
         // Invalidate customer query if vehicle is monthly fixed and has a customer
         if (vehicle.isMonthlyFixed && vehicle.monthlyFixedDetails?.customer) {
           queryClient.invalidateQueries({ queryKey: ['customer', vehicle.monthlyFixedDetails.customer] })
         }
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New Vehicle created successfully!',
-          },
-        })
+        showToast('New vehicle created successfully!', 'success')
       }
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update vehicle', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} vehicle. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} vehicle. Please try again.`, 'error')
     }
-  }, [apiErrors, vehicle, isEditing, vehicleId, updateVehicle, createVehicle, category, originalCustomer, queryClient])
+  }, [apiErrors, vehicle, isEditing, vehicleId, updateVehicle, createVehicle, category, originalCustomer, queryClient, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -1085,16 +1034,6 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
           )}
         </div>
       </div>
-
-      <Modal show={showConfirmationModal} closeHandler={closeConfirmationModal}>
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </>
   )
 }

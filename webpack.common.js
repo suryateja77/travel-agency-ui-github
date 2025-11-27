@@ -1,5 +1,7 @@
 const path = require('path')
+const { DefinePlugin } = require('webpack')
 const HtmlWebPackPlugin = require('html-webpack-plugin')
+require('dotenv').config()
 
 module.exports = {
   entry: './index.js',
@@ -50,12 +52,16 @@ module.exports = {
       '@config': path.resolve(__dirname, './src/config'),
       '@mock': path.resolve(__dirname, './src/mock'),
       '@context': path.resolve(__dirname, './src/context'),
+      '@contexts': path.resolve(__dirname, './src/contexts'),
       '@images': path.resolve(__dirname, './src/images'),
       '@state': path.resolve(__dirname, './src/state'),
       '@types': path.resolve(__dirname, './src/types'),
     },
   },
   plugins: [
+    new DefinePlugin({
+      'process.env.REACT_APP_API_URL': JSON.stringify(process.env.REACT_APP_API_URL),
+    }),
     new HtmlWebPackPlugin({
       template: './index.html',
       filename: './index.html',

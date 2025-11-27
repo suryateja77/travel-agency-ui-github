@@ -49,8 +49,16 @@ const Login = () => {
   const submitForm = async () => {
     const reqBody = { email, password }
     try {
-      await authenticateUser(reqBody)
+      const response = await authenticateUser(reqBody)
+      const { expiresIn } = response.data
+      
+      // Store login state and expiration time
       setStorageItem('session', 'isLoggedIn', 'true')
+      
+      // Store session expiration timestamp (current time + expiresIn seconds)
+      const expirationTime = Date.now() + (expiresIn * 1000)
+      setStorageItem('session', 'sessionExpiry', expirationTime.toString())
+      
       window.location.replace('/')
     } catch (error: any) {
       console.log(error)

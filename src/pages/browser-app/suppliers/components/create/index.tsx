@@ -1,6 +1,7 @@
-import { Panel, Row, Column, TextInput, Button, Alert, Modal, ConfirmationPopup, Toggle, TextArea } from '@base'
+import { Panel, Row, Column, TextInput, Button, Alert, Toggle, TextArea } from '@base'
 import { SupplierModel, INITIAL_SUPPLIER } from '@types'
 import { bemClass, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 import React, { FunctionComponent, useState, useMemo, useCallback, useReducer, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createValidationSchema } from './validation'
@@ -22,13 +23,6 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   supplier: SupplierModel
@@ -36,8 +30,6 @@ interface FormState {
   supplierId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
 }
 
 // Action types for useReducer
@@ -48,7 +40,6 @@ type FormAction =
   | { type: 'UPDATE_POINT_OF_CONTACT_FIELD'; payload: { field: keyof SupplierModel['pointOfContact']; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; supplierId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
 
 // ============================================================================
 // CONSTANTS
@@ -68,13 +59,6 @@ const initialState: FormState = {
   supplierId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -120,13 +104,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isValidationError: action.payload.hasError,
       }
 
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
-      }
-
     default:
       return state
   }
@@ -163,7 +140,8 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
   const params = useParams()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { supplier, isEditing, supplierId, validationErrors, isValidationError, showConfirmationModal, confirmationModal } = state
+  const { supplier, isEditing, supplierId, validationErrors, isValidationError } = state
+  const { showToast } = useToast()
 
   // API Hooks
   const createSupplier = useCreateSupplierMutation()
@@ -190,10 +168,6 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
     navigate('/suppliers')
   }, [navigate])
 
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
-
   const handleSubmit = useCallback(async () => {
     // Validate form
     const validationSchema = createValidationSchema(supplier)
@@ -216,40 +190,17 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
 
       if (isEditing) {
         await updateSupplier.mutateAsync({ _id: supplierId, ...dataToSave })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Supplier updated successfully!',
-          },
-        })
+        showToast('Supplier updated successfully!', 'success')
       } else {
         await createSupplier.mutateAsync(dataToSave)
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New supplier created successfully!',
-          },
-        })
+        showToast('New supplier created successfully!', 'success')
       }
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update supplier', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} supplier. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} supplier. Please try again.`, 'error')
     }
-  }, [supplier, isEditing, supplierId, createSupplier, updateSupplier])
+  }, [supplier, isEditing, supplierId, createSupplier, updateSupplier, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -612,19 +563,6 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
           </>
         )}
       </div>
-
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </div>
   )
 }

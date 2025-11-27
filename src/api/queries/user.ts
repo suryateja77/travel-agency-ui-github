@@ -19,7 +19,7 @@ export const useRegisterUserMutation = () => {
 export const useAuthenticateUserMutation = () => {
   return useMutation({
     mutationFn: async ({ ...userData }: Record<string, any>) => {
-      await post(`${API_BASE_URL}/authenticate`, userData)
+      return await post(`${API_BASE_URL}/authenticate`, userData)
     },
   })
 }

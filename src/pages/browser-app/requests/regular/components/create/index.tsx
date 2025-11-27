@@ -1,6 +1,7 @@
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Modal, ConfirmationPopup, Toggle, ReadOnlyText } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, SelectInput, RadioGroup, CheckBox, TextArea, Button, Alert, Toggle, ReadOnlyText } from '@base'
 import { PackageModel, RegularRequestModel } from '@types'
 import { bemClass, validatePayload, nameToPath, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 import React, { FunctionComponent, useState, useMemo, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { calculateTotalValidationSchema, createValidationSchema } from './validation'
@@ -298,10 +299,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   const { data: supplierPackages, error: supplierPackagesError, isLoading: supplierPackagesLoading, isError: supplierPackagesIsError } = usePackageByCategory('supplier')
 
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'create' | 'update' | 'delete'>('create')
-  const [confirmationPopUpTitle, setConfirmationPopUpTitle] = useState('Created')
-  const [confirmationPopUpSubtitle, setConfirmationPopUpSubtitle] = useState('New regular request created successfully!')
+  const { showToast } = useToast()
 
   const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
   const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
@@ -530,12 +528,6 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     navigate('/requests/regular')
   }
 
-  const closeConfirmationPopUp = () => {
-    if (showConfirmationModal) {
-      setShowConfirmationModal(false)
-    }
-  }
-
   const submitHandler = async () => {
     // Check for API errors before validation
     const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
@@ -557,27 +549,15 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
       try {
         if (isEditing) {
           await updateRegularRequestMutation.mutateAsync({ _id: requestId, ...regularRequest })
-          setConfirmationPopUpType('update')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('Regular Request updated successfully!')
+          showToast('Regular request updated successfully!', 'success')
         } else {
           await createRegularRequest.mutateAsync(regularRequest)
-          setConfirmationPopUpType('create')
-          setConfirmationPopUpTitle('Success')
-          setConfirmationPopUpSubtitle('New Regular Request created successfully!')
+          showToast('New regular request created successfully!', 'success')
         }
-
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
+        navigateBack()
       } catch (error) {
         console.log('Unable to submit regular request', error)
-        setConfirmationPopUpType('delete')
-        setConfirmationPopUpTitle('Error')
-        setConfirmationPopUpSubtitle(`Unable to ${isEditing ? 'update' : 'create'} regular request. Please try again.`)
-        setTimeout(() => {
-          setShowConfirmationModal(true)
-        }, 500)
+        showToast(`Unable to ${isEditing ? 'update' : 'create'} regular request. Please try again.`, 'error')
       }
     } else {
       console.log('Submit Regular Request: Validation Error', errorMap)
@@ -2232,22 +2212,6 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
           </div>
         </div>
       </div>
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={() => {
-          if (showConfirmationModal) {
-            setShowConfirmationModal(false)
-          }
-        }}
-      >
-        <ConfirmationPopup
-          type={confirmationPopUpType}
-          title={confirmationPopUpTitle}
-          subTitle={confirmationPopUpSubtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationPopUpType) ? navigateBack : closeConfirmationPopUp}
-        />
-      </Modal>
     </>
   )
 }

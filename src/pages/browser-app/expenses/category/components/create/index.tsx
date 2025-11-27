@@ -1,7 +1,8 @@
-import React, { FunctionComponent, useEffect, useMemo, useState, useCallback, useReducer } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, CheckBox, Button, SelectInput, TextArea, ConfirmationPopup, Modal, Alert, Toggle } from '@base'
+import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, Alert } from '@base'
 import { ExpenseModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -75,7 +76,6 @@ type FormAction =
   | { type: 'UPDATE_STAFF_DETAILS'; payload: Partial<Pick<ExpenseModel, 'staffCategory' | 'staff'>> }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; expenseId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
   | { type: 'SET_SELECT_OPTIONS'; payload: { dataType: keyof SelectOptions; options: SelectOption[] } }
 
@@ -173,13 +173,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isValidationError: action.payload.hasError,
       }
     
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
-      }
-    
     case 'SET_API_ERROR':
       return {
         ...state,
@@ -243,6 +236,7 @@ const isPlaceholderValue = (value: string, type: ApiDataType): boolean => {
 const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' }) => {
   const navigate = useNavigate()
   const params = useParams()
+  const { showToast } = useToast()
   
   const [state, dispatch] = useReducer(formReducer, {
     ...initialState,
@@ -262,8 +256,6 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
     expenseId,
     validationErrors,
     isValidationError,
-    showConfirmationModal,
-    confirmationModal,
     apiErrors,
     selectOptions,
   } = state
@@ -332,9 +324,6 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
     navigate(`/expenses/${category}`)
   }, [navigate, category])
 
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
 
   const handleSubmit = useCallback(async () => {
     // Check for API errors
@@ -361,42 +350,15 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
     try {
       if (isEditing) {
         await updateExpense.mutateAsync({ _id: expenseId, ...expense })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Expense updated successfully!',
-          },
-        })
+        showToast('Expense updated successfully!', 'success')
       } else {
         await createExpense.mutateAsync({ ...expense, category: nameToPath(category) })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New expense created successfully!',
-          },
-        })
+        showToast('New expense created successfully!', 'success')
       }
-
-      setTimeout(() => {
-        dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: true } })
-      }, 500)
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update expense', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} expense. Please try again.`,
-        },
-      })
+      showToast('Failed to submit expense. Please try again.', 'error')
     }
   }, [apiErrors, expense, isEditing, expenseId, updateExpense, createExpense, category])
 
@@ -789,18 +751,6 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
           </div>
         </div>
       </div>
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </>
   )
 }

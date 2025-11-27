@@ -1,8 +1,9 @@
 import React, { FunctionComponent, useEffect, useState, useMemo, useCallback, useReducer } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, ConfirmationPopup, Modal, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
+import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
 import { PageHeader } from '@components'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -29,13 +30,6 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 interface SelectOption {
   key: string
   value: string
@@ -48,8 +42,6 @@ interface FormState {
   packageId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
   supplierOptions: SelectOption[]
 }
 
@@ -59,7 +51,6 @@ type FormAction =
   | { type: 'UPDATE_PACKAGE_FIELD'; payload: { field: keyof PackageModel; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; packageId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_SUPPLIER_OPTIONS'; payload: SelectOption[] }
 
 // ============================================================================
@@ -88,13 +79,6 @@ const initialState: FormState = {
   packageId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
   supplierOptions: [],
 }
 
@@ -121,13 +105,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
-      }
-    
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
     
     case 'SET_SUPPLIER_OPTIONS':
@@ -170,14 +147,14 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     },
   })
   
+  const { showToast } = useToast()
+  
   const {
     package: packageData,
     isEditing,
     packageId,
     validationErrors,
     isValidationError,
-    showConfirmationModal,
-    confirmationModal,
     supplierOptions,
   } = state
 
@@ -213,10 +190,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     navigate(`/packages/${category}`)
   }, [navigate, category])
 
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
-
   const handleSubmit = useCallback(async () => {
     // Validate form
     const validationSchema = createValidationSchema(packageData, category)
@@ -235,44 +208,17 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     try {
       if (isEditing) {
         await updatePackage.mutateAsync({ _id: packageId, ...packageData })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Package updated successfully!',
-          },
-        })
+        showToast('Package updated successfully!', 'success')
       } else {
         await createPackage.mutateAsync({ ...packageData, category: nameToPath(category) })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New package created successfully!',
-          },
-        })
+        showToast('New package created successfully!', 'success')
       }
-
-      setTimeout(() => {
-        dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: true } })
-      }, 500)
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update package', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} package. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} package. Please try again.`, 'error')
     }
-  }, [packageData, isEditing, packageId, updatePackage, createPackage, category])
+  }, [packageData, isEditing, packageId, updatePackage, createPackage, category, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -556,18 +502,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
           </>
         )}
       </div>
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </div>
   )
 }

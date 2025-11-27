@@ -33,6 +33,45 @@ className={bemClass([blk, 'input', ['error']])} // 'customer-form__input custome
 
 ## Frontend Essentials
 
+### Environment Variables (CRITICAL)
+**ALL configuration MUST use environment variables**:
+
+```env
+# .env file (required)
+REACT_APP_API_URL=https://travel-agency-api-7l66.onrender.com
+PORT=4040
+```
+
+**Webpack Configuration**:
+```javascript
+// webpack.common.js - Inject env vars
+require('dotenv').config()
+new DefinePlugin({
+  'process.env.REACT_APP_API_URL': JSON.stringify(process.env.REACT_APP_API_URL)
+})
+
+// webpack.dev.js - Dev server & proxy
+require('dotenv').config()
+devServer: {
+  port: process.env.PORT,  // No fallback
+  proxy: [{
+    target: process.env.REACT_APP_API_URL  // No fallback
+  }]
+}
+```
+
+**API Configuration**:
+```typescript
+// src/api/index.ts
+const API = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,  // No fallback - env driven
+  timeout: 20000
+})
+```
+
+❌ **NEVER hardcode URLs or use fallback values** (e.g., `|| 'https://...'`)  
+✅ **ALWAYS require .env file** - app should fail if missing
+
 ### Required Import Pattern
 ```typescript
 // ALWAYS use webpack aliases

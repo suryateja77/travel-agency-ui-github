@@ -1,21 +1,69 @@
 @import '~/src/sass/style';
 
 .pagination {
+  width: 100%;
+  
   &__content {
-    padding: $space-small 0;
+    padding: $space-default $space-large;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
-    gap: $space-default;
+    gap: $space-large;
   }
-  &__pages {
+  
+  &__navigation {
     display: flex;
-    flex-direction: row;
-    gap: $space-small;
+    align-items: center;
   }
-  &__page-button {
+  
+  &__nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 2px solid $primary;
+    background-color: $white;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    
+    &:hover:not(&--disabled) {
+      background-color: $primary;
+      
+      .icon {
+        color: $white;
+      }
+    }
+    
+    &--disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      border-color: $gray-light;
+      
+      .icon {
+        color: $gray-light;
+      }
+    }
+    
+    .icon {
+      font-size: 18px;
+      color: $primary;
+      transition: color 0.2s ease;
+    }
+  }
+  
+  &__info {
+    padding: 0px $space-large;
+    text-align: center;
   }
 }
 
 @include large-up {
+  .pagination {
+    &__content {
+      padding: $space-large;
+    }
+  }
 }

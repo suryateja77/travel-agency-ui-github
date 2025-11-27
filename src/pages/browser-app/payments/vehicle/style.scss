@@ -11,9 +11,11 @@
     background-color: $white;
   }
   &__filter-section {
+    background-color: $white;
     display: flex;
     flex-direction: column;
     gap: $space-small;
+    padding: $space-default;
     margin-bottom: $space-large;
   }
   &__margin-bottom {
@@ -39,7 +41,7 @@
     cursor: pointer;
     border-radius: 4px;
     transition: background-color 0.2s ease;
-    
+
     &:hover {
       background-color: rgba(0, 0, 0, 0.05);
     }

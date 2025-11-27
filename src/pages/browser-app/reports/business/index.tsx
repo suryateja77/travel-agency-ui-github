@@ -1,5 +1,6 @@
 import { FunctionComponent, useState, useMemo } from 'react'
 import { bemClass, downloadFile } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { Alert, Button, Column, Row, SelectInput, Panel, ReadOnlyText } from '@base'
@@ -12,6 +13,8 @@ const blk = 'business-report'
 interface BusinessReportProps {}
 
 const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
+  const { showToast } = useToast()
+  
   const [filterData, setFilterData] = useState({
     year: '',
   })
@@ -138,9 +141,10 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         filterData: searchFilters || {},
       }
       await downloadFile('/report/export/excel', `business-reports-${filterData.year || 'all'}.xlsx`, filters)
+      showToast('Excel file downloaded successfully', 'success')
     } catch (error) {
       console.error('Excel export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download Excel file. Please try again.', 'error')
     }
   }
 
@@ -150,9 +154,10 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         filterData: searchFilters || {},
       }
       await downloadFile('/report/export/csv', `business-reports-${filterData.year || 'all'}.csv`, filters)
+      showToast('CSV file downloaded successfully', 'success')
     } catch (error) {
       console.error('CSV export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download CSV file. Please try again.', 'error')
     }
   }
 
@@ -162,9 +167,10 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
         filterData: searchFilters || {},
       }
       await downloadFile('/report/export/pdf', `business-reports-${filterData.year || 'all'}.pdf`, filters)
+      showToast('PDF file downloaded successfully', 'success')
     } catch (error) {
       console.error('PDF export failed:', error)
-      // You could add a toast notification here
+      showToast('Failed to download PDF file. Please try again.', 'error')
     }
   }
 
@@ -189,7 +195,7 @@ const BusinessReport: FunctionComponent<BusinessReportProps> = () => {
       <div className={bemClass([blk, 'filter-section'])}>
         <Row>
           <Column
-            col={3}
+            col={2}
             className={bemClass([blk, 'margin-bottom'])}
           >
             <SelectInput

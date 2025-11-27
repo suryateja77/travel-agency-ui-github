@@ -25,6 +25,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
+  const [entriesPerPage, setEntriesPerPage] = useState(10)
 
   // Category path for API queries
   const vehicleCategoryPath = useMemo(() => {
@@ -36,7 +37,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
   const { data: requestsData, isLoading } = useRegularRequestsQuery({
     ...searchFilters,
     page: currentPage,
-    limit: 5, // Default page size
+    limit: entriesPerPage,
   })
   const deleteRegularRequestMutation = useDeleteRegularRequestMutation()
 
@@ -192,6 +193,10 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     setCurrentPage(page)
   }
 
+  const handleEntriesPerPageChange = (newEntriesPerPage: number) => {
+    setEntriesPerPage(newEntriesPerPage)
+  }
+
   const handleExportExcel = async () => {
     try {
       const filters = {
@@ -250,7 +255,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       <div className={bemClass([blk, 'filter-section'])}>
         <Row>
           <Column
-            col={3}
+            col={2}
             className={bemClass([blk, 'margin-bottom'])}
           >
             <ConfiguredInput
@@ -269,7 +274,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
             />
           </Column>
           <Column
-            col={3}
+            col={2}
             className={bemClass([blk, 'margin-bottom'])}
           >
             <SelectInput
@@ -320,8 +325,11 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       <div className={bemClass([blk, 'pagination'])}>
         <Pagination
           currentPage={currentPage}
-          totalPages={requestsData ? Math.ceil(requestsData.total / PAGINATION_TOTAL_ENTRIES_PER_PAGE) : 1}
+          totalPages={requestsData ? Math.ceil(requestsData.total / entriesPerPage) : 1}
+          totalEntries={requestsData?.total || 0}
+          entriesPerPage={entriesPerPage}
           onPageChange={handlePageChange}
+          onEntriesPerPageChange={handleEntriesPerPageChange}
         />
       </div>
     </div>

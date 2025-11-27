@@ -27,11 +27,12 @@
     margin-right: 15px;
   }
   &__sub-menu {
-    transition: max-height 0.5s ease;
+    transition: max-height 0.1s ease-out;
     max-height: 0px;
     overflow: hidden;
     &--expanded {
       max-height: 400px;
+      transition: max-height 0.3s ease-in;
     }
   }
   &__sub-nav-link {

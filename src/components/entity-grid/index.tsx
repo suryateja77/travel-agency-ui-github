@@ -3,6 +3,7 @@ import { bemClass } from '@utils'
 
 import './style.scss'
 import { Table, Modal, ConfirmationPopup, Button, Icon } from '@base'
+import { useToast } from '@contexts/ToastContext'
 
 const blk = 'entity-grid'
 
@@ -26,8 +27,8 @@ export interface EntityGridProps {
 
 const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoading = false, deleteHandler, editRoute, routeParams = {} }) => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
-  const [confirmationPopUpType, setConfirmationPopUpType] = useState<'delete' | 'update'>('delete')
   const [itemIdToDelete, setItemIdToDelete] = useState('')
+  const { showToast } = useToast()
 
   const enhancedColumns = [...columns]
   if (deleteHandler || editRoute) {
@@ -55,7 +56,6 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
               size="small"
               clickHandler={() => {
                 setItemIdToDelete(_id)
-                setConfirmationPopUpType('delete')
                 setTimeout(() => {
                   setShowConfirmationModal(true)
                 }, 100)
@@ -77,10 +77,11 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
       try {
         await deleteHandler(id)
         setItemIdToDelete('')
-        setConfirmationPopUpType('update')
-        setShowConfirmationModal(true)
+        showToast('Item deleted successfully', 'success')
+        setShowConfirmationModal(false)
       } catch (error) {
         console.error('Error deleting item:', error)
+        showToast('Failed to delete item', 'error')
         setShowConfirmationModal(false)
       }
     }
@@ -105,20 +106,16 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
           closeHandler={() => setShowConfirmationModal(false)}
         >
           <ConfirmationPopup
-            type={confirmationPopUpType}
-            title={confirmationPopUpType === 'delete' ? 'Are you sure?' : 'Success'}
-            subTitle={confirmationPopUpType === 'delete' ? 'This action cannot be reversed. Please confirm.' : 'The item has been successfully deleted.'}
-            confirmButtonText={confirmationPopUpType === 'delete' ? 'Yes, Delete' : 'Okay'}
-            cancelHandler={
-            confirmationPopUpType === 'delete'
-              ? () => {
-                  if (showConfirmationModal) {
-                    setShowConfirmationModal(false)
-                  }
-                }
-              : undefined
-          }
-            confirmHandler={confirmationPopUpType === 'delete' ? () => handleDelete(itemIdToDelete) : () => setShowConfirmationModal(false)}
+            type={"delete"}
+            title={'Are you sure?'}
+            subTitle={'This action cannot be reversed. Please confirm.'}
+            confirmButtonText={'Yes, Delete'}
+            cancelHandler={() => {
+              if (showConfirmationModal) {
+                setShowConfirmationModal(false)
+              }
+            }}
+            confirmHandler={() => handleDelete(itemIdToDelete)}
           />
         </Modal>
       )}

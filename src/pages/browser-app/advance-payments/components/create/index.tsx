@@ -1,7 +1,8 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, Alert, ConfirmationPopup, Modal } from '@base'
+import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, Alert } from '@base'
 import { AdvancePaymentModel, StaffModel } from '@types'
 import { bemClass, nameToPath, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -30,13 +31,6 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   advancePayment: AdvancePaymentModel
@@ -44,8 +38,6 @@ interface FormState {
   advancePaymentId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
   staffSelectOptions: SelectOption[]
 }
 
@@ -55,7 +47,6 @@ type FormAction =
   | { type: 'UPDATE_FIELD'; payload: { field: keyof AdvancePaymentModel; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; advancePaymentId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_STAFF_OPTIONS'; payload: SelectOption[] }
 
 // ============================================================================
@@ -89,13 +80,6 @@ const initialState: FormState = {
   advancePaymentId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
   staffSelectOptions: [],
 }
 
@@ -122,13 +106,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
-      }
-
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
 
     case 'SET_STAFF_OPTIONS':
@@ -187,9 +164,10 @@ const isPlaceholderValue = (value: string): boolean => {
 const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () => {
   const navigate = useNavigate()
   const params = useParams()
+  const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { advancePayment, isEditing, advancePaymentId, validationErrors, isValidationError, showConfirmationModal, confirmationModal, staffSelectOptions } = state
+  const { advancePayment, isEditing, advancePaymentId, validationErrors, isValidationError, staffSelectOptions } = state
 
   // API Hooks
   const createAdvancePayment = useCreateAdvancePaymentMutation()
@@ -211,10 +189,6 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
   const navigateBack = useCallback(() => {
     navigate('/advance-payments')
   }, [navigate])
-
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
 
   const handleStaffCategoryChange = useCallback(
     (staffCategory: string) => {
@@ -257,40 +231,17 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
 
       if (isEditing) {
         await updateAdvancePayment.mutateAsync({ _id: advancePaymentId, ...dataToSave })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Advance payment updated successfully!',
-          },
-        })
+        showToast('Advance payment updated successfully!', 'success')
       } else {
         await createAdvancePayment.mutateAsync(dataToSave)
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New advance payment created successfully!',
-          },
-        })
+        showToast('New advance payment created successfully!', 'success')
       }
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update advance payment', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} advance payment. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} advance payment. Please try again.`, 'error')
     }
-  }, [advancePayment, isEditing, advancePaymentId, createAdvancePayment, updateAdvancePayment])
+  }, [advancePayment, isEditing, advancePaymentId, createAdvancePayment, updateAdvancePayment, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -551,19 +502,6 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
           </>
         )}
       </div>
-
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </div>
   )
 }

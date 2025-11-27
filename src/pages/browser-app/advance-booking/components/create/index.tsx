@@ -1,7 +1,8 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert, ConfirmationPopup, Modal } from '@base'
+import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert } from '@base'
 import { AdvanceBookingModel, CustomerModel, INITIAL_ADVANCE_BOOKING } from '@types'
 import { bemClass, validatePayload } from '@utils'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -28,13 +29,6 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   advanceBooking: AdvanceBookingModel
@@ -42,8 +36,6 @@ interface FormState {
   advanceBookingId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
   customerSelectOptions: SelectOption[]
 }
 
@@ -54,7 +46,6 @@ type FormAction =
   | { type: 'UPDATE_CUSTOMER_DETAILS'; payload: Partial<{ name: string; contact: string; email: string }> }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; advanceBookingId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
   | { type: 'SET_CUSTOMER_OPTIONS'; payload: SelectOption[] }
 
 // ============================================================================
@@ -97,13 +88,6 @@ const initialState: FormState = {
   advanceBookingId: '',
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'create',
-    title: '',
-    subtitle: '',
-  },
   customerSelectOptions: [],
 }
 
@@ -143,13 +127,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
-      }
-
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
 
     case 'SET_CUSTOMER_OPTIONS':
@@ -195,9 +172,10 @@ const transformAdvanceBookingResponse = (response: AdvanceBookingModel & { _id: 
 const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () => {
   const navigate = useNavigate()
   const params = useParams()
+  const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { advanceBooking, isEditing, advanceBookingId, validationErrors, isValidationError, showConfirmationModal, confirmationModal, customerSelectOptions } = state
+  const { advanceBooking, isEditing, advanceBookingId, validationErrors, isValidationError, customerSelectOptions } = state
 
   // API Hooks
   const createAdvanceBooking = useCreateAdvanceBookingMutation()
@@ -223,10 +201,6 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
   const navigateBack = useCallback(() => {
     navigate('/advance-booking')
   }, [navigate])
-
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
-  }, [])
 
   const handleCustomerTypeChange = useCallback(
     (customerType: string) => {
@@ -279,38 +253,15 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
     try {
       if (isEditing) {
         await updateAdvanceBooking.mutateAsync({ _id: advanceBookingId, ...advanceBooking })
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'update',
-            title: 'Success',
-            subtitle: 'Advance booking updated successfully!',
-          },
-        })
+        showToast('Advance booking updated successfully!', 'success')
       } else {
         await createAdvanceBooking.mutateAsync(advanceBooking)
-        dispatch({
-          type: 'SET_CONFIRMATION_MODAL',
-          payload: {
-            show: true,
-            type: 'create',
-            title: 'Success',
-            subtitle: 'New advance booking created successfully!',
-          },
-        })
+        showToast('New advance booking created successfully!', 'success')
       }
+      navigateBack()
     } catch (error) {
       console.error('Unable to create/update advance booking', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: `Unable to ${isEditing ? 'update' : 'create'} advance booking. Please try again.`,
-        },
-      })
+      showToast(`Unable to ${isEditing ? 'update' : 'create'} advance booking. Please try again.`, 'error')
     }
   }, [advanceBooking, isEditing, advanceBookingId, createAdvanceBooking, updateAdvanceBooking])
 
@@ -662,19 +613,6 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
           </>
         )}
       </div>
-
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={['create', 'update'].includes(confirmationModal.type) ? navigateBack : closeConfirmationModal}
-        />
-      </Modal>
     </div>
   )
 }

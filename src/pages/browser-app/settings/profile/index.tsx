@@ -1,11 +1,12 @@
 import { useUserProfileQuery, useUpdateUserProfileMutation } from '@api/queries/user-profile'
-import { Column, Panel, Row, TextInput, Button, Alert, Modal, ConfirmationPopup, Toggle, ReadOnlyText } from '@base'
+import { Column, Panel, Row, TextInput, Button, Alert, Toggle, ReadOnlyText } from '@base'
 import { PageHeader } from '@components'
 import Loader from '@components/loader'
 import { UserProfile } from '@types'
 import { bemClass, validatePayload } from '@utils'
 import React, { FunctionComponent, useMemo, useCallback, useReducer, useEffect } from 'react'
 import { createValidationSchema } from './validation'
+import { useToast } from '@contexts/ToastContext'
 
 import './style.scss'
 
@@ -21,20 +22,11 @@ interface ValidationErrors {
   [key: string]: string
 }
 
-interface ConfirmationModal {
-  show: boolean
-  type: 'create' | 'update' | 'delete'
-  title: string
-  subtitle: string
-}
-
 // State interface for useReducer
 interface FormState {
   userProfile: UserProfile
   validationErrors: ValidationErrors
   isValidationError: boolean
-  showConfirmationModal: boolean
-  confirmationModal: ConfirmationModal
 }
 
 // Action types for useReducer
@@ -43,7 +35,6 @@ type FormAction =
   | { type: 'UPDATE_FIELD'; payload: { field: keyof UserProfile; value: any } }
   | { type: 'UPDATE_ADDRESS_FIELD'; payload: { field: keyof UserProfile['address']; value: any } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_CONFIRMATION_MODAL'; payload: Partial<ConfirmationModal> & { show: boolean } }
 
 // ============================================================================
 // CONSTANTS
@@ -80,13 +71,6 @@ const initialState: FormState = {
   userProfile: INITIAL_USER_PROFILE,
   validationErrors: {},
   isValidationError: false,
-  showConfirmationModal: false,
-  confirmationModal: {
-    show: false,
-    type: 'update',
-    title: '',
-    subtitle: '',
-  },
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -114,13 +98,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
-      }
-
-    case 'SET_CONFIRMATION_MODAL':
-      return {
-        ...state,
-        showConfirmationModal: action.payload.show,
-        confirmationModal: { ...state.confirmationModal, ...action.payload },
       }
 
     default:
@@ -160,7 +137,8 @@ const transformUserProfileResponse = (response: any) : UserProfile => {
 
 const Profile: FunctionComponent<ProfileProps> = () => {
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { userProfile, validationErrors, isValidationError, showConfirmationModal, confirmationModal } = state
+  const { userProfile, validationErrors, isValidationError } = state
+  const { showToast } = useToast()
 
   // API Hooks
   const { data: userProfileResponse, isLoading, error: getUserProfileError } = useUserProfileQuery()
@@ -176,10 +154,6 @@ const Profile: FunctionComponent<ProfileProps> = () => {
 
   const handleAddressFieldChange = useCallback(<K extends keyof UserProfile['address']>(field: K, value: UserProfile['address'][K]) => {
     dispatch({ type: 'UPDATE_ADDRESS_FIELD', payload: { field, value } })
-  }, [])
-
-  const closeConfirmationModal = useCallback(() => {
-    dispatch({ type: 'SET_CONFIRMATION_MODAL', payload: { show: false } })
   }, [])
 
   const handleSubmit = useCallback(async () => {
@@ -199,28 +173,12 @@ const Profile: FunctionComponent<ProfileProps> = () => {
 
     try {
       await updateUserProfile.mutateAsync({ ...userProfile })
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'update',
-          title: 'Success',
-          subtitle: 'Profile updated successfully!',
-        },
-      })
+      showToast('Profile updated successfully!', 'success')
     } catch (error) {
       console.error('Unable to update profile', error)
-      dispatch({
-        type: 'SET_CONFIRMATION_MODAL',
-        payload: {
-          show: true,
-          type: 'delete',
-          title: 'Error',
-          subtitle: 'Unable to update profile. Please try again.',
-        },
-      })
+      showToast('Unable to update profile. Please try again.', 'error')
     }
-  }, [userProfile, updateUserProfile])
+  }, [userProfile, updateUserProfile, showToast])
 
   // ============================================================================
   // EFFECTS
@@ -238,7 +196,7 @@ const Profile: FunctionComponent<ProfileProps> = () => {
   // MEMOIZED VALUES
   // ============================================================================
 
-  const breadcrumbData = useMemo(() => [{ label: 'Home', route: '/dashboard' }, { label: 'Profile' }], [])
+  const breadcrumbData = useMemo(() => [{ label: 'Home', route: '/dashboard' }, { label: 'Settings' }, { label: 'Profile' }], [])
 
   // ============================================================================
   // RENDER
@@ -273,16 +231,14 @@ const Profile: FunctionComponent<ProfileProps> = () => {
           {isLoading ? (
             <Loader type="form" />
           ) : (
-            <Row>
-              <Column col={3}>
-                <>
-                  <div className={bemClass([blk, 'company-logo'])}>Company Logo</div>
-                  <div className={bemClass([blk, 'company-details'])}>{userProfile.agencyName || 'Agency Name'}</div>
-                  <div className={bemClass([blk, 'company-details'])}>{userProfile.websiteLink || 'www.example.com'}</div>
-                  <div className={bemClass([blk, 'company-details', { last: true }])}>{userProfile.primaryContact || '+91 9876543210'}</div>
-                </>
-              </Column>
-              <Column col={9}>
+            <div className={bemClass([blk, 'layout'])}>
+              <div className={bemClass([blk, 'sidebar'])}>
+                <div className={bemClass([blk, 'company-logo'])}>Company Logo</div>
+                <div className={bemClass([blk, 'company-details'])}>{userProfile.agencyName || 'Agency Name'}</div>
+                <div className={bemClass([blk, 'company-details'])}>{userProfile.websiteLink || 'www.example.com'}</div>
+                <div className={bemClass([blk, 'company-details', { last: true }])}>{userProfile.primaryContact || '+91 9876543210'}</div>
+              </div>
+              <div className={bemClass([blk, 'form-content'])}>
                 {getUserProfileError ? (
                   <>
                     <Alert
@@ -567,27 +523,6 @@ const Profile: FunctionComponent<ProfileProps> = () => {
                       </Row>
                     </Panel>
 
-                    <Panel
-                      title="Status"
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <Row>
-                        <Column
-                          col={4}
-                          className={bemClass([blk, 'margin-bottom'])}
-                        >
-                          <Toggle
-                            name="isActive"
-                            label="Is Active"
-                            checked={userProfile.isActive}
-                            changeHandler={obj => {
-                              handleFieldChange('isActive', !!obj.isActive)
-                            }}
-                          />
-                        </Column>
-                      </Row>
-                    </Panel>
-
                     <div className={bemClass([blk, 'action-items'])}>
                       <Button
                         size="medium"
@@ -599,24 +534,11 @@ const Profile: FunctionComponent<ProfileProps> = () => {
                     </div>
                   </>
                 )}
-              </Column>
-            </Row>
+              </div>
+            </div>
           )}
         </div>
       </div>
-
-      <Modal
-        show={showConfirmationModal}
-        closeHandler={closeConfirmationModal}
-      >
-        <ConfirmationPopup
-          type={confirmationModal.type}
-          title={confirmationModal.title}
-          subTitle={confirmationModal.subtitle}
-          confirmButtonText="Okay"
-          confirmHandler={closeConfirmationModal}
-        />
-      </Modal>
     </>
   )
 }

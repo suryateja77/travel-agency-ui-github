@@ -16,14 +16,17 @@ interface SideNavItemProps {
   sideNavExpandHandler: Dispatch<SetStateAction<boolean>>
   isMobile?: boolean
   route: RouteData
+  expandedNavItem?: string | null
+  setExpandedNavItem?: Dispatch<SetStateAction<string | null>>
 }
 
-const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, sideNavExpandHandler, isMobile = false, route }) => {
+const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, sideNavExpandHandler, isMobile = false, route, expandedNavItem, setExpandedNavItem }) => {
   const { data: configurationsData } = useConfigurationsQuery()
   
-  const [isNavItemExpanded, setIsNavItemExpanded] = useState(false)
   const [subRoutes, setSubRoutes] = useState(route.subRoutes)
   const location = useLocation()
+  
+  const isNavItemExpanded = expandedNavItem === route.name
 
   // Helper function to check if the current route matches this nav item
   const isRouteActive = () => {
@@ -54,7 +57,9 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
       <>
         <div
           onClick={() => {
-            setIsNavItemExpanded(!isNavItemExpanded)
+            if (setExpandedNavItem) {
+              setExpandedNavItem(isNavItemExpanded ? null : route.name)
+            }
           }}
           className={bemClass([blk, 'nav-link', { hasSubRoutes: true }])}
         >
@@ -79,10 +84,13 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
         </div>
         <div className={bemClass([blk, 'sub-menu', { expanded: isSideNavExpanded && isNavItemExpanded }])}>
           {subRoutes.map(subRoute => {
+            const fullSubRoutePath = `${route.path}${subRoute.path}`
+            const isSubRouteActive = location.pathname === fullSubRoutePath || location.pathname.startsWith(fullSubRoutePath + '/')
+            
             return (
               <NavLink
                 key={subRoute.name}
-                to={`${route.path}${subRoute.path}`}
+                to={fullSubRoutePath}
                 className={bemClass([blk, 'sub-nav-link'])}
                 onClick={() => {
                   if (isMobile) {
@@ -97,7 +105,7 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
                   fontWeight="bold"
                   color="gray"
                   tag="p"
-                  className={bemClass([blk, 'sub-nav-text', { selected: location.pathname.includes(subRoute.path) }])}
+                  className={bemClass([blk, 'sub-nav-text', { selected: isSubRouteActive }])}
                 >
                   {subRoute.name}
                 </Text>

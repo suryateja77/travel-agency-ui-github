@@ -1,4 +1,4 @@
-import React, { Dispatch, FunctionComponent, SetStateAction } from 'react'
+import React, { Dispatch, FunctionComponent, SetStateAction, useState } from 'react'
 import { NAVIGATION_DATA } from '@config/navigation'
 import SideNavHeader from './components/sidenav-header'
 import SideNavItem from './components/sidenav-item'
@@ -17,6 +17,7 @@ interface SideNavigatorProps {
 }
 
 const SideNavigator: FunctionComponent<SideNavigatorProps> = ({ isSideNavExpanded, isNavigationDocked, sideNavExpandHandler, isMobile = false }) => {
+  const [expandedNavItem, setExpandedNavItem] = useState<string | null>(null)
   return (
     <div className={bemClass([blk])}>
       <section className={bemClass([blk, 'header'])}>
@@ -53,6 +54,8 @@ const SideNavigator: FunctionComponent<SideNavigatorProps> = ({ isSideNavExpande
                         route={route}
                         sideNavExpandHandler={sideNavExpandHandler}
                         isMobile={isMobile}
+                        expandedNavItem={expandedNavItem}
+                        setExpandedNavItem={setExpandedNavItem}
                       />
                     </li>
                   )

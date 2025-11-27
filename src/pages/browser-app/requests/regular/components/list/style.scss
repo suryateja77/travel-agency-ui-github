@@ -25,9 +25,11 @@
     margin-right: 0px;
   }
   &__filter-section {
+    background-color: $white;
     display: flex;
     flex-direction: column;
     gap: $space-small;
+    padding: $space-default;
     margin-bottom: $space-large;
   }
 }
