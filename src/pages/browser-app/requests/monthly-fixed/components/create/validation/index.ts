@@ -1,111 +1,71 @@
-import { emailField, emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
+import { emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
 import { MonthlyFixedRequestModel } from '@types'
-import { nameToPath } from '@utils'
 
 const createValidationSchema = (monthlyFixedRequestData: MonthlyFixedRequestModel) => {
   const baseFields = [
-    // Customer Details - always required
-    emptyField('customerCategory'),
-    emptyField('customer'),
-
-    // Request Details - always required
-    emptyField('vehicleType'),
-    emptyField('staffType'),
-    emptyField('requestType'),
-    emptyField('pickUpLocation'),
-    emptyField('dropOffLocation'),
-    emptyField('pickUpDateTime'),
-    emptyField('dropDateTime'),
-    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
-    emptyField('openingKm'),
-    numberFieldGreaterThanZero('openingKm'),
-    emptyField('closingKm'),
-    numberFieldGreaterThanZero('closingKm'),
-    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
+    // Customer Details
+    emptyField('customerDetails.customerCategory'),
+    emptyField('customerDetails.customer'),
+    
+    // Request Details
+    emptyField('requestDetails.requestType'),
+    emptyField('requestDetails.pickUpLocation'),
+    emptyField('requestDetails.dropOffLocation'),
+    emptyField('requestDetails.pickUpDateTime'),
+    emptyField('requestDetails.dropDateTime'),
+    dateTimeGreaterThanField('requestDetails.dropDateTime', 'requestDetails.pickUpDateTime', 'pick-up'),
+    emptyField('requestDetails.openingKm'),
+    numberFieldGreaterThanZero('requestDetails.openingKm'),
+    emptyField('requestDetails.closingKm'),
+    numberFieldGreaterThanZero('requestDetails.closingKm'),
+    numberGreaterThanField('requestDetails.closingKm', 'requestDetails.openingKm', 'opening km'),
   ]
 
-  const conditionalFields = []
+  const conditionalFields: any[] = []
 
-  // Vehicle selection conditional fields
-  if (monthlyFixedRequestData.vehicleType === 'own') {
-    conditionalFields.push(emptyField('vehicleCategory'), emptyField('vehicle'))
-  }
+  // Vehicle Details - Base field (always required)
+  conditionalFields.push(emptyField('vehicleDetails.vehicleType'))
 
-  if (monthlyFixedRequestData.vehicleType === 'supplier') {
-    conditionalFields.push(emptyField('supplier'), emptyField('vehicle'), emptyField('supplierPackage'))
-  }
-
-  if (monthlyFixedRequestData.vehicleType === 'new' && monthlyFixedRequestData.vehicleDetails) {
-    conditionalFields.push(
-      emptyField('vehicleDetails.ownerName'),
-      emptyField('vehicleDetails.ownerContact'),
-      emptyField('vehicleDetails.manufacturer'),
-      emptyField('vehicleDetails.name'),
-      emptyField('vehicleDetails.registrationNo'),
-    )
-    // Email validation if provided
-    if (monthlyFixedRequestData.vehicleDetails.ownerEmail) {
-      conditionalFields.push(emailField('vehicleDetails.ownerEmail'))
+  // Vehicle Details - Conditional based on vehicleType
+  if (monthlyFixedRequestData.vehicleDetails.vehicleType === 'existing') {
+    conditionalFields.push(emptyField('vehicleDetails.vehicleCategory'))
+    
+    // If supplier category, require supplier and supplier-specific fields
+    if (monthlyFixedRequestData.vehicleDetails.vehicleCategory && 
+        monthlyFixedRequestData.vehicleDetails.vehicleCategory.toLowerCase().includes('supplier')) {
+      conditionalFields.push(emptyField('vehicleDetails.supplierDetails.supplier'))
+      conditionalFields.push(emptyField('vehicleDetails.vehicle'))
+      conditionalFields.push(emptyField('vehicleDetails.supplierDetails.package'))
+    } else {
+      // Non-supplier category, only vehicle required
+      conditionalFields.push(emptyField('vehicleDetails.vehicle'))
     }
-    // Provider package validation when vehicle selection is new
-    if (monthlyFixedRequestData.packageFromProvidedVehicle) {
-      conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.packageId'))
-    }
+  } else if (monthlyFixedRequestData.vehicleDetails.vehicleType === 'new') {
+    // New vehicle requires all newVehicleDetails fields
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.ownerName'))
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.ownerContact'))
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.manufacturer'))
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.name'))
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.registrationNo'))
   }
+  // Note: vehicleType 'regular' uses assigned vehicle, no additional validation needed
 
-  // Staff selection conditional fields
-  if (monthlyFixedRequestData.staffType === 'own') {
-    conditionalFields.push(emptyField('staffCategory'), emptyField('staff'))
-  }
+  // Staff Details - Base field (always required)
+  conditionalFields.push(emptyField('staffDetails.staffType'))
 
-  if (monthlyFixedRequestData.staffType === 'new' && monthlyFixedRequestData.staffDetails) {
-    conditionalFields.push(emptyField('staffDetails.name'), emptyField('staffDetails.contact'), emptyField('staffDetails.license'))
+  // Staff Details - Conditional based on staffType
+  if (monthlyFixedRequestData.staffDetails.staffType === 'existing') {
+    conditionalFields.push(emptyField('staffDetails.staffCategory'))
+    conditionalFields.push(emptyField('staffDetails.staff'))
+  } else if (monthlyFixedRequestData.staffDetails.staffType === 'new') {
+    // New staff requires all newStaffDetails fields
+    conditionalFields.push(emptyField('staffDetails.newStaffDetails.name'))
+    conditionalFields.push(emptyField('staffDetails.newStaffDetails.contact'))
+    conditionalFields.push(emptyField('staffDetails.newStaffDetails.license'))
   }
-
-  // Other charges validation - same as regular requests (amount fields are required if provided)
-  if (monthlyFixedRequestData.otherCharges.toll.amount && Number(monthlyFixedRequestData.otherCharges.toll.amount) > 0) {
-    conditionalFields.push(numberFieldGreaterThanZero('otherCharges.toll.amount'))
-  }
-
-  if (monthlyFixedRequestData.otherCharges.parking.amount && Number(monthlyFixedRequestData.otherCharges.parking.amount) > 0) {
-    conditionalFields.push(numberFieldGreaterThanZero('otherCharges.parking.amount'))
-  }
-
-  if (monthlyFixedRequestData.otherCharges.nightHalt.amount && Number(monthlyFixedRequestData.otherCharges.nightHalt.amount) > 0) {
-    conditionalFields.push(numberFieldGreaterThanZero('otherCharges.nightHalt.amount'))
-  }
-
-  if (monthlyFixedRequestData.otherCharges.driverAllowance.amount && Number(monthlyFixedRequestData.otherCharges.driverAllowance.amount) > 0) {
-    conditionalFields.push(numberFieldGreaterThanZero('otherCharges.driverAllowance.amount'))
-  }
+  // Note: staffType 'regular' uses assigned staff, no additional validation needed
 
   return [...baseFields, ...conditionalFields]
 }
 
-const calculateTotalValidationSchema = (monthlyFixedRequestData: MonthlyFixedRequestModel) => {
-  const baseFields = [
-    emptyField('pickUpDateTime'),
-    emptyField('dropDateTime'),
-    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
-    emptyField('openingKm'),
-    numberFieldGreaterThanZero('openingKm'),
-    emptyField('closingKm'),
-    numberFieldGreaterThanZero('closingKm'),
-    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
-  ]
-
-  const conditionalFields = []
-
-  // Package validation based on vehicle selection
-  if (monthlyFixedRequestData.vehicleType === 'supplier') {
-    conditionalFields.push(emptyField('supplierPackage'))
-  }
-
-  if (monthlyFixedRequestData.vehicleType === 'new' && monthlyFixedRequestData.packageFromProvidedVehicle) {
-    conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.packageId'))
-  }
-
-  return [...baseFields, ...conditionalFields]
-}
-
-export { createValidationSchema, calculateTotalValidationSchema }
+export { createValidationSchema }

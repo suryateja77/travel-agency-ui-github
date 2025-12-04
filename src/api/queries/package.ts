@@ -24,6 +24,20 @@ export const usePackageByCategory = (category: string) => {
   })
 }
 
+export const usePackageByCategoryWithFilter = (category: string, filterData: Record<string, any> | null) => {
+  return useQuery({
+    queryKey: ['packages', category, filterData],
+    queryFn: async () => {
+      const response = await getByCategory({ 
+        category, 
+        params: { filterData: JSON.stringify(filterData) } 
+      })
+      return response.data
+    },
+    enabled: !!category && !!filterData,
+  })
+}
+
 export const usePackageByIdQuery = (id: string) => {
   return useQuery({
     queryKey: ['package', id],

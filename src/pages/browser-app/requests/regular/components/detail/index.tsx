@@ -18,69 +18,71 @@ import { usePackageByIdQuery } from '@api/queries/package'
 const blk = 'regular-request-detail'
 
 interface TransformedRegularRequestData extends Record<string, any> {
-  customerType: string
-  vehicleType: string
-  staffType: string
-  requestType: string
-  pickUpLocation: string
-  dropOffLocation: string
-  pickUpDateTime: string
-  dropDateTime: string
-  openingKm: string
-  closingKm: string
-  totalKm: string
-  totalHr: string
-  ac: string
-  customerCategory: string | null
-  customer: {
-    name: string
-  }
-  customerDetails: {
-    name: string
-    contact: string
-    email: string
-  } | null
-  vehicleCategory: string | null
-  supplier: {
-    companyName: string
-  }
-  supplierPackage: {
-    packageCode: string
-  }
-  vehicle: {
-    name: string
-  }
-  vehicleDetails: {
-    ownerName: string
-    ownerContact: string
-    ownerEmail: string
-    manufacturer: string
-    name: string
-    registrationNo: string
-  } | null
-  packageFromProvidedVehicle: {
+  packageDetails: {
     packageCategory: string
     package: {
       packageCode: string
     }
-  } | undefined
-  packageCategory: string | null
-  package: {
-    packageCode: string
   }
-  staffCategory: string | null
-  staff: {
-    name: string
+  requestDetails: {
+    requestType: string
+    pickUpLocation: string
+    dropOffLocation: string
+    pickUpDateTime: string
+    dropDateTime: string
+    openingKm: string
+    closingKm: string
+    totalKm: string
+    totalHr: string
+    ac: string
+  }
+  customerDetails: {
+    customerType: string
+    customerCategory: string | null
+    customer: {
+      name: string
+    } | null
+    newCustomerDetails: {
+      name: string
+      contact: string
+      email: string
+    } | null
+  }
+  vehicleDetails: {
+    vehicleType: string
+    vehicleCategory: string | null
+    vehicle: {
+      name: string
+      registrationNo: string
+    } | null
+    supplierDetails: {
+      supplier: {
+        companyName: string
+      } | null
+      package: {
+        packageCode: string
+      } | null
+    }
+    newVehicleDetails: {
+      ownerName: string
+      ownerContact: string
+      ownerEmail: string
+      manufacturer: string
+      name: string
+      registrationNo: string
+    } | null
   }
   staffDetails: {
-    name: string
-    contact: string
-    license: string
-  } | null
-  paymentDetails: {
-    status: string
-    paymentMethod: string
-    paymentDate: string
+    staffType: string
+    staffCategory: string | null
+    staff: {
+      name: string
+    } | null
+    newStaffDetails: {
+      name: string
+      contact: string
+      license: string
+    } | null
   }
   otherCharges: {
     toll: {
@@ -102,17 +104,11 @@ interface TransformedRegularRequestData extends Record<string, any> {
       isPayableWithSalary: string
     }
   }
-  advancedPayment: {
-    advancedFromCustomer: {
-      amount: string
-      paymentMethod: string
-      paymentDate: string
-    }
-    advancedToSupplier: {
-      amount: string
-      paymentMethod: string
-      paymentDate: string
-    } | null
+  status: string
+  paymentDetails: {
+    amountPaid: string
+    paymentMethod: string
+    paymentDate: string
   }
   requestTotal: string
   requestExpense: string
@@ -129,95 +125,110 @@ const transformRegularRequestData = (
   vehicleData?: VehicleModel,
   staffData?: StaffModel,
   packageData?: PackageModel,
-  supplierPackageData?: PackageModel,
-  providerPackageData?: PackageModel
+  supplierPackageData?: PackageModel
 ): TransformedRegularRequestData => {
   return {
-    ...data,
-    pickUpDateTime: formatDateValueForDisplay(data.pickUpDateTime),
-    dropDateTime: formatDateValueForDisplay(data.dropDateTime),
-    openingKm: data.openingKm?.toString() || '-',
-    closingKm: data.closingKm?.toString() || '-',
-    totalKm: data.totalKm ? `${data.totalKm} km` : '-',
-    totalHr: data.totalHr ? `${Math.floor(data.totalHr / 60)}h ${Math.floor(data.totalHr % 60)}m` : '-',
-    ac: formatBooleanValueForDisplay(data.ac),
-    customer: (() => {
-      if (customerData) {
-        return { name: customerData.name }
-      }
-      // Fallback: extract name from embedded customer object in main response
-      if (data.customer && typeof data.customer === 'object' && (data.customer as any).name) {
-        return { name: (data.customer as any).name }
-      }
-      return { name: '-' }
-    })(),
-    supplier: (() => {
-      if (supplierData) {
-        return { companyName: supplierData.companyName }
-      }
-      // Fallback: extract companyName from embedded supplier object in main response
-      if (data.supplier && typeof data.supplier === 'object' && (data.supplier as any).companyName) {
-        return { companyName: (data.supplier as any).companyName }
-      }
-      return { companyName: '-' }
-    })(),
-    supplierPackage: (() => {
-      if (supplierPackageData) {
-        return { packageCode: supplierPackageData.packageCode }
-      }
-      // Fallback: extract packageCode from embedded supplierPackage object in main response
-      if (data.supplierPackage && typeof data.supplierPackage === 'object' && (data.supplierPackage as any).packageCode) {
-        return { packageCode: (data.supplierPackage as any).packageCode }
-      }
-      return { packageCode: '-' }
-    })(),
-    vehicle: (() => {
-      if (vehicleData) {
-        return { name: vehicleData.name }
-      }
-      // Fallback: extract name from embedded vehicle object in main response
-      if (data.vehicle && typeof data.vehicle === 'object' && (data.vehicle as any).name) {
-        return { name: (data.vehicle as any).name }
-      }
-      return { name: '-' }
-    })(),
-    package: (() => {
-      if (packageData) {
-        return { packageCode: packageData.packageCode }
-      }
-      // Fallback: extract packageCode from embedded package object in main response
-      if (data.package && typeof data.package === 'object' && (data.package as any).packageCode) {
-        return { packageCode: (data.package as any).packageCode }
-      }
-      return { packageCode: '-' }
-    })(),
-    staff: (() => {
-      if (staffData) {
-        return { name: staffData.name }
-      }
-      // Fallback: extract name from embedded staff object in main response
-      if (data.staff && typeof data.staff === 'object' && (data.staff as any).name) {
-        return { name: (data.staff as any).name }
-      }
-      return { name: '-' }
-    })(),
-    packageFromProvidedVehicle: data.packageFromProvidedVehicle ? {
-      packageCategory: data.packageFromProvidedVehicle.packageCategory,
+    packageDetails: {
+      packageCategory: data.packageDetails.packageCategory || '-',
       package: (() => {
-        if (providerPackageData) {
-          return { packageCode: providerPackageData.packageCode }
+        if (packageData) {
+          return { packageCode: packageData.packageCode }
         }
-        // Fallback: extract packageCode from embedded package in packageFromProvidedVehicle
-        if (data.packageFromProvidedVehicle.package && typeof data.packageFromProvidedVehicle.package === 'object' && (data.packageFromProvidedVehicle.package as any).packageCode) {
-          return { packageCode: (data.packageFromProvidedVehicle.package as any).packageCode }
+        if (data.packageDetails.package && typeof data.packageDetails.package === 'object' && (data.packageDetails.package as any).packageCode) {
+          return { packageCode: (data.packageDetails.package as any).packageCode }
         }
         return { packageCode: '-' }
       })(),
-    } : undefined,
-    paymentDetails: {
-      status: data.paymentDetails.status || '-',
-      paymentMethod: data.paymentDetails.paymentMethod || '-',
-      paymentDate: formatDateValueForDisplay(data.paymentDetails.paymentDate),
+    },
+    requestDetails: {
+      requestType: data.requestDetails.requestType || '-',
+      pickUpLocation: data.requestDetails.pickUpLocation || '-',
+      dropOffLocation: data.requestDetails.dropOffLocation || '-',
+      pickUpDateTime: formatDateValueForDisplay(data.requestDetails.pickUpDateTime),
+      dropDateTime: formatDateValueForDisplay(data.requestDetails.dropDateTime),
+      openingKm: data.requestDetails.openingKm?.toString() || '-',
+      closingKm: data.requestDetails.closingKm?.toString() || '-',
+      totalKm: data.requestDetails.totalKm ? `${data.requestDetails.totalKm} km` : '-',
+      totalHr: data.requestDetails.totalHr ? `${Math.floor(data.requestDetails.totalHr / 60)}h ${Math.floor(data.requestDetails.totalHr % 60)}m` : '-',
+      ac: formatBooleanValueForDisplay(data.requestDetails.ac),
+    },
+    customerDetails: {
+      customerType: data.customerDetails.customerType || '-',
+      customerCategory: data.customerDetails.customerCategory || null,
+      customer: (() => {
+        if (customerData) {
+          return { name: customerData.name }
+        }
+        if (data.customerDetails.customer && typeof data.customerDetails.customer === 'object' && (data.customerDetails.customer as any).name) {
+          return { name: (data.customerDetails.customer as any).name }
+        }
+        return null
+      })(),
+      newCustomerDetails: data.customerDetails.newCustomerDetails ? {
+        name: data.customerDetails.newCustomerDetails.name || '-',
+        contact: data.customerDetails.newCustomerDetails.contact || '-',
+        email: data.customerDetails.newCustomerDetails.email || '-',
+      } : null,
+    },
+    vehicleDetails: {
+      vehicleType: data.vehicleDetails.vehicleType || '-',
+      vehicleCategory: data.vehicleDetails.vehicleCategory || null,
+      vehicle: (() => {
+        if (vehicleData) {
+          return { name: vehicleData.name, registrationNo: vehicleData.registrationNo }
+        }
+        if (data.vehicleDetails.vehicle && typeof data.vehicleDetails.vehicle === 'object') {
+          const veh = data.vehicleDetails.vehicle as any
+          return { name: veh.name || '-', registrationNo: veh.registrationNo || '-' }
+        }
+        return null
+      })(),
+      supplierDetails: {
+        supplier: (() => {
+          if (supplierData) {
+            return { companyName: supplierData.companyName }
+          }
+          if (data.vehicleDetails.supplierDetails.supplier && typeof data.vehicleDetails.supplierDetails.supplier === 'object') {
+            return { companyName: (data.vehicleDetails.supplierDetails.supplier as any).companyName || '-' }
+          }
+          return null
+        })(),
+        package: (() => {
+          if (supplierPackageData) {
+            return { packageCode: supplierPackageData.packageCode }
+          }
+          if (data.vehicleDetails.supplierDetails.package && typeof data.vehicleDetails.supplierDetails.package === 'object') {
+            return { packageCode: (data.vehicleDetails.supplierDetails.package as any).packageCode || '-' }
+          }
+          return null
+        })(),
+      },
+      newVehicleDetails: data.vehicleDetails.newVehicleDetails ? {
+        ownerName: data.vehicleDetails.newVehicleDetails.ownerName || '-',
+        ownerContact: data.vehicleDetails.newVehicleDetails.ownerContact || '-',
+        ownerEmail: data.vehicleDetails.newVehicleDetails.ownerEmail || '-',
+        manufacturer: data.vehicleDetails.newVehicleDetails.manufacturer || '-',
+        name: data.vehicleDetails.newVehicleDetails.name || '-',
+        registrationNo: data.vehicleDetails.newVehicleDetails.registrationNo || '-',
+      } : null,
+    },
+    staffDetails: {
+      staffType: data.staffDetails.staffType || '-',
+      staffCategory: data.staffDetails.staffCategory || null,
+      staff: (() => {
+        if (staffData) {
+          return { name: staffData.name }
+        }
+        if (data.staffDetails.staff && typeof data.staffDetails.staff === 'object') {
+          return { name: (data.staffDetails.staff as any).name || '-' }
+        }
+        return null
+      })(),
+      newStaffDetails: data.staffDetails.newStaffDetails ? {
+        name: data.staffDetails.newStaffDetails.name || '-',
+        contact: data.staffDetails.newStaffDetails.contact || '-',
+        license: data.staffDetails.newStaffDetails.license || '-',
+      } : null,
     },
     otherCharges: {
       toll: {
@@ -239,17 +250,11 @@ const transformRegularRequestData = (
         isPayableWithSalary: formatBooleanValueForDisplay(data.otherCharges.driverAllowance.isPayableWithSalary),
       },
     },
-    advancedPayment: {
-      advancedFromCustomer: {
-        amount: data.advancedPayment.advancedFromCustomer?.amount?.toString() || '-',
-        paymentMethod: data.advancedPayment.advancedFromCustomer?.paymentMethod || '-',
-        paymentDate: formatDateValueForDisplay(data.advancedPayment.advancedFromCustomer?.paymentDate),
-      },
-      advancedToSupplier: data.advancedPayment.advancedToSupplier ? {
-        amount: data.advancedPayment.advancedToSupplier.amount?.toString() || '-',
-        paymentMethod: data.advancedPayment.advancedToSupplier.paymentMethod || '-',
-        paymentDate: formatDateValueForDisplay(data.advancedPayment.advancedToSupplier.paymentDate),
-      } : null,
+    status: data.status || '-',
+    paymentDetails: {
+      amountPaid: data.paymentDetails.amountPaid?.toString() || '-',
+      paymentMethod: data.paymentDetails.paymentMethod || '-',
+      paymentDate: formatDateValueForDisplay(data.paymentDetails.paymentDate),
     },
     requestTotal: `₹${data.requestTotal.toLocaleString()}`,
     requestExpense: `₹${data.requestExpense.toLocaleString()}`,
@@ -268,11 +273,12 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: RegularRequestM
         ...panel,
         fields: panel.fields.filter(field => {
           // Show customer fields only for existing customers
-          if (field.path.startsWith('customer.') && data.customerType === 'new') {
+          if ((field.path === 'customerDetails.customer.name' || field.path === 'customerDetails.customerCategory') && 
+              data.customerDetails.customerType === 'new') {
             return false
           }
-          // Show customerDetails fields only for new customers
-          if (field.path.startsWith('customerDetails.') && data.customerType === 'existing') {
+          // Show newCustomerDetails fields only for new customers
+          if (field.path.startsWith('customerDetails.newCustomerDetails.') && data.customerDetails.customerType === 'existing') {
             return false
           }
           return true
@@ -285,27 +291,23 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: RegularRequestM
       return {
         ...panel,
         fields: panel.fields.filter(field => {
-          // Show supplier/supplierPackage fields only for existing vehicles with supplier category
-          if ((field.path === 'supplier.companyName' || field.path === 'supplierPackage.packageCode') &&
-              (data.vehicleType === 'new' || nameToPath(data.vehicleCategory || '') !== 'supplier')) {
+          // Show supplier fields only for existing vehicles with supplier category
+          if ((field.path.startsWith('vehicleDetails.supplierDetails.')) &&
+              (data.vehicleDetails.vehicleType === 'new' || nameToPath(data.vehicleDetails.vehicleCategory || '') !== 'supplier')) {
             return false
           }
-          // Show vehicle field only for existing vehicles
-          if (field.path === 'vehicle.name' && data.vehicleType === 'new') {
+          // Show vehicle fields only for existing vehicles
+          if ((field.path === 'vehicleDetails.vehicle.name' || field.path === 'vehicleDetails.vehicle.registrationNo' || field.path === 'vehicleDetails.vehicleCategory') && 
+              data.vehicleDetails.vehicleType === 'new') {
             return false
           }
-          // Show vehicleDetails fields only for new vehicles
-          if (field.path.startsWith('vehicleDetails.') && data.vehicleType === 'existing') {
+          // Show newVehicleDetails fields only for new vehicles
+          if (field.path.startsWith('vehicleDetails.newVehicleDetails.') && data.vehicleDetails.vehicleType === 'existing') {
             return false
           }
           return true
         })
       }
-    }
-
-    // Show Provider Package Details panel only for new vehicles
-    if (panel.panel === 'Provider Package Details') {
-      return data.vehicleType === 'new' ? panel : null
     }
 
     // Filter Staff Details panel based on staffType
@@ -314,26 +316,17 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: RegularRequestM
         ...panel,
         fields: panel.fields.filter(field => {
           // Show staff fields only for existing staff
-          if (field.path.startsWith('staff.') && data.staffType === 'new') {
+          if ((field.path === 'staffDetails.staff.name' || field.path === 'staffDetails.staffCategory') && 
+              data.staffDetails.staffType === 'new') {
             return false
           }
-          // Show staffDetails fields only for new staff
-          if (field.path.startsWith('staffDetails.') && data.staffType === 'existing') {
+          // Show newStaffDetails fields only for new staff
+          if (field.path.startsWith('staffDetails.newStaffDetails.') && data.staffDetails.staffType === 'existing') {
             return false
           }
           return true
         })
       }
-    }
-
-    // Filter Advanced Payment panels
-    if (panel.panel === 'Advance from Customer') {
-      return panel // Always show advance from customer panel
-    }
-
-    if (panel.panel === 'Advance to Supplier') {
-      // Show advance to supplier panel only for supplier vehicles
-      return (data.vehicleType === 'existing' && nameToPath(data.vehicleCategory || '') === 'supplier') ? panel : null
     }
 
     return panel
@@ -346,53 +339,49 @@ const RegularRequestDetail: FunctionComponent = () => {
   const { data: currentRegularRequestData, isLoading, error } = useRegularRequestByIdQuery(params.id || '')
 
   // Get IDs from regular request data for fetching related data
-  const customerId = currentRegularRequestData?.customer && typeof currentRegularRequestData.customer === 'string'
-    ? currentRegularRequestData.customer
+  const customerId = currentRegularRequestData?.customerDetails.customer && typeof currentRegularRequestData.customerDetails.customer === 'string'
+    ? currentRegularRequestData.customerDetails.customer
     : ''
 
-  const supplierId = currentRegularRequestData?.supplier && typeof currentRegularRequestData.supplier === 'string'
-    ? currentRegularRequestData.supplier
+  const supplierId = currentRegularRequestData?.vehicleDetails.supplierDetails.supplier && typeof currentRegularRequestData.vehicleDetails.supplierDetails.supplier === 'string'
+    ? currentRegularRequestData.vehicleDetails.supplierDetails.supplier
     : ''
 
-  const vehicleId = currentRegularRequestData?.vehicle && typeof currentRegularRequestData.vehicle === 'string'
-    ? currentRegularRequestData.vehicle
+  const vehicleId = currentRegularRequestData?.vehicleDetails.vehicle && typeof currentRegularRequestData.vehicleDetails.vehicle === 'string'
+    ? currentRegularRequestData.vehicleDetails.vehicle
     : ''
 
-  const staffId = currentRegularRequestData?.staff && typeof currentRegularRequestData.staff === 'string'
-    ? currentRegularRequestData.staff
+  const staffId = currentRegularRequestData?.staffDetails.staff && typeof currentRegularRequestData.staffDetails.staff === 'string'
+    ? currentRegularRequestData.staffDetails.staff
     : ''
 
-  const packageId = currentRegularRequestData?.package && typeof currentRegularRequestData.package === 'string'
-    ? currentRegularRequestData.package
+  const packageId = currentRegularRequestData?.packageDetails.package && typeof currentRegularRequestData.packageDetails.package === 'string'
+    ? currentRegularRequestData.packageDetails.package
     : ''
 
-  const supplierPackageId = currentRegularRequestData?.supplierPackage && typeof currentRegularRequestData.supplierPackage === 'string'
-    ? currentRegularRequestData.supplierPackage
-    : ''
-
-  const providerPackageId = currentRegularRequestData?.packageFromProvidedVehicle?.package && typeof currentRegularRequestData.packageFromProvidedVehicle.package === 'string'
-    ? currentRegularRequestData.packageFromProvidedVehicle.package
+  const supplierPackageId = currentRegularRequestData?.vehicleDetails.supplierDetails.package && typeof currentRegularRequestData.vehicleDetails.supplierDetails.package === 'string'
+    ? currentRegularRequestData.vehicleDetails.supplierDetails.package
     : ''
 
   // Conditionally fetch related data
-  const shouldFetchCustomer = currentRegularRequestData?.customerType === 'existing' && !!customerId
+  const shouldFetchCustomer = currentRegularRequestData?.customerDetails.customerType === 'existing' && !!customerId
   const { data: customerData, isLoading: isCustomerLoading } = useCustomerByIdQuery(
     shouldFetchCustomer ? customerId : ''
   )
 
-  const shouldFetchSupplier = currentRegularRequestData?.vehicleType === 'existing' &&
-    currentRegularRequestData.vehicleCategory &&
-    nameToPath(currentRegularRequestData.vehicleCategory) === 'supplier' && !!supplierId
+  const shouldFetchSupplier = currentRegularRequestData?.vehicleDetails.vehicleType === 'existing' &&
+    currentRegularRequestData.vehicleDetails.vehicleCategory &&
+    nameToPath(currentRegularRequestData.vehicleDetails.vehicleCategory) === 'supplier' && !!supplierId
   const { data: supplierData, isLoading: isSupplierLoading } = useSupplierByIdQuery(
     shouldFetchSupplier ? supplierId : ''
   )
 
-  const shouldFetchVehicle = currentRegularRequestData?.vehicleType === 'existing' && !!vehicleId
+  const shouldFetchVehicle = currentRegularRequestData?.vehicleDetails.vehicleType === 'existing' && !!vehicleId
   const { data: vehicleData, isLoading: isVehicleLoading } = useVehicleByIdQuery(
     shouldFetchVehicle ? vehicleId : ''
   )
 
-  const shouldFetchStaff = currentRegularRequestData?.staffType === 'existing' && !!staffId
+  const shouldFetchStaff = currentRegularRequestData?.staffDetails.staffType === 'existing' && !!staffId
   const { data: staffData, isLoading: isStaffLoading } = useStaffByIdQuery(
     shouldFetchStaff ? staffId : ''
   )
@@ -402,16 +391,11 @@ const RegularRequestDetail: FunctionComponent = () => {
     shouldFetchPackage ? packageId : ''
   )
 
-  const shouldFetchSupplierPackage = currentRegularRequestData?.vehicleType === 'existing' &&
-    currentRegularRequestData.vehicleCategory &&
-    nameToPath(currentRegularRequestData.vehicleCategory) === 'supplier' && !!supplierPackageId
+  const shouldFetchSupplierPackage = currentRegularRequestData?.vehicleDetails.vehicleType === 'existing' &&
+    currentRegularRequestData.vehicleDetails.vehicleCategory &&
+    nameToPath(currentRegularRequestData.vehicleDetails.vehicleCategory) === 'supplier' && !!supplierPackageId
   const { data: supplierPackageData, isLoading: isSupplierPackageLoading } = usePackageByIdQuery(
     shouldFetchSupplierPackage ? supplierPackageId : ''
-  )
-
-  const shouldFetchProviderPackage = currentRegularRequestData?.vehicleType === 'new' && !!providerPackageId
-  const { data: providerPackageData, isLoading: isProviderPackageLoading } = usePackageByIdQuery(
-    shouldFetchProviderPackage ? providerPackageId : ''
   )
 
   const [regularRequestData, setRegularRequestData] = useState<TransformedRegularRequestData | null>(null)
@@ -433,8 +417,7 @@ const RegularRequestDetail: FunctionComponent = () => {
         (shouldFetchVehicle && isVehicleLoading) ||
         (shouldFetchStaff && isStaffLoading) ||
         (shouldFetchPackage && isPackageLoading) ||
-        (shouldFetchSupplierPackage && isSupplierPackageLoading) ||
-        (shouldFetchProviderPackage && isProviderPackageLoading)
+        (shouldFetchSupplierPackage && isSupplierPackageLoading)
 
       if (isAnyRelatedDataLoading) {
         return
@@ -447,8 +430,7 @@ const RegularRequestDetail: FunctionComponent = () => {
         vehicleData,
         staffData,
         packageData,
-        supplierPackageData,
-        providerPackageData
+        supplierPackageData
       )
       setRegularRequestData(transformedData)
     }
@@ -460,7 +442,6 @@ const RegularRequestDetail: FunctionComponent = () => {
     staffData,
     packageData,
     supplierPackageData,
-    providerPackageData,
     shouldFetchCustomer,
     isCustomerLoading,
     shouldFetchSupplier,
@@ -473,8 +454,6 @@ const RegularRequestDetail: FunctionComponent = () => {
     isPackageLoading,
     shouldFetchSupplierPackage,
     isSupplierPackageLoading,
-    shouldFetchProviderPackage,
-    isProviderPackageLoading,
   ])
 
   return (
@@ -494,8 +473,7 @@ const RegularRequestDetail: FunctionComponent = () => {
           (shouldFetchVehicle && isVehicleLoading) ||
           (shouldFetchStaff && isStaffLoading) ||
           (shouldFetchPackage && isPackageLoading) ||
-          (shouldFetchSupplierPackage && isSupplierPackageLoading) ||
-          (shouldFetchProviderPackage && isProviderPackageLoading)) ? (
+          (shouldFetchSupplierPackage && isSupplierPackageLoading)) ? (
           <Loader type="form" />
         ) : (error) ? (
           <Alert

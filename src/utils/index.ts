@@ -164,7 +164,7 @@ const parseDateTimeFromInput = (value: string): Date | null => {
   return new Date(value)
 }
 
-const formatDateValueForDisplay = (value: Date | null): string => {
+const formatDateValueForDisplay = (value: Date | string | null | undefined): string => {
   if (!value) return '-'
   return new Date(value).toLocaleString('en-IN', {
     year: 'numeric',

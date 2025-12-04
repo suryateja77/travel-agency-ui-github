@@ -1,5 +1,6 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
 import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile } from '@utils'
+import { RegularRequestModel } from '@types'
 
 import './style.scss'
 import { Alert, Anchor, Button, Column, Row, SelectInput } from '@base'
@@ -103,21 +104,30 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     handleApiResponse(vehicles, vehiclesError, vehiclesIsError, 'vehicles', setVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
   }, [vehicles, vehiclesError, vehiclesIsError])
 
-  // Helper functions to get customer and vehicle names
-  const getCustomerName = (request: any) => {
-    if (request.customerType === 'existing' && request.customer?.name) {
-      return request.customer.name
-    } else if (request.customerType === 'new' && request.customerDetails) {
-      return request.customerDetails.name || '-'
+  // Helper functions to get customer and vehicle names (updated for nested schema)
+  const getCustomerName = (request: RegularRequestModel) => {
+    console.log("HERE REQUEST", request);
+    const { customerDetails } = request
+    if (customerDetails.customerType === 'existing' && customerDetails.customer) {
+      // customer can be string (ID) or object with name
+      if (typeof customerDetails.customer === 'object' && customerDetails.customer.name) {
+        return customerDetails.customer.name
+      }
+    } else if (customerDetails.customerType === 'new' && customerDetails.newCustomerDetails) {
+      return customerDetails.newCustomerDetails.name || '-'
     }
     return '-'
   }
 
-  const getVehicleName = (request: any) => {
-    if (request.vehicleType === 'existing' && request.vehicle?.name) {
-      return request.vehicle.name
-    } else if (request.vehicleType === 'new' && request.vehicleDetails) {
-      return request.vehicleDetails.name || '-'
+  const getVehicleName = (request: RegularRequestModel) => {
+    const { vehicleDetails } = request
+    if (vehicleDetails.vehicleType === 'existing' && vehicleDetails.vehicle) {
+      // vehicle can be string (ID) or object with name
+      if (typeof vehicleDetails.vehicle === 'object' && vehicleDetails.vehicle.name) {
+        return vehicleDetails.vehicle.name
+      }
+    } else if (vehicleDetails.vehicleType === 'new' && vehicleDetails.newVehicleDetails) {
+      return vehicleDetails.newVehicleDetails.name || '-'
     }
     return '-'
   }
@@ -125,7 +135,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
   const columns = [
     {
       label: 'Request no.',
-      custom: ({ _id, requestNo }: any) => (
+      custom: ({ _id, requestNo }: RegularRequestModel) => (
         <Anchor
           asLink
           href={`/requests/regular/${_id}/detail`}
@@ -136,35 +146,38 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
     },
     {
       label: 'Customer',
-      custom: (request: any) => <>{getCustomerName(request)}</>,
+      custom: (request: RegularRequestModel) => <>{getCustomerName(request)}</>,
     },
     {
       label: 'Request type',
-      custom: ({ requestType }: any) => <>{requestType || '-'}</>,
+      custom: ({ requestDetails }: RegularRequestModel) => <>{requestDetails.requestType || '-'}</>,
     },
     {
       label: 'Pickup date time',
-      custom: ({ pickUpDateTime }: any) => <>{formatDateValueForDisplay(pickUpDateTime)}</>,
+      custom: ({ requestDetails }: RegularRequestModel) => {
+        const dateValue = requestDetails.pickUpDateTime ? new Date(requestDetails.pickUpDateTime) : null
+        return <>{formatDateValueForDisplay(dateValue)}</>
+      },
     },
     {
       label: 'Duration',
-      custom: ({ totalHr }: any) => <>{formatMinutesToDuration(totalHr)}</>,
+      custom: ({ requestDetails }: RegularRequestModel) => <>{formatMinutesToDuration(requestDetails.totalHr)}</>,
     },
     {
       label: 'Vehicle',
-      custom: (request: any) => <>{getVehicleName(request)}</>,
+      custom: (request: RegularRequestModel) => <>{getVehicleName(request)}</>,
     },
     {
       label: 'Request KM',
-      custom: ({ totalKm }: any) => <>{totalKm ? `${totalKm} km` : '-'}</>,
+      custom: ({ requestDetails }: RegularRequestModel) => <>{requestDetails.totalKm ? `${requestDetails.totalKm} km` : '-'}</>,
     },
     {
       label: 'Total',
-      custom: ({ requestTotal }: any) => <>{requestTotal ? `₹${requestTotal.toLocaleString()}` : '-'}</>,
+      custom: ({ requestTotal }: RegularRequestModel) => <>{requestTotal ? `₹${requestTotal.toLocaleString()}` : '-'}</>,
     },
     {
       label: 'Invoice',
-      custom: ({ customerBill }: any) => <>{customerBill ? `₹${customerBill.toLocaleString()}` : '-'}</>,
+      custom: ({ customerBill }: RegularRequestModel) => <>{customerBill ? `₹${customerBill.toLocaleString()}` : '-'}</>,
     },
   ]
 
@@ -174,6 +187,7 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
 
   const handleSearch = () => {
     const filters: Record<string, any> = {}
+    // Backend expects flat filter structure for vehicleDetails.vehicle and vehicleDetails.vehicleCategory
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
     if (filterData.vehicleCategory) filters.vehicleCategory = nameToPath(filterData.vehicleCategory)
 

@@ -18,57 +18,75 @@ import { usePackageByIdQuery } from '@api/queries/package'
 const blk = 'monthly-fixed-request-detail'
 
 interface TransformedMonthlyFixedRequestData extends Record<string, any> {
-  vehicleType: string
-  staffType: string
-  requestType: string
-  pickUpLocation: string
-  dropOffLocation: string
-  pickUpDateTime: string
-  dropDateTime: string
-  openingKm: string
-  closingKm: string
-  totalKm: string
-  totalHr: string
-  ac: string
-  customerCategory: string
-  customer: {
-    name: string
+  assignmentDetails: {
+    packageCategory: string
+    package: {
+      packageCode: string
+    }
+    vehicleCategory: string
+    vehicle: {
+      name: string
+      registrationNo: string
+    }
+    staffCategory: string
+    staff: {
+      name: string
+    }
   }
-  vehicleCategory: string | null
-  supplier: {
-    companyName: string
+  requestDetails: {
+    requestType: string
+    pickUpLocation: string
+    dropOffLocation: string
+    pickUpDateTime: string
+    dropDateTime: string
+    openingKm: string
+    closingKm: string
+    totalKm: string
+    totalHr: string
+    ac: string
   }
-  supplierPackage: {
-    packageCode: string
-  }
-  vehicle: {
-    name: string
+  customerDetails: {
+    customerCategory: string
+    customer: {
+      name: string
+    }
   }
   vehicleDetails: {
-    ownerName: string
-    ownerContact: string
-    ownerEmail: string
-    manufacturer: string
-    name: string
-    registrationNo: string
-  } | null
-  packageFromProvidedVehicle:
-    | undefined
-    | {
-        packageCategory: string
-        package: {
-          packageCode: string
-        }
-      }
-  staffCategory: string | null
-  staff: {
-    name: string
+    vehicleType: string
+    vehicleCategory: string | null
+    vehicle: {
+      name: string
+      registrationNo: string
+    } | null
+    supplierDetails: {
+      supplier: {
+        companyName: string
+      } | null
+      package: {
+        packageCode: string
+      } | null
+    }
+    newVehicleDetails: {
+      ownerName: string
+      ownerContact: string
+      ownerEmail: string
+      manufacturer: string
+      name: string
+      registrationNo: string
+    } | null
   }
   staffDetails: {
-    name: string
-    contact: string
-    license: string
-  } | null
+    staffType: string
+    staffCategory: string | null
+    staff: {
+      name: string
+    } | null
+    newStaffDetails: {
+      name: string
+      contact: string
+      license: string
+    } | null
+  }
   otherCharges: {
     toll: {
       amount: string
@@ -88,119 +106,159 @@ interface TransformedMonthlyFixedRequestData extends Record<string, any> {
       isChargeableToCustomer: string
       isPayableWithSalary: string
     }
-  } | null
-  advancePayment: {
-    advancedFromCustomer: string
-    advancedToDriver: string
-  } | null
+  }
   comment: string
 }
 
 // Transform the monthly fixed request data to handle object references and formatting
 const transformMonthlyFixedRequestData = (
   data: MonthlyFixedRequestModel,
-  supplierData?: SupplierModel,
+  assignmentPackageData?: PackageModel,
+  assignmentVehicleData?: VehicleModel,
+  assignmentStaffData?: StaffModel,
   customerData?: CustomerModel,
   vehicleData?: VehicleModel,
-  staffData?: StaffModel,
+  supplierData?: SupplierModel,
   supplierPackageData?: PackageModel,
-  providerPackageData?: PackageModel
+  staffData?: StaffModel
 ): TransformedMonthlyFixedRequestData => {
   return {
-    ...data,
-    pickUpDateTime: formatDateValueForDisplay(data.pickUpDateTime),
-    dropDateTime: formatDateValueForDisplay(data.dropDateTime),
-    openingKm: data.openingKm?.toString() || '-',
-    closingKm: data.closingKm?.toString() || '-',
-    totalKm: data.totalKm ? `${data.totalKm} km` : '-',
-    totalHr: data.totalHr ? `${Math.floor(data.totalHr / 60)}h ${Math.floor(data.totalHr % 60)}m` : '-',
-    ac: formatBooleanValueForDisplay(data.ac),
-    customer: (() => {
-      if (customerData) {
-        return { name: customerData.name }
-      }
-      // Fallback: extract name from embedded customer object in main response
-      if (data.customer && typeof data.customer === 'object' && (data.customer as any).name) {
-        return { name: (data.customer as any).name }
-      }
-      return { name: '-' }
-    })(),
-    supplier: (() => {
-      if (supplierData) {
-        return { companyName: supplierData.companyName }
-      }
-      // Fallback: extract companyName from embedded supplier object in main response
-      if (data.supplier && typeof data.supplier === 'object' && (data.supplier as any).companyName) {
-        return { companyName: (data.supplier as any).companyName }
-      }
-      return { companyName: '-' }
-    })(),
-    supplierPackage: (() => {
-      if (supplierPackageData) {
-        return { packageCode: supplierPackageData.packageCode }
-      }
-      // Fallback: extract packageCode from embedded supplierPackage object in main response
-      if (data.supplierPackage && typeof data.supplierPackage === 'object' && (data.supplierPackage as any).packageCode) {
-        return { packageCode: (data.supplierPackage as any).packageCode }
-      }
-      return { packageCode: '-' }
-    })(),
-    vehicle: (() => {
-      if (vehicleData) {
-        return { name: vehicleData.name }
-      }
-      // Fallback: extract name from embedded vehicle object in main response
-      if (data.vehicle && typeof data.vehicle === 'object' && (data.vehicle as any).name) {
-        return { name: (data.vehicle as any).name }
-      }
-      return { name: '-' }
-    })(),
-    staff: (() => {
-      if (staffData) {
-        return { name: staffData.name }
-      }
-      // Fallback: extract name from embedded staff object in main response
-      if (data.staff && typeof data.staff === 'object' && (data.staff as any).name) {
-        return { name: (data.staff as any).name }
-      }
-      return { name: '-' }
-    })(),
-    packageFromProvidedVehicle: data.packageFromProvidedVehicle ? {
-      packageCategory: data.packageFromProvidedVehicle.packageCategory,
+    assignmentDetails: {
+      packageCategory: data.assignmentDetails.packageCategory || '-',
       package: (() => {
-        if (providerPackageData) {
-          return { packageCode: providerPackageData.packageCode }
+        if (assignmentPackageData) {
+          return { packageCode: assignmentPackageData.packageCode }
         }
-        // Fallback: extract packageCode from embedded package in packageFromProvidedVehicle
-        if (data.packageFromProvidedVehicle.packageId && typeof data.packageFromProvidedVehicle.packageId === 'object' && (data.packageFromProvidedVehicle.packageId as any).packageCode) {
-          return { packageCode: (data.packageFromProvidedVehicle.packageId as any).packageCode }
+        if (data.assignmentDetails.package && typeof data.assignmentDetails.package === 'object') {
+          return { packageCode: (data.assignmentDetails.package as any).packageCode || '-' }
         }
         return { packageCode: '-' }
       })(),
-    } : undefined,
+      vehicleCategory: data.assignmentDetails.vehicleCategory || '-',
+      vehicle: (() => {
+        if (assignmentVehicleData) {
+          return { name: assignmentVehicleData.name, registrationNo: assignmentVehicleData.registrationNo }
+        }
+        if (data.assignmentDetails.vehicle && typeof data.assignmentDetails.vehicle === 'object') {
+          const veh = data.assignmentDetails.vehicle as any
+          return { name: veh.name || '-', registrationNo: veh.registrationNo || '-' }
+        }
+        return { name: '-', registrationNo: '-' }
+      })(),
+      staffCategory: data.assignmentDetails.staffCategory || '-',
+      staff: (() => {
+        if (assignmentStaffData) {
+          return { name: assignmentStaffData.name }
+        }
+        if (data.assignmentDetails.staff && typeof data.assignmentDetails.staff === 'object') {
+          return { name: (data.assignmentDetails.staff as any).name || '-' }
+        }
+        return { name: '-' }
+      })(),
+    },
+    requestDetails: {
+      requestType: data.requestDetails.requestType || '-',
+      pickUpLocation: data.requestDetails.pickUpLocation || '-',
+      dropOffLocation: data.requestDetails.dropOffLocation || '-',
+      pickUpDateTime: formatDateValueForDisplay(data.requestDetails.pickUpDateTime),
+      dropDateTime: formatDateValueForDisplay(data.requestDetails.dropDateTime),
+      openingKm: data.requestDetails.openingKm?.toString() || '-',
+      closingKm: data.requestDetails.closingKm?.toString() || '-',
+      totalKm: data.requestDetails.totalKm ? `${data.requestDetails.totalKm} km` : '-',
+      totalHr: data.requestDetails.totalHr ? `${Math.floor(data.requestDetails.totalHr / 60)}h ${Math.floor(data.requestDetails.totalHr % 60)}m` : '-',
+      ac: formatBooleanValueForDisplay(data.requestDetails.ac),
+    },
+    customerDetails: {
+      customerCategory: data.customerDetails.customerCategory || '-',
+      customer: (() => {
+        if (customerData) {
+          return { name: customerData.name }
+        }
+        if (data.customerDetails.customer && typeof data.customerDetails.customer === 'object') {
+          return { name: (data.customerDetails.customer as any).name || '-' }
+        }
+        return { name: '-' }
+      })(),
+    },
+    vehicleDetails: {
+      vehicleType: data.vehicleDetails.vehicleType || '-',
+      vehicleCategory: data.vehicleDetails.vehicleCategory || null,
+      vehicle: (() => {
+        if (vehicleData) {
+          return { name: vehicleData.name, registrationNo: vehicleData.registrationNo }
+        }
+        if (data.vehicleDetails.vehicle && typeof data.vehicleDetails.vehicle === 'object') {
+          const veh = data.vehicleDetails.vehicle as any
+          return { name: veh.name || '-', registrationNo: veh.registrationNo || '-' }
+        }
+        return null
+      })(),
+      supplierDetails: {
+        supplier: (() => {
+          if (supplierData) {
+            return { companyName: supplierData.companyName }
+          }
+          if (data.vehicleDetails.supplierDetails.supplier && typeof data.vehicleDetails.supplierDetails.supplier === 'object') {
+            return { companyName: (data.vehicleDetails.supplierDetails.supplier as any).companyName || '-' }
+          }
+          return null
+        })(),
+        package: (() => {
+          if (supplierPackageData) {
+            return { packageCode: supplierPackageData.packageCode }
+          }
+          if (data.vehicleDetails.supplierDetails.package && typeof data.vehicleDetails.supplierDetails.package === 'object') {
+            return { packageCode: (data.vehicleDetails.supplierDetails.package as any).packageCode || '-' }
+          }
+          return null
+        })(),
+      },
+      newVehicleDetails: data.vehicleDetails.newVehicleDetails ? {
+        ownerName: data.vehicleDetails.newVehicleDetails.ownerName || '-',
+        ownerContact: data.vehicleDetails.newVehicleDetails.ownerContact || '-',
+        ownerEmail: data.vehicleDetails.newVehicleDetails.ownerEmail || '-',
+        manufacturer: data.vehicleDetails.newVehicleDetails.manufacturer || '-',
+        name: data.vehicleDetails.newVehicleDetails.name || '-',
+        registrationNo: data.vehicleDetails.newVehicleDetails.registrationNo || '-',
+      } : null,
+    },
+    staffDetails: {
+      staffType: data.staffDetails.staffType || '-',
+      staffCategory: data.staffDetails.staffCategory || null,
+      staff: (() => {
+        if (staffData) {
+          return { name: staffData.name }
+        }
+        if (data.staffDetails.staff && typeof data.staffDetails.staff === 'object') {
+          return { name: (data.staffDetails.staff as any).name || '-' }
+        }
+        return null
+      })(),
+      newStaffDetails: data.staffDetails.newStaffDetails ? {
+        name: data.staffDetails.newStaffDetails.name || '-',
+        contact: data.staffDetails.newStaffDetails.contact || '-',
+        license: data.staffDetails.newStaffDetails.license || '-',
+      } : null,
+    },
     otherCharges: {
       toll: {
-        amount: data.otherCharges?.toll?.amount?.toString() || '-',
-        isChargeableToCustomer: data.otherCharges?.toll ? formatBooleanValueForDisplay(data.otherCharges.toll.isChargeableToCustomer) : '-',
+        amount: data.otherCharges.toll.amount?.toString() || '-',
+        isChargeableToCustomer: formatBooleanValueForDisplay(data.otherCharges.toll.isChargeableToCustomer),
       },
       parking: {
-        amount: data.otherCharges?.parking?.amount?.toString() || '-',
-        isChargeableToCustomer: data.otherCharges?.parking ? formatBooleanValueForDisplay(data.otherCharges.parking.isChargeableToCustomer) : '-',
+        amount: data.otherCharges.parking.amount?.toString() || '-',
+        isChargeableToCustomer: formatBooleanValueForDisplay(data.otherCharges.parking.isChargeableToCustomer),
       },
       nightHalt: {
-        amount: data.otherCharges?.nightHalt?.amount?.toString() || '-',
-        isChargeableToCustomer: data.otherCharges?.nightHalt ? formatBooleanValueForDisplay(data.otherCharges.nightHalt.isChargeableToCustomer) : '-',
-        isPayableWithSalary: data.otherCharges?.nightHalt ? formatBooleanValueForDisplay(data.otherCharges.nightHalt.isPayableWithSalary) : '-',
+        amount: data.otherCharges.nightHalt.amount?.toString() || '-',
+        isChargeableToCustomer: formatBooleanValueForDisplay(data.otherCharges.nightHalt.isChargeableToCustomer),
+        isPayableWithSalary: formatBooleanValueForDisplay(data.otherCharges.nightHalt.isPayableWithSalary),
       },
       driverAllowance: {
-        amount: data.otherCharges?.driverAllowance?.amount?.toString() || '-',
-        isChargeableToCustomer: data.otherCharges?.driverAllowance ? formatBooleanValueForDisplay(data.otherCharges.driverAllowance.isChargeableToCustomer) : '-',
-        isPayableWithSalary: data.otherCharges?.driverAllowance ? formatBooleanValueForDisplay(data.otherCharges.driverAllowance.isPayableWithSalary) : '-',
+        amount: data.otherCharges.driverAllowance.amount?.toString() || '-',
+        isChargeableToCustomer: formatBooleanValueForDisplay(data.otherCharges.driverAllowance.isChargeableToCustomer),
+        isPayableWithSalary: formatBooleanValueForDisplay(data.otherCharges.driverAllowance.isPayableWithSalary),
       },
-    },
-    advancePayment: {
-      advancedFromCustomer: data.advancePayment?.advancedFromCustomer?.toString() || '-',
-      advancedToDriver: data.advancePayment?.advancedToDriver?.toString() || '-',
     },
     comment: data.comment || '-',
   }
@@ -214,27 +272,23 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: MonthlyFixedReq
       return {
         ...panel,
         fields: panel.fields.filter(field => {
-          // Show supplier/supplierPackage fields only for existing vehicles with supplier category
-          if ((field.path === 'supplier.companyName' || field.path === 'supplierPackage.packageCode') &&
-              (data.vehicleType === 'new' || nameToPath(data.vehicleCategory || '') !== 'supplier')) {
+          // Show supplier fields only for existing vehicles with supplier category
+          if (field.path.startsWith('vehicleDetails.supplierDetails.') &&
+              (data.vehicleDetails.vehicleType === 'new' || nameToPath(data.vehicleDetails.vehicleCategory || '') !== 'supplier')) {
             return false
           }
-          // Show vehicle field only for existing vehicles
-          if (field.path === 'vehicle.name' && data.vehicleType === 'new') {
+          // Show vehicle fields only for existing vehicles
+          if ((field.path === 'vehicleDetails.vehicle.name' || field.path === 'vehicleDetails.vehicle.registrationNo' || field.path === 'vehicleDetails.vehicleCategory') && 
+              data.vehicleDetails.vehicleType === 'new') {
             return false
           }
-          // Show vehicleDetails fields only for new vehicles
-          if (field.path.startsWith('vehicleDetails.') && data.vehicleType === 'existing') {
+          // Show newVehicleDetails fields only for new vehicles
+          if (field.path.startsWith('vehicleDetails.newVehicleDetails.') && data.vehicleDetails.vehicleType === 'existing') {
             return false
           }
           return true
         })
       }
-    }
-
-    // Show Provider Package Details panel only for new vehicles
-    if (panel.panel === 'Provider Package Details') {
-      return data.vehicleType === 'new' ? panel : null
     }
 
     // Filter Staff Details panel based on staffType
@@ -243,11 +297,12 @@ const createFilteredTemplate = (originalTemplate: Panel[], data: MonthlyFixedReq
         ...panel,
         fields: panel.fields.filter(field => {
           // Show staff fields only for existing staff
-          if (field.path.startsWith('staff.') && data.staffType === 'new') {
+          if ((field.path === 'staffDetails.staff.name' || field.path === 'staffDetails.staffCategory') && 
+              data.staffDetails.staffType === 'new') {
             return false
           }
-          // Show staffDetails fields only for new staff
-          if (field.path.startsWith('staffDetails.') && data.staffType === 'existing') {
+          // Show newStaffDetails fields only for new staff
+          if (field.path.startsWith('staffDetails.newStaffDetails.') && data.staffDetails.staffType === 'existing') {
             return false
           }
           return true
@@ -267,63 +322,82 @@ const MonthlyFixedRequestDetail: FunctionComponent<MonthlyFixedRequestDetailProp
   const { data: currentMonthlyFixedRequestData, isLoading, error } = useFixedRequestByIdQuery(params.id || '')
 
   // Get IDs from monthly fixed request data for fetching related data
-  const customerId = currentMonthlyFixedRequestData?.customer && typeof currentMonthlyFixedRequestData.customer === 'string'
-    ? currentMonthlyFixedRequestData.customer
+  const assignmentPackageId = currentMonthlyFixedRequestData?.assignmentDetails.package && typeof currentMonthlyFixedRequestData.assignmentDetails.package === 'string'
+    ? currentMonthlyFixedRequestData.assignmentDetails.package
     : ''
 
-  const supplierId = currentMonthlyFixedRequestData?.supplier && typeof currentMonthlyFixedRequestData.supplier === 'string'
-    ? currentMonthlyFixedRequestData.supplier
+  const assignmentVehicleId = currentMonthlyFixedRequestData?.assignmentDetails.vehicle && typeof currentMonthlyFixedRequestData.assignmentDetails.vehicle === 'string'
+    ? currentMonthlyFixedRequestData.assignmentDetails.vehicle
     : ''
 
-  const vehicleId = currentMonthlyFixedRequestData?.vehicle && typeof currentMonthlyFixedRequestData.vehicle === 'string'
-    ? currentMonthlyFixedRequestData.vehicle
+  const assignmentStaffId = currentMonthlyFixedRequestData?.assignmentDetails.staff && typeof currentMonthlyFixedRequestData.assignmentDetails.staff === 'string'
+    ? currentMonthlyFixedRequestData.assignmentDetails.staff
     : ''
 
-  const staffId = currentMonthlyFixedRequestData?.staff && typeof currentMonthlyFixedRequestData.staff === 'string'
-    ? currentMonthlyFixedRequestData.staff
+  const customerId = currentMonthlyFixedRequestData?.customerDetails.customer && typeof currentMonthlyFixedRequestData.customerDetails.customer === 'string'
+    ? currentMonthlyFixedRequestData.customerDetails.customer
     : ''
 
-  const supplierPackageId = currentMonthlyFixedRequestData?.supplierPackage && typeof currentMonthlyFixedRequestData.supplierPackage === 'string'
-    ? currentMonthlyFixedRequestData.supplierPackage
+  const vehicleId = currentMonthlyFixedRequestData?.vehicleDetails.vehicle && typeof currentMonthlyFixedRequestData.vehicleDetails.vehicle === 'string'
+    ? currentMonthlyFixedRequestData.vehicleDetails.vehicle
     : ''
 
-  const providerPackageId = currentMonthlyFixedRequestData?.packageFromProvidedVehicle?.packageId && typeof currentMonthlyFixedRequestData.packageFromProvidedVehicle.packageId === 'string'
-    ? currentMonthlyFixedRequestData.packageFromProvidedVehicle.packageId
+  const supplierId = currentMonthlyFixedRequestData?.vehicleDetails.supplierDetails.supplier && typeof currentMonthlyFixedRequestData.vehicleDetails.supplierDetails.supplier === 'string'
+    ? currentMonthlyFixedRequestData.vehicleDetails.supplierDetails.supplier
     : ''
 
-  // Conditionally fetch related data
+  const supplierPackageId = currentMonthlyFixedRequestData?.vehicleDetails.supplierDetails.package && typeof currentMonthlyFixedRequestData.vehicleDetails.supplierDetails.package === 'string'
+    ? currentMonthlyFixedRequestData.vehicleDetails.supplierDetails.package
+    : ''
+
+  const staffId = currentMonthlyFixedRequestData?.staffDetails.staff && typeof currentMonthlyFixedRequestData.staffDetails.staff === 'string'
+    ? currentMonthlyFixedRequestData.staffDetails.staff
+    : ''
+
+  // Conditionally fetch related data - Assignment Details
+  const shouldFetchAssignmentPackage = !!assignmentPackageId
+  const { data: assignmentPackageData, isLoading: isAssignmentPackageLoading } = usePackageByIdQuery(
+    shouldFetchAssignmentPackage ? assignmentPackageId : ''
+  )
+
+  const shouldFetchAssignmentVehicle = !!assignmentVehicleId
+  const { data: assignmentVehicleData, isLoading: isAssignmentVehicleLoading } = useVehicleByIdQuery(
+    shouldFetchAssignmentVehicle ? assignmentVehicleId : ''
+  )
+
+  const shouldFetchAssignmentStaff = !!assignmentStaffId
+  const { data: assignmentStaffData, isLoading: isAssignmentStaffLoading } = useStaffByIdQuery(
+    shouldFetchAssignmentStaff ? assignmentStaffId : ''
+  )
+
+  // Customer Details
   const shouldFetchCustomer = !!customerId
   const { data: customerData, isLoading: isCustomerLoading } = useCustomerByIdQuery(
     shouldFetchCustomer ? customerId : ''
   )
 
-  const shouldFetchSupplier = currentMonthlyFixedRequestData?.vehicleType === 'existing' &&
-    currentMonthlyFixedRequestData.vehicleCategory &&
-    nameToPath(currentMonthlyFixedRequestData.vehicleCategory) === 'supplier' && !!supplierId
-  const { data: supplierData, isLoading: isSupplierLoading } = useSupplierByIdQuery(
-    shouldFetchSupplier ? supplierId : ''
-  )
-
-  const shouldFetchVehicle = currentMonthlyFixedRequestData?.vehicleType === 'existing' && !!vehicleId
+  const shouldFetchVehicle = currentMonthlyFixedRequestData?.vehicleDetails.vehicleType === 'existing' && !!vehicleId
   const { data: vehicleData, isLoading: isVehicleLoading } = useVehicleByIdQuery(
     shouldFetchVehicle ? vehicleId : ''
   )
 
-  const shouldFetchStaff = currentMonthlyFixedRequestData?.staffType === 'existing' && !!staffId
-  const { data: staffData, isLoading: isStaffLoading } = useStaffByIdQuery(
-    shouldFetchStaff ? staffId : ''
+  const shouldFetchSupplier = currentMonthlyFixedRequestData?.vehicleDetails.vehicleType === 'existing' &&
+    currentMonthlyFixedRequestData.vehicleDetails.vehicleCategory &&
+    nameToPath(currentMonthlyFixedRequestData.vehicleDetails.vehicleCategory) === 'supplier' && !!supplierId
+  const { data: supplierData, isLoading: isSupplierLoading } = useSupplierByIdQuery(
+    shouldFetchSupplier ? supplierId : ''
   )
 
-  const shouldFetchSupplierPackage = currentMonthlyFixedRequestData?.vehicleType === 'existing' &&
-    currentMonthlyFixedRequestData.vehicleCategory &&
-    nameToPath(currentMonthlyFixedRequestData.vehicleCategory) === 'supplier' && !!supplierPackageId
+  const shouldFetchSupplierPackage = currentMonthlyFixedRequestData?.vehicleDetails.vehicleType === 'existing' &&
+    currentMonthlyFixedRequestData.vehicleDetails.vehicleCategory &&
+    nameToPath(currentMonthlyFixedRequestData.vehicleDetails.vehicleCategory) === 'supplier' && !!supplierPackageId
   const { data: supplierPackageData, isLoading: isSupplierPackageLoading } = usePackageByIdQuery(
     shouldFetchSupplierPackage ? supplierPackageId : ''
   )
 
-  const shouldFetchProviderPackage = currentMonthlyFixedRequestData?.vehicleType === 'new' && !!providerPackageId
-  const { data: providerPackageData, isLoading: isProviderPackageLoading } = usePackageByIdQuery(
-    shouldFetchProviderPackage ? providerPackageId : ''
+  const shouldFetchStaff = currentMonthlyFixedRequestData?.staffDetails.staffType === 'existing' && !!staffId
+  const { data: staffData, isLoading: isStaffLoading } = useStaffByIdQuery(
+    shouldFetchStaff ? staffId : ''
   )
 
   const [monthlyFixedRequestData, setMonthlyFixedRequestData] = useState<TransformedMonthlyFixedRequestData | null>(null)
@@ -340,12 +414,14 @@ const MonthlyFixedRequestDetail: FunctionComponent<MonthlyFixedRequestDetailProp
     if (currentMonthlyFixedRequestData) {
       // If we need related data but it's still loading, wait for it
       const isAnyRelatedDataLoading =
+        (shouldFetchAssignmentPackage && isAssignmentPackageLoading) ||
+        (shouldFetchAssignmentVehicle && isAssignmentVehicleLoading) ||
+        (shouldFetchAssignmentStaff && isAssignmentStaffLoading) ||
         (shouldFetchCustomer && isCustomerLoading) ||
-        (shouldFetchSupplier && isSupplierLoading) ||
         (shouldFetchVehicle && isVehicleLoading) ||
-        (shouldFetchStaff && isStaffLoading) ||
+        (shouldFetchSupplier && isSupplierLoading) ||
         (shouldFetchSupplierPackage && isSupplierPackageLoading) ||
-        (shouldFetchProviderPackage && isProviderPackageLoading)
+        (shouldFetchStaff && isStaffLoading)
 
       if (isAnyRelatedDataLoading) {
         return
@@ -353,35 +429,43 @@ const MonthlyFixedRequestDetail: FunctionComponent<MonthlyFixedRequestDetailProp
 
       const transformedData = transformMonthlyFixedRequestData(
         currentMonthlyFixedRequestData,
-        supplierData,
+        assignmentPackageData,
+        assignmentVehicleData,
+        assignmentStaffData,
         customerData,
         vehicleData,
-        staffData,
+        supplierData,
         supplierPackageData,
-        providerPackageData
+        staffData
       )
       setMonthlyFixedRequestData(transformedData)
     }
   }, [
     currentMonthlyFixedRequestData,
-    supplierData,
+    assignmentPackageData,
+    assignmentVehicleData,
+    assignmentStaffData,
     customerData,
     vehicleData,
-    staffData,
+    supplierData,
     supplierPackageData,
-    providerPackageData,
+    staffData,
+    shouldFetchAssignmentPackage,
+    isAssignmentPackageLoading,
+    shouldFetchAssignmentVehicle,
+    isAssignmentVehicleLoading,
+    shouldFetchAssignmentStaff,
+    isAssignmentStaffLoading,
     shouldFetchCustomer,
     isCustomerLoading,
-    shouldFetchSupplier,
-    isSupplierLoading,
     shouldFetchVehicle,
     isVehicleLoading,
-    shouldFetchStaff,
-    isStaffLoading,
+    shouldFetchSupplier,
+    isSupplierLoading,
     shouldFetchSupplierPackage,
     isSupplierPackageLoading,
-    shouldFetchProviderPackage,
-    isProviderPackageLoading,
+    shouldFetchStaff,
+    isStaffLoading,
   ])
 
   return (
@@ -396,12 +480,14 @@ const MonthlyFixedRequestDetail: FunctionComponent<MonthlyFixedRequestDetailProp
       </div>
       <div className={bemClass([blk, 'content'])}>
         {(isLoading ||
+          (shouldFetchAssignmentPackage && isAssignmentPackageLoading) ||
+          (shouldFetchAssignmentVehicle && isAssignmentVehicleLoading) ||
+          (shouldFetchAssignmentStaff && isAssignmentStaffLoading) ||
           (shouldFetchCustomer && isCustomerLoading) ||
-          (shouldFetchSupplier && isSupplierLoading) ||
           (shouldFetchVehicle && isVehicleLoading) ||
-          (shouldFetchStaff && isStaffLoading) ||
+          (shouldFetchSupplier && isSupplierLoading) ||
           (shouldFetchSupplierPackage && isSupplierPackageLoading) ||
-          (shouldFetchProviderPackage && isProviderPackageLoading)) ? (
+          (shouldFetchStaff && isStaffLoading)) ? (
           <Loader type="form" />
         ) : (error) ? (
           <Alert

@@ -32,6 +32,7 @@ interface TextInputProps {
   controlClasses?: string
   errorMessage?: string
   changeHandler?: (arg: ChangeArg) => void
+  onBlur?: () => void
   attributes?: {
     maxLength: number
   }
@@ -54,6 +55,7 @@ const TextInput = (props: TextInputProps) => {
     errorMessage = '',
     controlClasses = '',
     changeHandler = () => {},
+    onBlur,
     attributes = {},
   } = props
 
@@ -119,6 +121,7 @@ const TextInput = (props: TextInputProps) => {
         disabled={disabled}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        onBlur={onBlur}
         {...attributes}
       />
       <div className={iconClass}>

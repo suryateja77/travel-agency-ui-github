@@ -1,158 +1,64 @@
-import React, { FunctionComponent, useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import React, { FunctionComponent, useState, useEffect, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 
-import { createValidationSchema, calculateTotalValidationSchema } from './validation'
-import { bemClass, validatePayload, nameToPath, pathToName, formatDateTimeForInput, parseDateTimeFromInput } from '@utils'
-import { useToast } from '@contexts/ToastContext'
-import { Breadcrumb, Button, CheckBox, Column, Panel, RadioGroup, Row, SelectInput, Text, TextArea, TextInput, Alert, ReadOnlyText } from '@base'
-import { MonthlyFixedRequestModel } from '@types'
+import { bemClass, nameToPath, formatDateTimeForInput, parseDateTimeFromInput, validatePayload } from '@utils'
+import { Breadcrumb, Button, Column, Panel, Row, SelectInput, Text, TextInput, TextArea, RadioGroup, Alert, ReadOnlyText, CheckBox, Toggle } from '@base'
+import { MonthlyFixedRequestModel, INITIAL_MONTHLY_FIXED_REQUEST } from '@types'
 import { ConfiguredInput } from '@base'
-import { useVehicleByCategory } from '@api/queries/vehicle'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
-import { useSuppliersQuery } from '@api/queries/supplier'
-import { usePackageByCategory } from '@api/queries/package'
-import { useStaffByCategory } from '@api/queries/staff'
 import { useCustomerByCategory, useCustomerByIdQuery } from '@api/queries/customer'
+import { useVehicleByCategory } from '@api/queries/vehicle'
+import { useSuppliersQuery } from '@api/queries/supplier'
+import { usePackageByCategoryWithFilter } from '@api/queries/package'
+import { useStaffByCategory } from '@api/queries/staff'
 import { useCreateFixedRequestMutation, useUpdateFixedRequestMutation, useFixedRequestByIdQuery } from '@api/queries/fixed-request'
+import { useToast } from '@contexts/ToastContext'
+import { createValidationSchema } from './validation'
 
 import './style.scss'
 
 const blk = 'create-monthly-fixed-request'
 
-const extractIdFromResponse = (field: any): string => {
-  if (typeof field === 'string') return field
-  if (field && typeof field === 'object' && field._id) return field._id
-  return ''
-}
-
-const transformMonthlyFixedRequestResponse = (response: any): MonthlyFixedRequestModel => {
-  return {
-    customerCategory: nameToPath(response.customerCategory || ''),
-    customer: extractIdFromResponse(response.customer),
-    vehicleType: nameToPath(response.vehicleType || 'regular'),
-    staffType: nameToPath(response.staffType || 'regular'),
-    requestType: response.requestType || '',
-    requestPackage: response.requestPackage || '',
-    pickUpLocation: response.pickUpLocation || '',
-    dropOffLocation: response.dropOffLocation || '',
-    pickUpDateTime: response.pickUpDateTime ? new Date(response.pickUpDateTime) : null,
-    dropDateTime: response.dropDateTime ? new Date(response.dropDateTime) : null,
-    openingKm: response.openingKm || null,
-    closingKm: response.closingKm || null,
-    totalKm: response.totalKm || null,
-    totalHr: response.totalHr || null,
-    ac: response.ac || false,
-    vehicleCategory: nameToPath(response.vehicleCategory || null),
-    vehicle: extractIdFromResponse(response.vehicle),
-    supplier: extractIdFromResponse(response.supplier),
-    supplierPackage: extractIdFromResponse(response.supplierPackage),
-    vehicleDetails: response.vehicleDetails || null,
-    packageFromProvidedVehicle: response.packageFromProvidedVehicle ? {
-      packageCategory: nameToPath(response.packageFromProvidedVehicle.packageCategory || ''),
-      packageId: extractIdFromResponse(response.packageFromProvidedVehicle.package),
-    } : undefined,
-    staffCategory: nameToPath(response.staffCategory || null),
-    staff: extractIdFromResponse(response.staff),
-    staffDetails: response.staffDetails || null,
-    otherCharges: {
-      toll: {
-        amount: response.otherCharges?.toll?.amount || 0,
-        isChargeableToCustomer: response.otherCharges?.toll?.isChargeableToCustomer || false,
-      },
-      parking: {
-        amount: response.otherCharges?.parking?.amount || 0,
-        isChargeableToCustomer: response.otherCharges?.parking?.isChargeableToCustomer || false,
-      },
-      nightHalt: {
-        amount: response.otherCharges?.nightHalt?.amount || 0,
-        isChargeableToCustomer: response.otherCharges?.nightHalt?.isChargeableToCustomer || false,
-        isPayableWithSalary: response.otherCharges?.nightHalt?.isPayableWithSalary || false,
-      },
-      driverAllowance: {
-        amount: response.otherCharges?.driverAllowance?.amount || 0,
-        isChargeableToCustomer: response.otherCharges?.driverAllowance?.isChargeableToCustomer || false,
-        isPayableWithSalary: response.otherCharges?.driverAllowance?.isPayableWithSalary || false,
-      },
-    },
-    advancePayment: {
-      advancedFromCustomer: response.advancePayment?.advancedFromCustomer || 0,
-      advancedToDriver: response.advancePayment?.advancedToDriver || 0,
-    },
-    comment: response.comment || '',
-  }
-}
-
 interface CreateMonthlyFixedRequestProps {}
-
-const sampleMonthlyFixedRequestModel: MonthlyFixedRequestModel = {
-  customerCategory: '',
-  customer: '',
-  vehicleType: nameToPath('regular'),
-  staffType: nameToPath('regular'),
-  requestType: '',
-  requestPackage: '',
-  pickUpLocation: '',
-  dropOffLocation: '',
-  pickUpDateTime: null,
-  dropDateTime: null,
-  openingKm: null,
-  closingKm: null,
-  totalKm: null,
-  totalHr: null,
-  ac: false,
-  vehicleCategory: null,
-  vehicle: null,
-  supplier: null,
-  supplierPackage: null,
-  vehicleDetails: null,
-  packageFromProvidedVehicle: undefined,
-  staffCategory: null,
-  staff: null,
-  staffDetails: null,
-  otherCharges: {
-    toll: {
-      amount: 0,
-      isChargeableToCustomer: false,
-    },
-    parking: {
-      amount: 0,
-      isChargeableToCustomer: false,
-    },
-    nightHalt: {
-      amount: 0,
-      isChargeableToCustomer: false,
-      isPayableWithSalary: false,
-    },
-    driverAllowance: {
-      amount: 0,
-      isChargeableToCustomer: false,
-      isPayableWithSalary: false,
-    },
-  },
-  advancePayment: {
-    advancedFromCustomer: 0,
-    advancedToDriver: 0,
-  },
-  comment: '',
-}
 
 const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProps> = () => {
   const { id } = useParams<{ id: string }>()
-
   const isEditing = Boolean(id)
-  const requestId = id || ''
-
-  const { data: monthlyFixedRequestData, isLoading: isLoadingRequest, error: monthlyFixedRequestError, isError: monthlyFixedRequestIsError } = useFixedRequestByIdQuery(requestId)
-
-  const updateMonthlyFixedRequest = useUpdateFixedRequestMutation()
-  const createMonthlyFixedRequest = useCreateFixedRequestMutation()
   const navigate = useNavigate()
 
-  const navigateBack = () => {
-    navigate('/requests/monthly-fixed')
-  }
+  const { showToast } = useToast()
 
-  // Helper functions for calculations
+  // API Mutations
+  const createFixedRequestMutation = useCreateFixedRequestMutation()
+  const updateFixedRequestMutation = useUpdateFixedRequestMutation()
+  const { data: existingFixedRequest, isError: fixedRequestIsError } = useFixedRequestByIdQuery(id || '')
+  
+  const [monthlyFixedRequest, setMonthlyFixedRequest] = useState<MonthlyFixedRequestModel>(INITIAL_MONTHLY_FIXED_REQUEST)
+  const [monthlyFixedRequestErrorMap, setMonthlyFixedRequestErrorMap] = useState<Record<string, any>>({})
+  const [isValidationError, setIsValidationError] = useState(false)
+  const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
+  const [selectedCustomerHasMonthlyFixed, setSelectedCustomerHasMonthlyFixed] = useState<boolean>(false)
+  const [assignmentDisplayDetails, setAssignmentDisplayDetails] = useState<{
+    packageCode: string
+    vehicleName: string
+    vehicleRegistrationNo: string
+    staffName: string
+  }>({ packageCode: '', vehicleName: '', vehicleRegistrationNo: '', staffName: '' })
+  const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
+  const [supplierOptions, setSupplierOptions] = useState<{ key: any; value: any }[]>([])
+  const [supplierVehicleOptions, setSupplierVehicleOptions] = useState<{ key: any; value: any }[]>([])
+  const [supplierPackageOptions, setSupplierPackageOptions] = useState<{ key: any; value: any }[]>([])
+  const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
+  const [apiErrors, setApiErrors] = useState({
+    customers: '',
+    vehicles: '',
+    suppliers: '',
+    supplierVehicles: '',
+    supplierPackages: '',
+    staff: '',
+  })
+
+  // Helper function to format minutes to duration string
   const formatMinutesToDuration = (totalMinutes: number | null): string => {
     if (!totalMinutes || totalMinutes <= 0) return ''
 
@@ -167,291 +73,517 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       return `${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`
     }
   }
-  const [monthlyFixedRequest, setMonthlyFixedRequest] = useState<MonthlyFixedRequestModel>({
-    customerCategory: '',
-    customer: '',
-    vehicleType: nameToPath('regular'),
-    staffType: nameToPath('regular'),
-    requestType: '',
-    requestPackage: '',
-    pickUpLocation: '',
-    dropOffLocation: '',
-    pickUpDateTime: null,
-    dropDateTime: null,
-    openingKm: null,
-    closingKm: null,
-    totalKm: null,
-    totalHr: null,
-    ac: false,
-    vehicleCategory: null,
-    vehicle: null,
-    supplier: null,
-    supplierPackage: null,
-    vehicleDetails: null,
-    packageFromProvidedVehicle: undefined,
-    staffCategory: null,
-    staff: null,
-    staffDetails: null,
-    otherCharges: {
-      toll: {
-        amount: 0,
-        isChargeableToCustomer: false,
-      },
-      parking: {
-        amount: 0,
-        isChargeableToCustomer: false,
-      },
-      nightHalt: {
-        amount: 0,
-        isChargeableToCustomer: false,
-        isPayableWithSalary: false,
-      },
-      driverAllowance: {
-        amount: 0,
-        isChargeableToCustomer: false,
-        isPayableWithSalary: false,
-      },
-    },
-    advancePayment: {
-      advancedFromCustomer: 0,
-      advancedToDriver: 0,
-    },
-    comment: '',
-  })
 
-  // Load data when in edit mode
-  useEffect(() => {
-    if (isEditing && monthlyFixedRequestData && !monthlyFixedRequestIsError) {
-      const transformedData = transformMonthlyFixedRequestResponse(monthlyFixedRequestData)
-      setMonthlyFixedRequest(transformedData)
+  // Field-level validation to clear errors immediately
+  const validateField = (fieldPath: string, updatedData: MonthlyFixedRequestModel) => {
+    const validationSchema = createValidationSchema(updatedData)
+    const { errorMap } = validatePayload(validationSchema, updatedData)
+    
+    setMonthlyFixedRequestErrorMap(prev => {
+      const newErrors = { ...prev }
+      if (!errorMap[fieldPath]) {
+        delete newErrors[fieldPath]
+      } else {
+        newErrors[fieldPath] = errorMap[fieldPath]
+      }
+      return newErrors
+    })
+    
+    // Clear validation error alert if no errors remain
+    const hasErrors = Object.keys({ ...monthlyFixedRequestErrorMap, [fieldPath]: errorMap[fieldPath] })
+      .filter(key => key !== fieldPath)
+      .some(key => monthlyFixedRequestErrorMap[key])
+    
+    if (!hasErrors && !errorMap[fieldPath]) {
+      setIsValidationError(false)
     }
-  }, [isEditing, monthlyFixedRequestData, monthlyFixedRequestIsError])
+  }
 
-  // Category paths for API queries
-  const vehicleCategoryPath = React.useMemo(() => {
-    return monthlyFixedRequest.vehicleCategory ? nameToPath(monthlyFixedRequest.vehicleCategory) : ''
-  }, [monthlyFixedRequest.vehicleCategory])
-
-  const staffCategoryPath = React.useMemo(() => {
-    return monthlyFixedRequest.staffCategory ? nameToPath(monthlyFixedRequest.staffCategory) : ''
-  }, [monthlyFixedRequest.staffCategory])
-
+  // Category path for customer API query
   const customerCategoryPath = React.useMemo(() => {
-    return monthlyFixedRequest.customerCategory ? nameToPath(monthlyFixedRequest.customerCategory) : ''
-  }, [monthlyFixedRequest.customerCategory])
+    return monthlyFixedRequest.customerDetails.customerCategory
+      ? nameToPath(monthlyFixedRequest.customerDetails.customerCategory)
+      : ''
+  }, [monthlyFixedRequest.customerDetails.customerCategory])
 
-  const providerPackageCategoryPath = React.useMemo(() => {
-    return monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory ? nameToPath(monthlyFixedRequest.packageFromProvidedVehicle.packageCategory) : ''
-  }, [monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory])
-
-  // API queries
-  const { data: vehicles, error: vehiclesError, isLoading: vehiclesLoading, isError: vehiclesIsError } = useVehicleByCategory(vehicleCategoryPath)
-
-  const { data: suppliers, error: suppliersError, isLoading: suppliersLoading, isError: suppliersIsError } = useSuppliersQuery()
-
-  const { data: staffMembers, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
-
+  // API query for customers
   const { data: customers, error: customersError, isLoading: customersLoading, isError: customersIsError } = useCustomerByCategory(customerCategoryPath)
 
-  const { data: supplierVehicles, error: supplierVehiclesError, isLoading: supplierVehiclesLoading, isError: supplierVehiclesIsError } = useVehicleByCategory('supplier')
+  // API query for selected customer details (to check monthlyFixedDetails)
+  const selectedCustomerId = typeof monthlyFixedRequest.customerDetails.customer === 'string'
+    ? monthlyFixedRequest.customerDetails.customer
+    : monthlyFixedRequest.customerDetails.customer?._id || ''
+  const { data: selectedCustomerData, isError: selectedCustomerIsError } = useCustomerByIdQuery(selectedCustomerId || '')
 
-  const { data: supplierPackages, error: supplierPackagesError, isLoading: supplierPackagesLoading, isError: supplierPackagesIsError } = usePackageByCategory('supplier')
+  // Category path for vehicle API query
+  const vehicleCategoryPath = useMemo(() => {
+    return monthlyFixedRequest.vehicleDetails.vehicleType === 'existing' && monthlyFixedRequest.vehicleDetails.vehicleCategory
+      ? nameToPath(monthlyFixedRequest.vehicleDetails.vehicleCategory)
+      : ''
+  }, [monthlyFixedRequest.vehicleDetails.vehicleType, monthlyFixedRequest.vehicleDetails.vehicleCategory])
 
-  const { data: providerPackages, error: providerPackagesError, isLoading: providerPackagesLoading, isError: providerPackagesIsError } = usePackageByCategory(providerPackageCategoryPath)
+  // API query for vehicles
+  const { data: vehicles, error: vehiclesError, isLoading: vehiclesLoading, isError: vehiclesIsError } = useVehicleByCategory(vehicleCategoryPath)
 
-  // Customer details query for monthlyFixedDetails validation
-  const { data: selectedCustomerData, error: selectedCustomerError, isError: selectedCustomerIsError } = useCustomerByIdQuery(monthlyFixedRequest.customer)
+  // Check if supplier vehicle
+  const isSupplierVehicle = monthlyFixedRequest.vehicleDetails.vehicleType === 'existing' && 
+    monthlyFixedRequest.vehicleDetails.vehicleCategory && 
+    nameToPath(monthlyFixedRequest.vehicleDetails.vehicleCategory) === 'supplier'
 
-  const [vehicleOptions, setVehicleOptions] = React.useState<{ key: any; value: any }[]>([])
+  // API query for suppliers (only when supplier vehicle)
+  const { data: suppliers, error: suppliersError, isLoading: suppliersLoading, isError: suppliersIsError } = useSuppliersQuery(!!isSupplierVehicle)
 
-  const [supplierOptions, setSupplierOptions] = React.useState<{ key: any; value: any }[]>([])
-  const [supplierVehicleOptions, setSupplierVehicleOptions] = React.useState<{ key: any; value: any }[]>([])
-  const [supplierPackageOptions, setSupplierPackageOptions] = React.useState<{ key: any; value: any }[]>([])
-  const [providerPackageOptions, setProviderPackageOptions] = React.useState<{ key: any; value: any }[]>([])
-  const [staffOptions, setStaffOptions] = React.useState<{ key: any; value: any }[]>([])
-  const [customerOptions, setCustomerOptions] = React.useState<{ key: any; value: any }[]>([])
+  // API query for supplier vehicles (when supplier is selected)
+  const supplierVehicleFilter = isSupplierVehicle && monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+    ? { supplier: monthlyFixedRequest.vehicleDetails.supplierDetails.supplier }
+    : null
+  const { data: supplierVehicles, error: supplierVehiclesError, isLoading: supplierVehiclesLoading, isError: supplierVehiclesIsError } = useVehicleByCategory(
+    isSupplierVehicle && monthlyFixedRequest.vehicleDetails.supplierDetails.supplier ? 'supplier' : ''
+  )
 
-  // API Error states
-  const [apiErrors, setApiErrors] = React.useState({
-    vehicles: '',
-    suppliers: '',
-    staff: '',
-    customers: '',
-    supplierVehicles: '',
-    supplierPackages: '',
-    providerPackages: '',
-    selectedCustomer: '',
-    monthlyFixedRequest: '',
-  })
+  // API query for supplier packages (only when supplier is selected)
+  const supplierPackageFilter = isSupplierVehicle && monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+    ? { supplier: monthlyFixedRequest.vehicleDetails.supplierDetails.supplier }
+    : null
+  const { data: supplierPackages, error: supplierPackagesError, isLoading: supplierPackagesLoading, isError: supplierPackagesIsError } = usePackageByCategoryWithFilter('supplier', supplierPackageFilter)
 
-  const { showToast } = useToast()
+  // Category path for staff API query
+  const staffCategoryPath = useMemo(() => {
+    return monthlyFixedRequest.staffDetails.staffType === 'existing' && monthlyFixedRequest.staffDetails.staffCategory
+      ? nameToPath(monthlyFixedRequest.staffDetails.staffCategory)
+      : ''
+  }, [monthlyFixedRequest.staffDetails.staffType, monthlyFixedRequest.staffDetails.staffCategory])
 
-  // Validation states
-  const [monthlyFixedRequestErrorMap, setMonthlyFixedRequestErrorMap] = React.useState<Record<string, any>>({})
-  const [isValidationError, setIsValidationError] = React.useState(false)
+  // API query for staff
+  const { data: staff, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
 
-  // Customer alert states
-  const [customerAlert, setCustomerAlert] = React.useState<string>('')
+  // Handle error when loading existing fixed request (edit mode)
+  useEffect(() => {
+    if (isEditing && fixedRequestIsError) {
+      showToast('Unable to load monthly fixed request data. Redirecting to list...', 'error')
+      setTimeout(() => navigate('/requests/monthly-fixed'), 2000)
+    }
+  }, [isEditing, fixedRequestIsError, showToast, navigate])
 
-  // Generic function to handle API responses and errors
-  const handleApiResponse = (
-    data: any,
-    error: any,
-    isError: boolean,
-    errorKey: 'vehicles' | 'suppliers' | 'staff' | 'customers' | 'supplierVehicles' | 'supplierPackages' | 'providerPackages' | 'selectedCustomer' | 'monthlyFixedRequest',
-    setOptions: React.Dispatch<React.SetStateAction<{ key: any; value: any }[]>> | null,
-    mapFunction: (item: any) => { key: any; value: any },
-  ) => {
-    if (isError) {
-      const userFriendlyMessages = {
-        vehicles: 'Unable to load vehicle data. Please check your connection and try again.',
-        suppliers: 'Unable to load supplier data. Please check your connection and try again.',
-        staff: 'Unable to load staff data. Please check your connection and try again.',
-        customers: 'Unable to load customer data. Please check your connection and try again.',
-        supplierVehicles: 'Unable to load supplier vehicle data. Please check your connection and try again.',
-        supplierPackages: 'Unable to load supplier package data. Please check your connection and try again.',
-        providerPackages: 'Unable to load provider package data. Please check your connection and try again.',
-        selectedCustomer: 'Unable to load selected customer data. Please check your connection and try again.',
-        monthlyFixedRequest: 'Unable to load monthly fixed request data. Please check your connection and try again.',
+  // Load existing fixed request data when editing
+  useEffect(() => {
+    if (isEditing && existingFixedRequest) {
+      const response = existingFixedRequest
+      
+      // Helper function to extract ID from populated or string field
+      const extractId = (field: any): string => {
+        if (typeof field === 'string') return field
+        if (field && typeof field === 'object' && field._id) return field._id
+        return ''
       }
+
+      setMonthlyFixedRequest({
+        customerDetails: {
+          customerCategory: response.customerDetails?.customerCategory || '',
+          customer: extractId(response.customerDetails?.customer),
+        },
+        assignmentDetails: {
+          packageCategory: response.assignmentDetails?.packageCategory || '',
+          package: extractId(response.assignmentDetails?.package),
+          vehicleCategory: response.assignmentDetails?.vehicleCategory || '',
+          vehicle: extractId(response.assignmentDetails?.vehicle),
+          staffCategory: response.assignmentDetails?.staffCategory || '',
+          staff: extractId(response.assignmentDetails?.staff),
+        },
+        requestDetails: {
+          requestType: response.requestDetails?.requestType || '',
+          pickUpLocation: response.requestDetails?.pickUpLocation || '',
+          dropOffLocation: response.requestDetails?.dropOffLocation || '',
+          pickUpDateTime: response.requestDetails?.pickUpDateTime ? new Date(response.requestDetails.pickUpDateTime) : null,
+          dropDateTime: response.requestDetails?.dropDateTime ? new Date(response.requestDetails.dropDateTime) : null,
+          openingKm: response.requestDetails?.openingKm || null,
+          closingKm: response.requestDetails?.closingKm || null,
+          totalKm: response.requestDetails?.totalKm || null,
+          totalHr: response.requestDetails?.totalHr || null,
+          ac: response.requestDetails?.ac ?? true,
+        },
+        vehicleDetails: {
+          vehicleType: response.vehicleDetails?.vehicleType || 'regular',
+          vehicleCategory: response.vehicleDetails?.vehicleCategory || null,
+          vehicle: response.vehicleDetails?.vehicle ? extractId(response.vehicleDetails.vehicle) : null,
+          supplierDetails: {
+            supplier: response.vehicleDetails?.supplierDetails?.supplier ? extractId(response.vehicleDetails.supplierDetails.supplier) : null,
+            package: response.vehicleDetails?.supplierDetails?.package ? extractId(response.vehicleDetails.supplierDetails.package) : null,
+          },
+          newVehicleDetails: response.vehicleDetails?.newVehicleDetails || null,
+        },
+        staffDetails: {
+          staffType: response.staffDetails?.staffType || 'regular',
+          staffCategory: response.staffDetails?.staffCategory || null,
+          staff: response.staffDetails?.staff ? extractId(response.staffDetails.staff) : null,
+          newStaffDetails: response.staffDetails?.newStaffDetails || null,
+        },
+        otherCharges: {
+          toll: {
+            amount: response.otherCharges?.toll?.amount || 0,
+            isChargeableToCustomer: response.otherCharges?.toll?.isChargeableToCustomer || false,
+          },
+          parking: {
+            amount: response.otherCharges?.parking?.amount || 0,
+            isChargeableToCustomer: response.otherCharges?.parking?.isChargeableToCustomer || false,
+          },
+          nightHalt: {
+            amount: response.otherCharges?.nightHalt?.amount || 0,
+            isChargeableToCustomer: response.otherCharges?.nightHalt?.isChargeableToCustomer || false,
+            isPayableWithSalary: response.otherCharges?.nightHalt?.isPayableWithSalary || false,
+          },
+          driverAllowance: {
+            amount: response.otherCharges?.driverAllowance?.amount || 0,
+            isChargeableToCustomer: response.otherCharges?.driverAllowance?.isChargeableToCustomer || false,
+            isPayableWithSalary: response.otherCharges?.driverAllowance?.isPayableWithSalary || false,
+          },
+        },
+        paymentDetails: {
+          advanceAmountPaid: response.paymentDetails?.advanceAmountPaid || 0,
+        },
+        comment: response.comment || '',
+        supplierExpense: response.supplierExpense || 0,
+      })
+
+      // Load assignment display details if customer is populated
+      if (response.customerDetails?.customer && typeof response.customerDetails.customer === 'object') {
+        const customer = response.customerDetails.customer
+        if (customer.monthlyFixedDetails) {
+          setAssignmentDisplayDetails({
+            packageCode: customer.monthlyFixedDetails.package?.packageCode || '',
+            vehicleName: customer.monthlyFixedDetails.vehicle?.name || '',
+            vehicleRegistrationNo: customer.monthlyFixedDetails.vehicle?.registrationNumber || '',
+            staffName: customer.monthlyFixedDetails.staff?.name || '',
+          })
+        }
+      }
+    }
+  }, [isEditing, existingFixedRequest])
+
+  // Handle vehicle API response
+  useEffect(() => {
+    if (vehiclesIsError) {
+      const errorMessage = 'Unable to load vehicle data. Please check your connection and try again.'
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: userFriendlyMessages[errorKey],
+        vehicles: errorMessage,
       }))
-      if (setOptions) setOptions([])
-    } else if (data?.data?.length > 0 && setOptions) {
-      const options = data.data.map(mapFunction)
-      setOptions(options)
+      setVehicleOptions([])
+      showToast(errorMessage, 'error')
+    } else if (vehicles?.data?.length > 0) {
+      const options = vehicles.data.map((vehicle: { _id: any; name: any }) => ({
+        key: vehicle._id,
+        value: vehicle.name,
+      }))
+      setVehicleOptions(options)
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: '',
+        vehicles: '',
       }))
     } else {
-      if (setOptions) setOptions([])
+      setVehicleOptions([])
       setApiErrors(prev => ({
         ...prev,
-        [errorKey]: '',
+        vehicles: '',
       }))
     }
-  }
+  }, [vehicles, vehiclesError, vehiclesIsError, showToast])
 
-  // useEffect hooks to handle API responses
-  React.useEffect(() => {
-    handleApiResponse(vehicles, vehiclesError, vehiclesIsError, 'vehicles', setVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
-  }, [vehicles, vehiclesError, vehiclesIsError])
-
-  React.useEffect(() => {
-    handleApiResponse(suppliers, suppliersError, suppliersIsError, 'suppliers', setSupplierOptions, (supplier: { _id: any; companyName: any }) => ({
-      key: supplier._id,
-      value: supplier.companyName,
-    }))
-  }, [suppliers, suppliersError, suppliersIsError])
-
-  React.useEffect(() => {
-    handleApiResponse(staffMembers, staffError, staffIsError, 'staff', setStaffOptions, (staffMember: { _id: any; name: any }) => ({
-      key: staffMember._id,
-      value: staffMember.name,
-    }))
-  }, [staffMembers, staffError, staffIsError])
-
-  React.useEffect(() => {
-    handleApiResponse(customers, customersError, customersIsError, 'customers', setCustomerOptions, (customer: { _id: any; name: any }) => ({
-      key: customer._id,
-      value: customer.name,
-    }))
-  }, [customers, customersError, customersIsError])
-
-  React.useEffect(() => {
-    handleApiResponse(supplierVehicles, supplierVehiclesError, supplierVehiclesIsError, 'supplierVehicles', setSupplierVehicleOptions, (vehicle: { _id: any; name: any }) => ({ key: vehicle._id, value: vehicle.name }))
-  }, [supplierVehicles, supplierVehiclesError, supplierVehiclesIsError])
-
-  React.useEffect(() => {
-    handleApiResponse(supplierPackages, supplierPackagesError, supplierPackagesIsError, 'supplierPackages', setSupplierPackageOptions, (pkg: { _id: any; packageCode: any }) => ({ key: pkg._id, value: pkg.packageCode }))
-  }, [supplierPackages, supplierPackagesError, supplierPackagesIsError])
-
-  React.useEffect(() => {
-    if (!isEditing) {
-      handleApiResponse(selectedCustomerData, selectedCustomerError, selectedCustomerIsError, 'selectedCustomer', null, (item: any) => ({ key: '', value: '' }))
+  // Handle supplier API response
+  useEffect(() => {
+    if (!isSupplierVehicle) {
+      setSupplierOptions([])
+      setApiErrors(prev => ({ ...prev, suppliers: '' }))
+      return
     }
-  }, [selectedCustomerData, selectedCustomerError, selectedCustomerIsError, isEditing])
+
+    if (suppliersIsError) {
+      const errorMessage = 'Unable to load supplier data. Please check your connection and try again.'
+      setApiErrors(prev => ({
+        ...prev,
+        suppliers: errorMessage,
+      }))
+      setSupplierOptions([])
+      showToast(errorMessage, 'error')
+    } else if (suppliers?.data?.length > 0) {
+      const options = suppliers.data.map((supplier: { _id: any; companyName: any }) => ({
+        key: supplier._id,
+        value: supplier.companyName,
+      }))
+      setSupplierOptions(options)
+      setApiErrors(prev => ({
+        ...prev,
+        suppliers: '',
+      }))
+    } else {
+      setSupplierOptions([])
+      setApiErrors(prev => ({
+        ...prev,
+        suppliers: '',
+      }))
+    }
+  }, [isSupplierVehicle, suppliers, suppliersError, suppliersIsError, showToast])
+
+  // Handle supplier vehicle API response
+  useEffect(() => {
+    if (!isSupplierVehicle || !monthlyFixedRequest.vehicleDetails.supplierDetails.supplier) {
+      setSupplierVehicleOptions([])
+      setApiErrors(prev => ({ ...prev, supplierVehicles: '' }))
+      return
+    }
+
+    if (supplierVehiclesIsError) {
+      const errorMessage = 'Unable to load supplier vehicle data. Please check your connection and try again.'
+      setApiErrors(prev => ({
+        ...prev,
+        supplierVehicles: errorMessage,
+      }))
+      setSupplierVehicleOptions([])
+      showToast(errorMessage, 'error')
+    } else if (supplierVehicles?.data?.length > 0) {
+      // Filter vehicles by selected supplier
+      const filteredVehicles = supplierVehicles.data.filter(
+        (vehicle: any) => vehicle.supplier?._id === monthlyFixedRequest.vehicleDetails.supplierDetails.supplier ||
+                          vehicle.supplier === monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+      )
+      const options = filteredVehicles.map((vehicle: { _id: any; name: any }) => ({
+        key: vehicle._id,
+        value: vehicle.name,
+      }))
+      setSupplierVehicleOptions(options)
+      setApiErrors(prev => ({ ...prev, supplierVehicles: '' }))
+    } else {
+      setSupplierVehicleOptions([])
+      setApiErrors(prev => ({ ...prev, supplierVehicles: '' }))
+    }
+  }, [isSupplierVehicle, monthlyFixedRequest.vehicleDetails.supplierDetails.supplier, supplierVehicles, supplierVehiclesError, supplierVehiclesIsError, showToast])
+
+  // Handle supplier package API response
+  useEffect(() => {
+    if (!isSupplierVehicle || !monthlyFixedRequest.vehicleDetails.supplierDetails.supplier) {
+      setSupplierPackageOptions([])
+      setApiErrors(prev => ({ ...prev, supplierPackages: '' }))
+      return
+    }
+
+    if (supplierPackagesIsError) {
+      const errorMessage = 'Unable to load supplier package data. Please check your connection and try again.'
+      setApiErrors(prev => ({
+        ...prev,
+        supplierPackages: errorMessage,
+      }))
+      setSupplierPackageOptions([])
+      showToast(errorMessage, 'error')
+    } else if (supplierPackages?.data?.length > 0) {
+      const options = supplierPackages.data.map((pkg: { _id: any; packageCode: any }) => ({
+        key: pkg._id,
+        value: pkg.packageCode,
+      }))
+      setSupplierPackageOptions(options)
+      setApiErrors(prev => ({ ...prev, supplierPackages: '' }))
+    } else {
+      setSupplierPackageOptions([])
+      setApiErrors(prev => ({ ...prev, supplierPackages: '' }))
+    }
+  }, [isSupplierVehicle, monthlyFixedRequest.vehicleDetails.supplierDetails.supplier, supplierPackages, supplierPackagesError, supplierPackagesIsError, showToast])
+
+  // Validate selected customer has monthlyFixedDetails and populate assignmentDetails
+  useEffect(() => {
+    if (!selectedCustomerId) {
+      setSelectedCustomerHasMonthlyFixed(false)
+      return
+    }
+
+    if (selectedCustomerIsError) {
+      showToast('Unable to load customer details. Please try again.', 'error')
+      setSelectedCustomerHasMonthlyFixed(false)
+      return
+    }
+
+    if (selectedCustomerData) {
+      // Check if customer has monthlyFixedDetails
+      if (!selectedCustomerData.monthlyFixedDetails) {
+        setSelectedCustomerHasMonthlyFixed(false)
+        showToast(
+          'This customer does not have monthly fixed assignment. Please select a customer with monthly fixed details or configure them in the customer master.',
+          'error'
+        )
+        // Clear customer selection
+        setMonthlyFixedRequest(prev => ({
+          ...prev,
+          customerDetails: {
+            ...prev.customerDetails,
+            customer: '',
+          },
+          assignmentDetails: {
+            packageCategory: '',
+            package: '',
+            vehicleCategory: '',
+            vehicle: '',
+            staffCategory: '',
+            staff: '',
+          },
+        }))
+        setAssignmentDisplayDetails({
+          packageCode: '',
+          vehicleName: '',
+          vehicleRegistrationNo: '',
+          staffName: '',
+        })
+        return
+      }
+
+      // Customer has monthlyFixedDetails, populate assignmentDetails with IDs only (for BE)
+      setSelectedCustomerHasMonthlyFixed(true)
+      const { monthlyFixedDetails } = selectedCustomerData
+      
+      // Extract IDs for backend
+      const packageId = typeof monthlyFixedDetails.package === 'string'
+        ? monthlyFixedDetails.package
+        : monthlyFixedDetails.package?._id || ''
+      
+      const vehicleId = typeof monthlyFixedDetails.vehicle === 'string'
+        ? monthlyFixedDetails.vehicle
+        : monthlyFixedDetails.vehicle?._id || ''
+      
+      const staffId = typeof monthlyFixedDetails.staff === 'string'
+        ? monthlyFixedDetails.staff
+        : monthlyFixedDetails.staff?._id || ''
+      
+      // Update backend state with IDs only
+      setMonthlyFixedRequest(prev => ({
+        ...prev,
+        assignmentDetails: {
+          packageCategory: monthlyFixedDetails.packageCategory || '',
+          package: packageId,
+          vehicleCategory: monthlyFixedDetails.vehicleCategory || '',
+          vehicle: vehicleId,
+          staffCategory: monthlyFixedDetails.staffCategory || '',
+          staff: staffId,
+        },
+      }))
+      
+      // Update display state with names (for FE display only)
+      setAssignmentDisplayDetails({
+        packageCode: typeof monthlyFixedDetails.package === 'object' && monthlyFixedDetails.package
+          ? monthlyFixedDetails.package.packageCode || ''
+          : '',
+        vehicleName: typeof monthlyFixedDetails.vehicle === 'object' && monthlyFixedDetails.vehicle
+          ? monthlyFixedDetails.vehicle.name || ''
+          : '',
+        vehicleRegistrationNo: typeof monthlyFixedDetails.vehicle === 'object' && monthlyFixedDetails.vehicle
+          ? monthlyFixedDetails.vehicle.registrationNo || ''
+          : '',
+        staffName: typeof monthlyFixedDetails.staff === 'object' && monthlyFixedDetails.staff
+          ? monthlyFixedDetails.staff.name || ''
+          : '',
+      })
+
+      showToast(
+        `Monthly fixed assignment loaded: ${typeof monthlyFixedDetails.vehicle === 'object' ? monthlyFixedDetails.vehicle?.name : 'Vehicle'} assigned with ${typeof monthlyFixedDetails.staff === 'object' ? monthlyFixedDetails.staff?.name : 'Staff'}`,
+        'success'
+      )
+    }
+  }, [selectedCustomerId, selectedCustomerData, selectedCustomerIsError, showToast])
 
   // Auto-calculate totalKm when openingKm or closingKm changes
-  React.useEffect(() => {
-    const totalKm = monthlyFixedRequest.closingKm && monthlyFixedRequest.openingKm ? monthlyFixedRequest.closingKm - monthlyFixedRequest.openingKm : 0
+  useEffect(() => {
+    const { openingKm, closingKm } = monthlyFixedRequest.requestDetails
+    const totalKm = closingKm && openingKm ? closingKm - openingKm : 0
+    
     setMonthlyFixedRequest(prev => ({
       ...prev,
-      totalKm: totalKm > 0 ? totalKm : null,
+      requestDetails: {
+        ...prev.requestDetails,
+        totalKm: totalKm > 0 ? totalKm : null,
+      },
     }))
-  }, [monthlyFixedRequest.openingKm, monthlyFixedRequest.closingKm])
+  }, [monthlyFixedRequest.requestDetails.openingKm, monthlyFixedRequest.requestDetails.closingKm])
 
   // Auto-calculate totalHr when pickUpDateTime or dropDateTime changes
-  React.useEffect(() => {
-    const totalHr = monthlyFixedRequest.pickUpDateTime && monthlyFixedRequest.dropDateTime ? (new Date(monthlyFixedRequest.dropDateTime).getTime() - new Date(monthlyFixedRequest.pickUpDateTime).getTime()) / (1000 * 60) : 0
+  useEffect(() => {
+    const { pickUpDateTime, dropDateTime } = monthlyFixedRequest.requestDetails
+    const totalHr =
+      pickUpDateTime && dropDateTime
+        ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60)
+        : 0
+
     setMonthlyFixedRequest(prev => ({
       ...prev,
-      totalHr: totalHr > 0 ? totalHr : null,
+      requestDetails: {
+        ...prev.requestDetails,
+        totalHr: totalHr > 0 ? totalHr : null,
+      },
     }))
-  }, [monthlyFixedRequest.pickUpDateTime, monthlyFixedRequest.dropDateTime])
+  }, [monthlyFixedRequest.requestDetails.pickUpDateTime, monthlyFixedRequest.requestDetails.dropDateTime])
 
-  // Check customer monthlyFixedDetails and show alerts
-  React.useEffect(() => {
-    const customerData = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData
-    const customerError = isEditing ? monthlyFixedRequestIsError : selectedCustomerIsError
-
-    if (customerData && !customerError) {
-      const customer = customerData
-      const hasMonthlyFixedDetails = customer.monthlyFixedDetails && customer.monthlyFixedDetails !== null
-
-      let alertMessage = ''
-
-      if (!hasMonthlyFixedDetails) {
-        alertMessage = 'The current customer does not contain any monthly fixed details.'
-      } else {
-        if (nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('regular') && !customer.monthlyFixedDetails.vehicle) {
-          alertMessage = 'The current customer does not have a regular vehicle assigned to them.'
-        }
-        if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('regular') && !customer.monthlyFixedDetails.staff) {
-          alertMessage = alertMessage ? `${alertMessage} Also, the current customer does not have a regular staff assigned to them.` : 'The current customer does not have a regular staff assigned to them.'
-        }
-      }
-
-      setCustomerAlert(alertMessage)
-    } else if (customerError) {
-      // Clear alert if there's an error fetching customer data
-      setCustomerAlert('')
+  // Handle customer API response
+  useEffect(() => {
+    if (customersIsError) {
+      const errorMessage = 'Unable to load customer data. Please check your connection and try again.'
+      setApiErrors(prev => ({
+        ...prev,
+        customers: errorMessage,
+      }))
+      setCustomerOptions([])
+      showToast(errorMessage, 'error')
+    } else if (customers?.data?.length > 0) {
+      const options = customers.data.map((customer: { _id: any; name: any }) => ({
+        key: customer._id,
+        value: customer.name,
+      }))
+      setCustomerOptions(options)
+      setApiErrors(prev => ({
+        ...prev,
+        customers: '',
+      }))
     } else {
-      setCustomerAlert('')
+      setCustomerOptions([])
+      setApiErrors(prev => ({
+        ...prev,
+        customers: '',
+      }))
     }
-  }, [isEditing, monthlyFixedRequestData, selectedCustomerData, monthlyFixedRequestIsError, selectedCustomerIsError, monthlyFixedRequest.vehicleType, monthlyFixedRequest.staffType])
+  }, [customers, customersError, customersIsError, showToast])
 
+  // Handle staff API response
+  useEffect(() => {
+    if (staffIsError) {
+      const errorMessage = 'Unable to load staff data. Please check your connection and try again.'
+      setApiErrors(prev => ({
+        ...prev,
+        staff: errorMessage,
+      }))
+      setStaffOptions([])
+      showToast(errorMessage, 'error')
+    } else if (staff?.data?.length > 0) {
+      const options = staff.data.map((staffMember: { _id: any; name: any }) => ({
+        key: staffMember._id,
+        value: staffMember.name,
+      }))
+      setStaffOptions(options)
+      setApiErrors(prev => ({
+        ...prev,
+        staff: '',
+      }))
+    } else {
+      setStaffOptions([])
+      setApiErrors(prev => ({
+        ...prev,
+        staff: '',
+      }))
+    }
+  }, [staff, staffError, staffIsError, showToast])
 
-
-  // Generate options for SelectInput based on loading/error states
-  const getSelectOptions = (isLoading: boolean, isError: boolean, options: { key: any; value: any }[], loadingText: string, errorText: string, noDataText: string) => {
-    if (isLoading) return [{ key: 'loading', value: loadingText }]
-    if (isError) return [{ key: 'error', value: errorText }]
-    if (options.length > 0) return options
-    return [{ key: 'no-data', value: noDataText }]
+  const navigateBack = () => {
+    navigate('/requests/monthly-fixed')
   }
 
-  // Check if a value should be ignored in change handlers
-  const isPlaceholderValue = (value: string, type: 'vehicles' | 'suppliers' | 'staff' | 'customers' | 'supplierVehicles' | 'supplierPackages' | 'providerPackages') => {
-    const placeholders = {
-      vehicles: ['Please wait...', 'Unable to load options', 'No vehicles found'],
-      suppliers: ['Please wait...', 'Unable to load options', 'No suppliers found'],
-      staff: ['Please wait...', 'Unable to load options', 'No staff found'],
-      customers: ['Please wait...', 'Unable to load options', 'No customers found'],
-      supplierVehicles: ['Please wait...', 'Unable to load options', 'No supplier vehicles found'],
-      supplierPackages: ['Please wait...', 'Unable to load options', 'No supplier packages found'],
-      providerPackages: ['Please wait...', 'Unable to load options', 'No provider packages found'],
-    }
-    return placeholders[type].includes(value)
-  }
   const submitHandler = async () => {
     // Check for API errors before validation
     const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
     if (hasApiErrors) {
-      console.log('Cannot submit: API errors present', apiErrors)
+      showToast('Cannot submit. Please resolve data loading errors first.', 'error')
       return
     }
 
@@ -460,118 +592,71 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
 
     setIsValidationError(!isValid)
     setMonthlyFixedRequestErrorMap(errorMap)
+    
     if (isValid) {
       setIsValidationError(false)
-
-      // Check for customer alert before proceeding
-      if (customerAlert) {
-        console.log('Cannot submit: Customer alert present', customerAlert)
-        return
-      }
-
-      // Prepare the request data
-      let requestData = { ...monthlyFixedRequest }
-
-      // Assign vehicle, staff, and package from customer's monthlyFixedDetails
-      const customerDetails = isEditing ? monthlyFixedRequestData?.customer : selectedCustomerData
-      if (customerDetails?.monthlyFixedDetails) {
-        // Vehicle: Always assign the regular vehicle and vehicleCategory from customer's monthlyFixedDetails, irrespective of vehicleType
-        if (customerDetails.monthlyFixedDetails.vehicle) {
-          requestData.vehicle = customerDetails.monthlyFixedDetails.vehicle
-        }
-        if (customerDetails.monthlyFixedDetails.vehicleCategory) {
-          requestData.vehicleCategory = customerDetails.monthlyFixedDetails.vehicleCategory
-        }
-        // Staff: Assign based on staffType
-        if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('regular')) {
-          requestData.staff = customerDetails.monthlyFixedDetails.staff || null
-          requestData.staffCategory = customerDetails.monthlyFixedDetails.staffCategory || null
-        } else if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('own')) {
-          // Staff and staffCategory are already set from the form selection
-        } else if (nameToPath(monthlyFixedRequest.staffType) === nameToPath('new')) {
-          requestData.staff = null
-          requestData.staffCategory = null
-        }
-        // Package: Always assign if it exists
-        if (customerDetails.monthlyFixedDetails.package) {
-          requestData.requestPackage = customerDetails.monthlyFixedDetails.package
-        }
-      }
-
+      
       try {
+        
         if (isEditing) {
-          await updateMonthlyFixedRequest.mutateAsync({ _id: requestId, ...requestData })
+          await updateFixedRequestMutation.mutateAsync({ _id: id, ...monthlyFixedRequest })
           showToast('Monthly fixed request updated successfully!', 'success')
         } else {
-          await createMonthlyFixedRequest.mutateAsync(requestData)
+          await createFixedRequestMutation.mutateAsync(monthlyFixedRequest)
           showToast('New monthly fixed request created successfully!', 'success')
         }
         navigateBack()
       } catch (error) {
-        console.log('Unable to submit monthly fixed request', error)
         showToast(`Unable to ${isEditing ? 'update' : 'create'} monthly fixed request. Please try again.`, 'error')
       }
     } else {
-      console.log('Submit Monthly Fixed Request: Validation Error', errorMap)
+      showToast('Please correct the errors before submitting.', 'error')
     }
   }
 
-  // Populate form with existing data if in edit mode
-  React.useEffect(() => {
-    if (isEditing && monthlyFixedRequestData) {
-      const transformedData = transformMonthlyFixedRequestResponse(monthlyFixedRequestData)
-      setMonthlyFixedRequest(transformedData)
-    }
-  }, [isEditing, monthlyFixedRequestData])
-
   return (
-    <div className={bemClass([blk])}>
-      <div className={bemClass([blk, 'header'])}>
-        <Text
-          color="gray-darker"
-          typography="l"
-        >
-          {isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request'}
-        </Text>
-        <Breadcrumb
-          data={[
-            {
-              label: 'Home',
-              route: '/dashboard',
-            },
-            {
-              label: 'Monthly Fixed Requests',
-              route: '/requests/monthly-fixed',
-            },
-            {
-              label: isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request',
-            },
-          ]}
-        />
-      </div>
-      {(apiErrors.vehicles || apiErrors.suppliers || apiErrors.staff || apiErrors.customers || apiErrors.supplierVehicles || apiErrors.supplierPackages || apiErrors.providerPackages || apiErrors.selectedCustomer || apiErrors.monthlyFixedRequest) && (
-        <Alert
-          type="error"
-          message={`Some data could not be loaded: ${Object.values(apiErrors).filter(Boolean).join(' ')}`}
-          className={bemClass([blk, 'margin-bottom'])}
-        />
-      )}
-      {isValidationError && (
-        <Alert
-          type="error"
-          message="There is an error with submission, please correct errors indicated below."
-          className={bemClass([blk, 'margin-bottom'])}
-        />
-      )}
-      {customerAlert && (
-        <Alert
-          type="error"
-          message={customerAlert}
-          className={bemClass([blk, 'margin-bottom'])}
-        />
-      )}
-      <div className={bemClass([blk, 'content'])}>
-        <>
+    <>
+      <div className={bemClass([blk])}>
+        <div className={bemClass([blk, 'header'])}>
+          <Text
+            color="gray-darker"
+            typography="l"
+          >
+            {isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request'}
+          </Text>
+          <Breadcrumb
+            data={[
+              {
+                label: 'Home',
+                route: '/dashboard',
+              },
+              {
+                label: 'Monthly Fixed Requests',
+                route: '/requests/monthly-fixed',
+              },
+              {
+                label: isEditing ? 'Edit Monthly Fixed Request' : 'New Monthly Fixed Request',
+              },
+            ]}
+          />
+        </div>
+
+        {isValidationError && (
+          <Alert
+            type="error"
+            message="Please review and correct the errors indicated below before submitting."
+            className={bemClass([blk, 'margin-bottom'])}
+          />
+        )}
+        {(apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.supplierVehicles || apiErrors.supplierPackages || apiErrors.staff) && (
+          <Alert
+            type="error"
+            message={`Some data could not be loaded: ${[apiErrors.customers, apiErrors.vehicles, apiErrors.suppliers, apiErrors.supplierVehicles, apiErrors.supplierPackages, apiErrors.staff].filter(Boolean).join(', ')}`}
+            className={bemClass([blk, 'margin-bottom'])}
+          />
+        )}
+
+        <div className={bemClass([blk, 'content'])}>
           <Panel
             title="Customer Details"
             className={bemClass([blk, 'margin-bottom'])}
@@ -586,17 +671,22 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   name="customerCategory"
                   configToUse="Customer category"
                   type={CONFIGURED_INPUT_TYPES.SELECT}
-                  value={pathToName(monthlyFixedRequest.customerCategory)}
+                  value={monthlyFixedRequest.customerDetails.customerCategory || ''}
                   changeHandler={value => {
-                    setMonthlyFixedRequest({
+                    const updatedData = {
                       ...monthlyFixedRequest,
-                      customerCategory: nameToPath(value.customerCategory.toString()),
-                      customer: '',
-                    })
+                      customerDetails: {
+                        ...monthlyFixedRequest.customerDetails,
+                        customerCategory: value.customerCategory ? nameToPath(value.customerCategory.toString()) : '',
+                        customer: '', // Clear customer when category changes
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('customerDetails.customerCategory', updatedData), 0)
                   }}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['customerCategory']}
-                  invalid={!!monthlyFixedRequestErrorMap['customerCategory']}
+                  errorMessage={monthlyFixedRequestErrorMap['customerDetails.customerCategory']}
+                  invalid={!!monthlyFixedRequestErrorMap['customerDetails.customerCategory']}
                 />
               </Column>
               <Column
@@ -606,121 +696,76 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <SelectInput
                   label="Customer"
                   name="customer"
-                  options={getSelectOptions(customersLoading, customersIsError, customerOptions, 'Please wait...', 'Unable to load options', 'No customers found')}
-                  value={monthlyFixedRequest.customer ? ((customerOptions.find((option: any) => option.key === monthlyFixedRequest.customer) as any)?.value ?? '') : ''}
+                  options={
+                    customersLoading
+                      ? [{ key: 'loading', value: 'Please wait...' }]
+                      : customersIsError
+                        ? [{ key: 'error', value: 'Unable to load options' }]
+                        : customerOptions.length > 0
+                          ? customerOptions
+                          : [{ key: 'no-data', value: 'No customers found' }]
+                  }
+                  value={
+                    monthlyFixedRequest.customerDetails.customer
+                      ? typeof monthlyFixedRequest.customerDetails.customer === 'string'
+                        ? (customerOptions.find((option: any) => option.key === monthlyFixedRequest.customerDetails.customer) as any)?.value ?? ''
+                        : (customerOptions.find((option: any) => option.key === (monthlyFixedRequest.customerDetails.customer as any)._id) as any)?.value ?? ''
+                      : ''
+                  }
                   changeHandler={value => {
-                    if (isPlaceholderValue(value.customer?.toString() || '', 'customers')) return
-
                     const selectedOption = customerOptions.find((option: any) => option.value === value.customer) as any
-                    setMonthlyFixedRequest({
+                    if (!selectedOption || ['Please wait...', 'Unable to load options', 'No customers found'].includes(value.customer as string)) {
+                      return
+                    }
+                    const updatedData = {
                       ...monthlyFixedRequest,
-                      customer: selectedOption?.key ?? '',
-                    })
+                      customerDetails: {
+                        ...monthlyFixedRequest.customerDetails,
+                        customer: selectedOption.key,
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('customerDetails.customer', updatedData), 0)
                   }}
                   required
-                  disabled={!monthlyFixedRequest.customerCategory || customersLoading || customersIsError}
-                  errorMessage={monthlyFixedRequestErrorMap['customer']}
-                  invalid={!!monthlyFixedRequestErrorMap['customer']}
+                  errorMessage={monthlyFixedRequestErrorMap['customerDetails.customer']}
+                  invalid={!!monthlyFixedRequestErrorMap['customerDetails.customer']}
+                  disabled={!monthlyFixedRequest.customerDetails.customerCategory}
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Request Details Panel */}
           <Panel
             title="Request Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
               <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <RadioGroup
-                  question="Vehicle Selection"
-                  name="vehicleSelection"
-                  options={[
-                    { key: 'vehicle-selection-regular', value: 'regular' },
-                    { key: 'vehicle-selection-own', value: 'own' },
-                    { key: 'vehicle-selection-supplier', value: 'supplier' },
-                    { key: 'vehicle-selection-new', value: 'new' },
-                  ]}
-                  value={monthlyFixedRequest.vehicleType}
-                  changeHandler={value => {
-                    setMonthlyFixedRequest({
-                      ...monthlyFixedRequest,
-                      vehicleType: nameToPath(value.vehicleSelection),
-                      vehicleCategory: [nameToPath('own'), nameToPath('supplier'), nameToPath('new')].includes(nameToPath(value.vehicleSelection)) ? monthlyFixedRequest.vehicleCategory : null,
-                      vehicle: [nameToPath('own'), nameToPath('supplier'), nameToPath('new')].includes(nameToPath(value.vehicleSelection)) ? monthlyFixedRequest.vehicle : null,
-                      supplier: nameToPath(value.vehicleSelection) === nameToPath('supplier') ? monthlyFixedRequest.supplier : null,
-                      supplierPackage: nameToPath(value.vehicleSelection) === nameToPath('supplier') ? monthlyFixedRequest.supplierPackage : null,
-                      vehicleDetails: nameToPath(value.vehicleSelection) === nameToPath('new') ? {
-                        ownerName: '',
-                        ownerContact: '',
-                        ownerEmail: '',
-                        manufacturer: '',
-                        name: '',
-                        registrationNo: '',
-                      } : null,
-                    })
-                  }}
-                  direction="horizontal"
-                  required
-                  errorMessage={monthlyFixedRequestErrorMap['vehicleType']}
-                />
-              </Column>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <RadioGroup
-                  question="Staff Selection"
-                  name="staffSelection"
-                  options={[
-                    { key: 'staff-selection-regular', value: 'regular' },
-                    { key: 'staff-selection-own', value: 'own' },
-                    { key: 'staff-selection-new', value: 'new' },
-                  ]}
-                  value={monthlyFixedRequest.staffType}
-                  changeHandler={value => {
-                    setMonthlyFixedRequest({
-                      ...monthlyFixedRequest,
-                      staffType: nameToPath(value.staffSelection),
-                      staffCategory: nameToPath(value.staffSelection) === nameToPath('own') ? monthlyFixedRequest.staffCategory : null,
-                      staff: nameToPath(value.staffSelection) === nameToPath('own') ? monthlyFixedRequest.staff : null,
-                      staffDetails: nameToPath(value.staffSelection) === nameToPath('new') ? {
-                        name: '',
-                        contact: '',
-                        license: '',
-                      } : null,
-                    })
-                  }}
-                  direction="horizontal"
-                  required
-                  errorMessage={monthlyFixedRequestErrorMap['staffType']}
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <SelectInput
+                <ConfiguredInput
                   label="Request Type"
                   name="requestType"
-                  options={[
-                    { key: 'Local', value: 'Local' },
-                    { key: 'Out Station', value: 'Out Station' },
-                  ]}
-                  value={monthlyFixedRequest.requestType}
+                  configToUse="Request type"
+                  type={CONFIGURED_INPUT_TYPES.SELECT}
+                  value={monthlyFixedRequest.requestDetails.requestType}
                   changeHandler={value => {
-                    setMonthlyFixedRequest({
+                    const updatedData = {
                       ...monthlyFixedRequest,
-                      requestType: value.requestType?.toString() ?? '',
-                    })
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        requestType: value.requestType ? nameToPath(value.requestType.toString()) : '',
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('requestDetails.requestType', updatedData), 0)
                   }}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['requestType']}
-                  invalid={!!monthlyFixedRequestErrorMap['requestType']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.requestType']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.requestType']}
                 />
               </Column>
               <Column
@@ -729,17 +774,21 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               >
                 <TextInput
                   label="Pickup Location"
-                  name="pickupLocation"
-                  value={monthlyFixedRequest.pickUpLocation}
+                  name="pickUpLocation"
+                  value={monthlyFixedRequest.requestDetails.pickUpLocation}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      pickUpLocation: value.pickupLocation?.toString() ?? '',
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        pickUpLocation: value.pickUpLocation?.toString() ?? '',
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.pickUpLocation', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['pickUpLocation']}
-                  invalid={!!monthlyFixedRequestErrorMap['pickUpLocation']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.pickUpLocation']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.pickUpLocation']}
                 />
               </Column>
               <Column
@@ -749,16 +798,20 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 <TextInput
                   label="Drop Location"
                   name="dropOffLocation"
-                  value={monthlyFixedRequest.dropOffLocation}
+                  value={monthlyFixedRequest.requestDetails.dropOffLocation}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      dropOffLocation: value.dropOffLocation?.toString() ?? '',
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        dropOffLocation: value.dropOffLocation?.toString() ?? '',
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.dropOffLocation', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['dropOffLocation']}
-                  invalid={!!monthlyFixedRequestErrorMap['dropOffLocation']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.dropOffLocation']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.dropOffLocation']}
                 />
               </Column>
             </Row>
@@ -769,18 +822,26 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               >
                 <TextInput
                   label="Pickup Date and Time"
-                  name="pickupDateAndTime"
+                  name="pickUpDateTime"
                   type="datetime-local"
-                  value={monthlyFixedRequest.pickUpDateTime ? formatDateTimeForInput(monthlyFixedRequest.pickUpDateTime) : ''}
+                  value={formatDateTimeForInput(
+                    monthlyFixedRequest.requestDetails.pickUpDateTime
+                      ? new Date(monthlyFixedRequest.requestDetails.pickUpDateTime)
+                      : null
+                  )}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      pickUpDateTime: value.pickupDateAndTime ? parseDateTimeFromInput(value.pickupDateAndTime.toString()) : null,
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        pickUpDateTime: parseDateTimeFromInput(value.pickUpDateTime?.toString() || ''),
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.pickUpDateTime', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['pickUpDateTime']}
-                  invalid={!!monthlyFixedRequestErrorMap['pickUpDateTime']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.pickUpDateTime']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.pickUpDateTime']}
                 />
               </Column>
               <Column
@@ -788,19 +849,27 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Dropoff Date and Time"
-                  name="dropDateAndTime"
+                  label="Drop Date and Time"
+                  name="dropDateTime"
                   type="datetime-local"
-                  value={monthlyFixedRequest.dropDateTime ? formatDateTimeForInput(monthlyFixedRequest.dropDateTime) : ''}
+                  value={formatDateTimeForInput(
+                    monthlyFixedRequest.requestDetails.dropDateTime
+                      ? new Date(monthlyFixedRequest.requestDetails.dropDateTime)
+                      : null
+                  )}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      dropDateTime: value.dropDateAndTime ? parseDateTimeFromInput(value.dropDateAndTime.toString()) : null,
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        dropDateTime: parseDateTimeFromInput(value.dropDateTime?.toString() || ''),
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.dropDateTime', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['dropDateTime']}
-                  invalid={!!monthlyFixedRequestErrorMap['dropDateTime']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.dropDateTime']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.dropDateTime']}
                 />
               </Column>
               <Column
@@ -809,7 +878,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               >
                 <ReadOnlyText
                   label="Duration"
-                  value={monthlyFixedRequest.totalHr ? formatMinutesToDuration(monthlyFixedRequest.totalHr) : '-'}
+                  value={monthlyFixedRequest.requestDetails.totalHr ? formatMinutesToDuration(monthlyFixedRequest.requestDetails.totalHr) : '-'}
                   color="success"
                   size="jumbo"
                 />
@@ -824,16 +893,20 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   label="Opening Km"
                   name="openingKm"
                   type="number"
-                  value={monthlyFixedRequest.openingKm ?? ''}
+                  value={monthlyFixedRequest.requestDetails.openingKm ?? ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      openingKm: value.openingKm ? Number(value.openingKm) : null,
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        openingKm: value.openingKm ? Number(value.openingKm) : null,
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.openingKm', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['openingKm']}
-                  invalid={!!monthlyFixedRequestErrorMap['openingKm']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.openingKm']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.openingKm']}
                 />
               </Column>
               <Column
@@ -844,16 +917,20 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   label="Closing Km"
                   name="closingKm"
                   type="number"
-                  value={monthlyFixedRequest.closingKm ?? ''}
+                  value={monthlyFixedRequest.requestDetails.closingKm ?? ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      closingKm: value.closingKm ? Number(value.closingKm) : null,
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        closingKm: value.closingKm ? Number(value.closingKm) : null,
+                      },
                     })
                   }}
+                  onBlur={() => validateField('requestDetails.closingKm', monthlyFixedRequest)}
                   required
-                  errorMessage={monthlyFixedRequestErrorMap['closingKm']}
-                  invalid={!!monthlyFixedRequestErrorMap['closingKm']}
+                  errorMessage={monthlyFixedRequestErrorMap['requestDetails.closingKm']}
+                  invalid={!!monthlyFixedRequestErrorMap['requestDetails.closingKm']}
                 />
               </Column>
               <Column
@@ -862,264 +939,167 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               >
                 <ReadOnlyText
                   label="Total Distance"
-                  value={monthlyFixedRequest.totalKm ? `${monthlyFixedRequest.totalKm} km` : '-'}
+                  value={monthlyFixedRequest.requestDetails.totalKm ? `${monthlyFixedRequest.requestDetails.totalKm} km` : '-'}
                   color="success"
                   size="jumbo"
                 />
               </Column>
             </Row>
+            <Row>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <RadioGroup
+                  question="AC Required"
+                  name="ac"
+                  options={[
+                    { key: 'ac-yes', value: 'Yes' },
+                    { key: 'ac-no', value: 'No' },
+                  ]}
+                  value={monthlyFixedRequest.requestDetails.ac ? 'Yes' : 'No'}
+                  changeHandler={value => {
+                    const updatedData = {
+                      ...monthlyFixedRequest,
+                      requestDetails: {
+                        ...monthlyFixedRequest.requestDetails,
+                        ac: value.ac === 'Yes',
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('requestDetails.ac', updatedData), 0)
+                  }}
+                  direction="horizontal"
+                />
+              </Column>
+            </Row>
           </Panel>
 
-          {/* Vehicle Details Panel - Only shown when vehicle selection is 'own', 'supplier', or 'new' */}
-          {['own', 'supplier', 'new'].includes(monthlyFixedRequest.vehicleType) && (
+          {/* Vehicle Assignment Panel - Read-only assignment from customer monthly fixed details */}
+          {selectedCustomerHasMonthlyFixed && (
             <Panel
-              title="Vehicle Details"
+              title="Vehicle Assignment (From Customer Monthly Fixed)"
               className={bemClass([blk, 'margin-bottom'])}
             >
-              {nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('supplier') ? (
-                <Row>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Supplier"
-                      name="supplier"
-                      options={getSelectOptions(suppliersLoading, suppliersIsError, supplierOptions, 'Please wait...', 'Unable to load options', 'No suppliers found')}
-                      value={monthlyFixedRequest.supplier ? ((supplierOptions.find((option: any) => option.key === monthlyFixedRequest.supplier) as any)?.value ?? '') : ''}
-                      changeHandler={value => {
-                        if (isPlaceholderValue(value.supplier?.toString() || '', 'suppliers')) return
-                        const selectedOption = supplierOptions.find((option: any) => option.value === value.supplier) as any
-                        setMonthlyFixedRequest({
-                          ...monthlyFixedRequest,
-                          supplier: selectedOption?.key ?? '',
-                          supplierPackage: null,
-                          vehicle: null,
-                        })
-                      }}
-                      required
-                      disabled={suppliersLoading || suppliersIsError}
-                      errorMessage={monthlyFixedRequestErrorMap['supplier']}
-                      invalid={!!monthlyFixedRequestErrorMap['supplier']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Vehicle"
-                      name="vehicle"
-                      options={getSelectOptions(
-                        supplierVehiclesLoading,
-                        supplierVehiclesIsError,
-                        monthlyFixedRequest.supplier
-                          ? supplierVehicleOptions.filter((option: any) => {
-                              const vehicle = supplierVehicles?.data?.find((v: any) => v._id === option.key)
-                              return vehicle?.supplier === monthlyFixedRequest.supplier
-                            })
-                          : [],
-                        'Please wait...',
-                        'Unable to load options',
-                        'No vehicles found',
-                      )}
-                      value={monthlyFixedRequest.vehicle ? ((supplierVehicleOptions.find((option: any) => option.key === monthlyFixedRequest.vehicle) as any)?.value ?? '') : ''}
-                      changeHandler={value => {
-                        if (isPlaceholderValue(value.vehicle?.toString() || '', 'supplierVehicles')) return
+              <Row>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Package Category"
+                    value={monthlyFixedRequest.assignmentDetails.packageCategory || '-'}
+                  />
+                </Column>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Package"
+                    value={assignmentDisplayDetails.packageCode || '-'}
+                  />
+                </Column>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Vehicle Category"
+                    value={monthlyFixedRequest.assignmentDetails.vehicleCategory || '-'}
+                  />
+                </Column>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Vehicle"
+                    value={
+                      assignmentDisplayDetails.vehicleName && assignmentDisplayDetails.vehicleRegistrationNo
+                        ? `${assignmentDisplayDetails.vehicleName} (${assignmentDisplayDetails.vehicleRegistrationNo})`
+                        : assignmentDisplayDetails.vehicleName || assignmentDisplayDetails.vehicleRegistrationNo || '-'
+                    }
+                  />
+                </Column>
+              </Row>
+              <Row>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Staff Category"
+                    value={monthlyFixedRequest.assignmentDetails.staffCategory || '-'}
+                  />
+                </Column>
+                <Column
+                  col={3}
+                  className={bemClass([blk, 'read-only'])}
+                >
+                  <ReadOnlyText
+                    label="Staff"
+                    value={assignmentDisplayDetails.staffName || '-'}
+                  />
+                </Column>
+              </Row>
+            </Panel>
+          )}
 
-                        const selectedOption = supplierVehicleOptions.find((option: any) => option.value === value.vehicle) as any
-                        setMonthlyFixedRequest({
-                          ...monthlyFixedRequest,
-                          vehicle: selectedOption?.key ?? '',
-                        })
-                      }}
-                      required
-                      disabled={!monthlyFixedRequest.supplier || supplierVehiclesLoading || supplierVehiclesIsError}
-                      errorMessage={monthlyFixedRequestErrorMap['vehicle']}
-                      invalid={!!monthlyFixedRequestErrorMap['vehicle']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Package"
-                      name="supplierPackage"
-                      options={getSelectOptions(
-                        supplierPackagesLoading,
-                        supplierPackagesIsError,
-                        monthlyFixedRequest.supplier
-                          ? supplierPackageOptions.filter((option: any) => {
-                              const pkg = supplierPackages?.data?.find((p: any) => p._id === option.key)
-                              return pkg?.supplier === monthlyFixedRequest.supplier
-                            })
-                          : [],
-                        'Please wait...',
-                        'Unable to load options',
-                        'No packages found',
-                      )}
-                      value={
-                        monthlyFixedRequest.supplierPackage
-                          ? ((supplierPackageOptions.find((option: any) => option.key === monthlyFixedRequest.supplierPackage) as any)?.value ?? '')
-                          : ''
-                      }
-                      changeHandler={value => {
-                        if (isPlaceholderValue(value.supplierPackage?.toString() || '', 'supplierPackages')) return
-
-                        const selectedOption = supplierPackageOptions.find((option: any) => option.value === value.supplierPackage) as any
-                        setMonthlyFixedRequest({
-                          ...monthlyFixedRequest,
-                          supplierPackage: selectedOption?.key ?? '',
-                        })
-                      }}
-                      required
-                      disabled={!monthlyFixedRequest.supplier || supplierPackagesLoading || supplierPackagesIsError}
-                      errorMessage={monthlyFixedRequestErrorMap['supplierPackage']}
-                      invalid={!!monthlyFixedRequestErrorMap['supplierPackage']}
-                    />
-                  </Column>
-                </Row>
-              ) : nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('new') ? (
-                <>
-                  <Row>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Owner Name"
-                        name="ownerName"
-                        value={monthlyFixedRequest.vehicleDetails?.ownerName ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              ownerName: value.ownerName?.toString() || '',
-                            },
-                          })
-                        }}
-                        required
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.ownerName']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.ownerName']}
-                      />
-                    </Column>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Owner Contact"
-                        name="ownerContact"
-                        value={monthlyFixedRequest.vehicleDetails?.ownerContact ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              ownerContact: value.ownerContact?.toString() || '',
-                            },
-                          })
-                        }}
-                        required
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.ownerContact']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.ownerContact']}
-                      />
-                    </Column>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Owner Email"
-                        name="ownerEmail"
-                        type="email"
-                        value={monthlyFixedRequest.vehicleDetails?.ownerEmail ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              ownerEmail: value.ownerEmail?.toString() || '',
-                            },
-                          })
-                        }}
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.ownerEmail']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.ownerEmail']}
-                      />
-                    </Column>
-                  </Row>
-                  <Row>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Manufacturer"
-                        name="manufacturer"
-                        value={monthlyFixedRequest.vehicleDetails?.manufacturer ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              manufacturer: value.manufacturer?.toString() || '',
-                            },
-                          })
-                        }}
-                        required
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.manufacturer']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.manufacturer']}
-                      />
-                    </Column>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Vehicle Name"
-                        name="vehicleName"
-                        value={monthlyFixedRequest.vehicleDetails?.name ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              name: value.vehicleName?.toString() || '',
-                            },
-                          })
-                        }}
-                        required
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.name']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.name']}
-                      />
-                    </Column>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <TextInput
-                        label="Registration Number"
-                        name="registrationNo"
-                        value={monthlyFixedRequest.vehicleDetails?.registrationNo ?? ''}
-                        changeHandler={value => {
-                          setMonthlyFixedRequest({
-                            ...monthlyFixedRequest,
-                            vehicleDetails: {
-                              ...monthlyFixedRequest.vehicleDetails!,
-                              registrationNo: value.registrationNo?.toString() || '',
-                            },
-                          })
-                        }}
-                        required
-                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.registrationNo']}
-                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.registrationNo']}
-                      />
-                    </Column>
-                  </Row>
-                </>
-              ) : (
+          {/* Vehicle Details Panel - For additional vehicle usage */}
+          <Panel
+            title="Vehicle Details"
+            className={bemClass([blk, 'margin-bottom'])}
+          >
+            <Row>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <SelectInput
+                  label="Vehicle Type"
+                  name="vehicleType"
+                  options={[
+                    { key: 'regular', value: 'Regular' },
+                    { key: 'existing', value: 'Existing' },
+                    { key: 'new', value: 'New' },
+                  ]}
+                  value={monthlyFixedRequest.vehicleDetails.vehicleType === 'regular' ? 'Regular' : monthlyFixedRequest.vehicleDetails.vehicleType === 'existing' ? 'Existing' : 'New'}
+                  changeHandler={value => {
+                    const selectedType = value.vehicleType === 'Regular' ? 'regular' : value.vehicleType === 'Existing' ? 'existing' : 'new'
+                    const updatedData = {
+                      ...monthlyFixedRequest,
+                      vehicleDetails: {
+                        ...monthlyFixedRequest.vehicleDetails,
+                        vehicleType: selectedType as 'regular' | 'existing' | 'new',
+                        vehicleCategory: selectedType === 'new' ? null : (monthlyFixedRequest.vehicleDetails.vehicleCategory ? nameToPath(monthlyFixedRequest.vehicleDetails.vehicleCategory) : null),
+                        vehicle: selectedType === 'new' ? null : monthlyFixedRequest.vehicleDetails.vehicle,
+                        supplierDetails: selectedType === 'new' ? { supplier: null, package: null } : monthlyFixedRequest.vehicleDetails.supplierDetails,
+                        newVehicleDetails:
+                          selectedType === 'existing' || selectedType === 'regular'
+                            ? null
+                            : {
+                                ownerName: '',
+                                ownerContact: '',
+                                ownerEmail: '',
+                                manufacturer: '',
+                                name: '',
+                                registrationNo: '',
+                              },
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('vehicleDetails.vehicleType', updatedData), 0)
+                  }}
+                  showPlaceholder={false}
+                  required
+                  errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicleType']}
+                  invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.vehicleType']}
+                />
+              </Column>
+            </Row>
+            {monthlyFixedRequest.vehicleDetails.vehicleType === 'existing' && (
+              <>
                 <Row>
                   <Column
                     col={4}
@@ -1130,138 +1110,250 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       name="vehicleCategory"
                       configToUse="Vehicle category"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={pathToName(monthlyFixedRequest.vehicleCategory || '')}
+                      value={monthlyFixedRequest.vehicleDetails.vehicleCategory || ''}
                       changeHandler={value => {
-                        setMonthlyFixedRequest({
+                        const updatedData = {
                           ...monthlyFixedRequest,
-                          vehicleCategory: nameToPath(value.vehicleCategory?.toString() ?? ''),
-                          vehicle: null,
-                        })
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                            vehicle: null,
+                            supplierDetails: { supplier: null, package: null },
+                          },
+                        }
+                        setMonthlyFixedRequest(updatedData)
+                        setSupplierPackageOptions([])
+                        setTimeout(() => validateField('vehicleDetails.vehicleCategory', updatedData), 0)
                       }}
                       required
-                      errorMessage={monthlyFixedRequestErrorMap['vehicleCategory']}
-                      invalid={!!monthlyFixedRequestErrorMap['vehicleCategory']}
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicleCategory']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.vehicleCategory']}
                     />
                   </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <SelectInput
-                      label="Vehicle"
-                      name="vehicle"
-                      options={getSelectOptions(vehiclesLoading, vehiclesIsError, vehicleOptions, 'Please wait...', 'Unable to load options', 'No vehicles found')}
-                      value={monthlyFixedRequest.vehicle ? ((vehicleOptions.find((option: any) => option.key === monthlyFixedRequest.vehicle) as any)?.value ?? '') : ''}
-                      changeHandler={value => {
-                        if (isPlaceholderValue(value.vehicle?.toString() || '', 'vehicles')) return
-
-                        const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
-                        setMonthlyFixedRequest({
-                          ...monthlyFixedRequest,
-                          vehicle: selectedOption?.key ?? '',
-                        })
-                      }}
-                      required
-                      disabled={!monthlyFixedRequest.vehicleCategory || vehiclesLoading || vehiclesIsError}
-                      errorMessage={monthlyFixedRequestErrorMap['vehicle']}
-                      invalid={!!monthlyFixedRequestErrorMap['vehicle']}
-                    />
-                  </Column>
+                  {!isSupplierVehicle && (
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Vehicle"
+                        name="vehicle"
+                        options={
+                          vehiclesLoading
+                            ? [{ key: 'loading', value: 'Please wait...' }]
+                            : vehiclesIsError
+                              ? [{ key: 'error', value: 'Unable to load options' }]
+                              : vehicleOptions.length > 0
+                                ? vehicleOptions
+                                : [{ key: 'no-data', value: 'No vehicles found' }]
+                        }
+                        value={
+                          monthlyFixedRequest.vehicleDetails.vehicle
+                            ? typeof monthlyFixedRequest.vehicleDetails.vehicle === 'string'
+                              ? (vehicleOptions.find((option: any) => option.key === monthlyFixedRequest.vehicleDetails.vehicle) as any)?.value ?? ''
+                              : (vehicleOptions.find((option: any) => option.key === (monthlyFixedRequest.vehicleDetails.vehicle as any)._id) as any)?.value ?? ''
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
+                          if (!selectedOption || ['Please wait...', 'Unable to load options', 'No vehicles found'].includes(value.vehicle as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...monthlyFixedRequest,
+                            vehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails,
+                              vehicle: selectedOption.key,
+                            },
+                          }
+                          setMonthlyFixedRequest(updatedData)
+                          setTimeout(() => validateField('vehicleDetails.vehicle', updatedData), 0)
+                        }}
+                        required
+                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
+                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
+                        disabled={!monthlyFixedRequest.vehicleDetails.vehicleCategory}
+                      />
+                    </Column>
+                  )}
                 </Row>
-              )}
-            </Panel>
-          )}
-
-          {/* Provider Package Details Panel - Only shown when vehicle selection is 'new' */}
-          {nameToPath(monthlyFixedRequest.vehicleType) === nameToPath('new') && (
-            <Panel
-              title="Provider Package Details"
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <ConfiguredInput
-                    label="Package Category"
-                    name="providerPackageCategory"
-                    configToUse="Package category"
-                    type={CONFIGURED_INPUT_TYPES.SELECT}
-                    value={pathToName(monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory || '')}
-                    changeHandler={value => {
-                      setMonthlyFixedRequest({
-                        ...monthlyFixedRequest,
-                        packageFromProvidedVehicle: {
-                          packageCategory: nameToPath(value.providerPackageCategory?.toString() ?? ''),
-                          packageId: monthlyFixedRequest.packageFromProvidedVehicle?.packageId ?? '',
-                        },
-                      })
-                    }}
-                    required
-                    errorMessage={monthlyFixedRequestErrorMap['packageFromProvidedVehicle.packageCategory']}
-                    invalid={!!monthlyFixedRequestErrorMap['packageFromProvidedVehicle.packageCategory']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <SelectInput
-                    label="Package"
-                    name="providerPackage"
-                    options={getSelectOptions(providerPackagesLoading, providerPackagesIsError, providerPackageOptions, 'Please wait...', 'Unable to load options', 'No provider packages found')}
-                    value={monthlyFixedRequest.packageFromProvidedVehicle?.packageId ? ((providerPackageOptions.find((option: any) => option.key === monthlyFixedRequest.packageFromProvidedVehicle?.packageId) as any)?.value ?? '') : ''}
-                    changeHandler={value => {
-                      if (isPlaceholderValue(value.providerPackage?.toString() || '', 'providerPackages')) return
-
-                      const selectedOption = providerPackageOptions.find((option: any) => option.value === value.providerPackage) as any
-                      setMonthlyFixedRequest({
-                        ...monthlyFixedRequest,
-                        packageFromProvidedVehicle: {
-                          packageCategory: monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory ?? '',
-                          packageId: selectedOption?.key ?? '',
-                        },
-                      })
-                    }}
-                    required
-                    disabled={!monthlyFixedRequest.packageFromProvidedVehicle?.packageCategory || providerPackagesLoading || providerPackagesIsError}
-                    errorMessage={monthlyFixedRequestErrorMap['packageFromProvidedVehicle.packageId']}
-                    invalid={!!monthlyFixedRequestErrorMap['packageFromProvidedVehicle.packageId']}
-                  />
-                </Column>
-              </Row>
-            </Panel>
-          )}
-
-          {/* Staff Details Panel - Only shown when staff selection is 'own' or 'new' */}
-          {['own', 'new'].includes(monthlyFixedRequest.staffType) && (
-            <Panel
-              title="Staff Details"
-              className={bemClass([blk, 'margin-bottom'])}
-            >
-              {nameToPath(monthlyFixedRequest.staffType) === nameToPath('new') ? (
+                {isSupplierVehicle && (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Supplier"
+                        name="supplier"
+                        options={
+                          !isSupplierVehicle
+                            ? [{ key: 'empty', value: 'Select vehicle category first' }]
+                            : suppliersLoading
+                              ? [{ key: 'loading', value: 'Please wait...' }]
+                              : suppliersIsError
+                                ? [{ key: 'error', value: 'Unable to load options' }]
+                                : supplierOptions.length > 0
+                                  ? supplierOptions
+                                  : [{ key: 'no-data', value: 'No suppliers found' }]
+                        }
+                        value={
+                          monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+                            ? typeof monthlyFixedRequest.vehicleDetails.supplierDetails.supplier === 'string'
+                              ? (supplierOptions.find((option: any) => option.key === monthlyFixedRequest.vehicleDetails.supplierDetails.supplier) as any)?.value ?? ''
+                              : (supplierOptions.find((option: any) => option.key === (monthlyFixedRequest.vehicleDetails.supplierDetails.supplier as any)._id) as any)?.value ?? ''
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = supplierOptions.find((option: any) => option.value === value.supplier) as any
+                          if (!selectedOption || ['Select vehicle category first', 'Please wait...', 'Unable to load options', 'No suppliers found'].includes(value.supplier as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...monthlyFixedRequest,
+                            vehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails,
+                              supplierDetails: {
+                                supplier: selectedOption.key,
+                                package: null,
+                              },
+                              vehicle: null,
+                            },
+                          }
+                          setMonthlyFixedRequest(updatedData)
+                          setTimeout(() => validateField('vehicleDetails.supplierDetails.supplier', updatedData), 0)
+                        }}
+                        required
+                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
+                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Vehicle"
+                        name="supplierVehicle"
+                        options={
+                          !monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+                            ? [{ key: 'empty', value: 'Select supplier first' }]
+                            : supplierVehiclesLoading
+                              ? [{ key: 'loading', value: 'Please wait...' }]
+                              : apiErrors.supplierVehicles
+                                ? [{ key: 'error', value: 'Unable to load options' }]
+                                : supplierVehicleOptions.length > 0
+                                  ? supplierVehicleOptions
+                                  : [{ key: 'no-data', value: 'No vehicles found' }]
+                        }
+                        value={
+                          monthlyFixedRequest.vehicleDetails.vehicle
+                            ? typeof monthlyFixedRequest.vehicleDetails.vehicle === 'string'
+                              ? (supplierVehicleOptions.find((option: any) => option.key === monthlyFixedRequest.vehicleDetails.vehicle) as any)?.value ?? ''
+                              : (supplierVehicleOptions.find((option: any) => option.key === (monthlyFixedRequest.vehicleDetails.vehicle as any)._id) as any)?.value ?? ''
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = supplierVehicleOptions.find((option: any) => option.value === value.supplierVehicle) as any
+                          if (!selectedOption || ['Select supplier first', 'Please wait...', 'Unable to load options', 'No vehicles found'].includes(value.supplierVehicle as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...monthlyFixedRequest,
+                            vehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails,
+                              vehicle: selectedOption.key,
+                            },
+                          }
+                          setMonthlyFixedRequest(updatedData)
+                          setTimeout(() => validateField('vehicleDetails.vehicle', updatedData), 0)
+                        }}
+                        required
+                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
+                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
+                        disabled={!monthlyFixedRequest.vehicleDetails.supplierDetails.supplier}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Supplier Package"
+                        name="supplierPackage"
+                        options={
+                          !monthlyFixedRequest.vehicleDetails.supplierDetails.supplier
+                            ? [{ key: 'empty', value: 'Select supplier first' }]
+                            : supplierPackagesLoading
+                              ? [{ key: 'loading', value: 'Please wait...' }]
+                              : apiErrors.supplierPackages
+                                ? [{ key: 'error', value: 'Unable to load options' }]
+                                : supplierPackageOptions.length > 0
+                                  ? supplierPackageOptions
+                                  : [{ key: 'no-data', value: 'No packages found' }]
+                        }
+                        value={
+                          monthlyFixedRequest.vehicleDetails.supplierDetails.package
+                            ? typeof monthlyFixedRequest.vehicleDetails.supplierDetails.package === 'string'
+                              ? (supplierPackageOptions.find((option: any) => option.key === monthlyFixedRequest.vehicleDetails.supplierDetails.package) as any)?.value ?? ''
+                              : (supplierPackageOptions.find((option: any) => option.key === (monthlyFixedRequest.vehicleDetails.supplierDetails.package as any)._id) as any)?.value ?? ''
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = supplierPackageOptions.find((option: any) => option.value === value.supplierPackage) as any
+                          if (!selectedOption || ['Select supplier first', 'Please wait...', 'Unable to load options', 'No packages found'].includes(value.supplierPackage as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...monthlyFixedRequest,
+                            vehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails,
+                              supplierDetails: {
+                                ...monthlyFixedRequest.vehicleDetails.supplierDetails,
+                                package: selectedOption.key,
+                              },
+                            },
+                          }
+                          setMonthlyFixedRequest(updatedData)
+                          setTimeout(() => validateField('vehicleDetails.supplierDetails.package', updatedData), 0)
+                        }}
+                        required
+                        errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.package']}
+                        invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.package']}
+                        disabled={!monthlyFixedRequest.vehicleDetails.supplierDetails.supplier}
+                      />
+                    </Column>
+                  </Row>
+                )}
+              </>
+            )}
+            {monthlyFixedRequest.vehicleDetails.vehicleType === 'new' && (
+              <>
                 <Row>
                   <Column
                     col={4}
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <TextInput
-                      label="Staff Name"
-                      name="staffName"
-                      value={monthlyFixedRequest.staffDetails?.name ?? ''}
+                      label="Owner Name"
+                      name="ownerName"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.ownerName || ''}
                       changeHandler={value => {
                         setMonthlyFixedRequest({
                           ...monthlyFixedRequest,
-                          staffDetails: {
-                            ...monthlyFixedRequest.staffDetails!,
-                            name: value.staffName?.toString() || '',
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              ownerName: value.ownerName?.toString() ?? '',
+                            },
                           },
                         })
                       }}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerName', monthlyFixedRequest)}
                       required
-                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.name']}
-                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.name']}
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
                     />
                   </Column>
                   <Column
@@ -1269,21 +1361,25 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <TextInput
-                      label="Staff Contact"
-                      name="staffContact"
-                      value={monthlyFixedRequest.staffDetails?.contact ?? ''}
+                      label="Owner Contact"
+                      name="ownerContact"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.ownerContact || ''}
                       changeHandler={value => {
                         setMonthlyFixedRequest({
                           ...monthlyFixedRequest,
-                          staffDetails: {
-                            ...monthlyFixedRequest.staffDetails!,
-                            contact: value.staffContact?.toString() || '',
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              ownerContact: value.ownerContact?.toString() ?? '',
+                            },
                           },
                         })
                       }}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerContact', monthlyFixedRequest)}
                       required
-                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.contact']}
-                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.contact']}
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
                     />
                   </Column>
                   <Column
@@ -1291,25 +1387,162 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <TextInput
-                      label="Staff License"
-                      name="staffLicense"
-                      value={monthlyFixedRequest.staffDetails?.license ?? ''}
+                      label="Owner Email"
+                      name="ownerEmail"
+                      type="email"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.ownerEmail || ''}
                       changeHandler={value => {
                         setMonthlyFixedRequest({
                           ...monthlyFixedRequest,
-                          staffDetails: {
-                            ...monthlyFixedRequest.staffDetails!,
-                            license: value.staffLicense?.toString() || '',
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              ownerEmail: value.ownerEmail?.toString() ?? '',
+                            },
                           },
                         })
                       }}
-                      required
-                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.license']}
-                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.license']}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerEmail', monthlyFixedRequest)}
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
                     />
                   </Column>
                 </Row>
-              ) : (
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Manufacturer"
+                      name="manufacturer"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.manufacturer || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              manufacturer: value.manufacturer?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.manufacturer', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Vehicle Name"
+                      name="vehicleName"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.name || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              name: value.vehicleName?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.name', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Registration No"
+                      name="registrationNo"
+                      value={monthlyFixedRequest.vehicleDetails.newVehicleDetails?.registrationNo || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          vehicleDetails: {
+                            ...monthlyFixedRequest.vehicleDetails,
+                            newVehicleDetails: {
+                              ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
+                              registrationNo: value.registrationNo?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.registrationNo', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
+                      invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
+                    />
+                  </Column>
+                </Row>
+              </>
+            )}
+          </Panel>
+
+          {/* Staff Details Panel */}
+          <Panel
+            title="Staff Details"
+            className={bemClass([blk, 'margin-bottom'])}
+          >
+            <Row>
+              <Column
+                col={4}
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <SelectInput
+                  label="Staff Type"
+                  name="staffType"
+                  options={[
+                    { key: 'regular', value: 'Regular' },
+                    { key: 'existing', value: 'Existing' },
+                    { key: 'new', value: 'New' },
+                  ]}
+                  value={monthlyFixedRequest.staffDetails.staffType === 'regular' ? 'Regular' : monthlyFixedRequest.staffDetails.staffType === 'existing' ? 'Existing' : 'New'}
+                  changeHandler={value => {
+                    const selectedType = value.staffType === 'Regular' ? 'regular' : value.staffType === 'Existing' ? 'existing' : 'new'
+                    const updatedData = {
+                      ...monthlyFixedRequest,
+                      staffDetails: {
+                        ...monthlyFixedRequest.staffDetails,
+                        staffType: selectedType as 'regular' | 'existing' | 'new',
+                        staffCategory: selectedType === 'new' ? null : (monthlyFixedRequest.staffDetails.staffCategory ? nameToPath(monthlyFixedRequest.staffDetails.staffCategory) : null),
+                        staff: selectedType === 'new' ? null : monthlyFixedRequest.staffDetails.staff,
+                        newStaffDetails:
+                          selectedType === 'existing' || selectedType === 'regular'
+                            ? null
+                            : {
+                                name: '',
+                                contact: '',
+                                license: '',
+                              },
+                      },
+                    }
+                    setMonthlyFixedRequest(updatedData)
+                    setTimeout(() => validateField('staffDetails.staffType', updatedData), 0)
+                  }}
+                  showPlaceholder={false}
+                  required
+                  errorMessage={monthlyFixedRequestErrorMap['staffDetails.staffType']}
+                  invalid={!!monthlyFixedRequestErrorMap['staffDetails.staffType']}
+                />
+              </Column>
+            </Row>
+            {monthlyFixedRequest.staffDetails.staffType === 'existing' && (
+              <>
                 <Row>
                   <Column
                     col={4}
@@ -1320,17 +1553,22 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       name="staffCategory"
                       configToUse="Staff category"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={pathToName(monthlyFixedRequest.staffCategory || '')}
+                      value={monthlyFixedRequest.staffDetails.staffCategory || ''}
                       changeHandler={value => {
-                        setMonthlyFixedRequest({
+                        const updatedData = {
                           ...monthlyFixedRequest,
-                          staffCategory: nameToPath(value.staffCategory?.toString() ?? ''),
-                          staff: null,
-                        })
+                          staffDetails: {
+                            ...monthlyFixedRequest.staffDetails,
+                            staffCategory: value.staffCategory?.toString() ?? '',
+                            staff: null,
+                          },
+                        }
+                        setMonthlyFixedRequest(updatedData)
+                        setTimeout(() => validateField('staffDetails.staffCategory', updatedData), 0)
                       }}
                       required
-                      errorMessage={monthlyFixedRequestErrorMap['staffCategory']}
-                      invalid={!!monthlyFixedRequestErrorMap['staffCategory']}
+                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.staffCategory']}
+                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.staffCategory']}
                     />
                   </Column>
                   <Column
@@ -1340,28 +1578,133 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     <SelectInput
                       label="Staff"
                       name="staff"
-                      options={getSelectOptions(staffLoading, staffIsError, staffOptions, 'Please wait...', 'Unable to load options', 'No staff found')}
-                      value={monthlyFixedRequest.staff ? ((staffOptions.find((option: any) => option.key === monthlyFixedRequest.staff) as any)?.value ?? '') : ''}
+                      options={
+                        staffLoading
+                          ? [{ key: 'loading', value: 'Please wait...' }]
+                          : staffIsError
+                            ? [{ key: 'error', value: 'Unable to load options' }]
+                            : staffOptions.length > 0
+                              ? staffOptions
+                              : [{ key: 'no-data', value: 'No staff found' }]
+                      }
+                      value={
+                        monthlyFixedRequest.staffDetails.staff
+                          ? typeof monthlyFixedRequest.staffDetails.staff === 'string'
+                            ? (staffOptions.find((option: any) => option.key === monthlyFixedRequest.staffDetails.staff) as any)?.value ?? ''
+                            : (staffOptions.find((option: any) => option.key === (monthlyFixedRequest.staffDetails.staff as any)._id) as any)?.value ?? ''
+                          : ''
+                      }
                       changeHandler={value => {
-                        if (isPlaceholderValue(value.staff?.toString() || '', 'staff')) return
-
                         const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
-                        setMonthlyFixedRequest({
+                        if (!selectedOption || ['Please wait...', 'Unable to load options', 'No staff found'].includes(value.staff as string)) {
+                          return
+                        }
+                        const updatedData = {
                           ...monthlyFixedRequest,
-                          staff: selectedOption?.key ?? '',
-                        })
+                          staffDetails: {
+                            ...monthlyFixedRequest.staffDetails,
+                            staff: selectedOption.key,
+                          },
+                        }
+                        setMonthlyFixedRequest(updatedData)
+                        setTimeout(() => validateField('staffDetails.staff', updatedData), 0)
                       }}
                       required
-                      disabled={!monthlyFixedRequest.staffCategory || staffLoading || staffIsError}
-                      errorMessage={monthlyFixedRequestErrorMap['staff']}
-                      invalid={!!monthlyFixedRequestErrorMap['staff']}
+                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.staff']}
+                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.staff']}
+                      disabled={!monthlyFixedRequest.staffDetails.staffCategory}
                     />
                   </Column>
                 </Row>
-              )}
-            </Panel>
-          )}
+              </>
+            )}
+            {monthlyFixedRequest.staffDetails.staffType === 'new' && (
+              <>
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Staff Name"
+                      name="staffName"
+                      value={monthlyFixedRequest.staffDetails.newStaffDetails?.name || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          staffDetails: {
+                            ...monthlyFixedRequest.staffDetails,
+                            newStaffDetails: {
+                              ...monthlyFixedRequest.staffDetails.newStaffDetails!,
+                              name: value.staffName?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('staffDetails.newStaffDetails.name', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.name']}
+                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.name']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Contact"
+                      name="staffContact"
+                      value={monthlyFixedRequest.staffDetails.newStaffDetails?.contact || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          staffDetails: {
+                            ...monthlyFixedRequest.staffDetails,
+                            newStaffDetails: {
+                              ...monthlyFixedRequest.staffDetails.newStaffDetails!,
+                              contact: value.staffContact?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('staffDetails.newStaffDetails.contact', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.contact']}
+                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.contact']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="License No"
+                      name="license"
+                      value={monthlyFixedRequest.staffDetails.newStaffDetails?.license || ''}
+                      changeHandler={value => {
+                        setMonthlyFixedRequest({
+                          ...monthlyFixedRequest,
+                          staffDetails: {
+                            ...monthlyFixedRequest.staffDetails,
+                            newStaffDetails: {
+                              ...monthlyFixedRequest.staffDetails.newStaffDetails!,
+                              license: value.license?.toString() ?? '',
+                            },
+                          },
+                        })
+                      }}
+                      onBlur={() => validateField('staffDetails.newStaffDetails.license', monthlyFixedRequest)}
+                      required
+                      errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.license']}
+                      invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.license']}
+                    />
+                  </Column>
+                </Row>
+              </>
+            )}
+          </Panel>
 
+          {/* Other Charges Panel */}
           <Panel
             title="Other Charges"
             className={bemClass([blk, 'margin-bottom'])}
@@ -1398,9 +1741,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   />
                 </div>
                 <TextInput
-                  name="toll"
-                  placeholder="Toll"
-                  value={monthlyFixedRequest.otherCharges.toll.amount}
+                  name="tollAmount"
+                  type="number"
+                  placeholder="Toll Amount"
+                  value={monthlyFixedRequest.otherCharges.toll.amount === 0 ? '' : monthlyFixedRequest.otherCharges.toll.amount}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1408,12 +1752,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         toll: {
                           ...monthlyFixedRequest.otherCharges.toll,
-                          amount: value.toll ? Number(value.toll) : 0,
+                          amount: value.tollAmount === '' ? 0 : Number(value.tollAmount),
                         },
                       },
                     })
                   }}
-                  required
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.toll.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.toll.amount']}
                 />
@@ -1449,9 +1792,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   />
                 </div>
                 <TextInput
-                  name="parking"
-                  placeholder="Parking"
-                  value={monthlyFixedRequest.otherCharges.parking.amount}
+                  name="parkingAmount"
+                  type="number"
+                  placeholder="Parking Amount"
+                  value={monthlyFixedRequest.otherCharges.parking.amount === 0 ? '' : monthlyFixedRequest.otherCharges.parking.amount}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1459,12 +1803,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         parking: {
                           ...monthlyFixedRequest.otherCharges.parking,
-                          amount: value.parking ? Number(value.parking) : 0,
+                          amount: value.parkingAmount === '' ? 0 : Number(value.parkingAmount),
                         },
                       },
                     })
                   }}
-                  required
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.parking.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.parking.amount']}
                 />
@@ -1502,9 +1845,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   />
                 </div>
                 <TextInput
-                  name="nightHalt"
-                  placeholder="Night Halt"
-                  value={monthlyFixedRequest.otherCharges.nightHalt.amount}
+                  name="nightHaltAmount"
+                  type="number"
+                  placeholder="Night Halt Amount"
+                  value={monthlyFixedRequest.otherCharges.nightHalt.amount === 0 ? '' : monthlyFixedRequest.otherCharges.nightHalt.amount}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1512,12 +1856,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         nightHalt: {
                           ...monthlyFixedRequest.otherCharges.nightHalt,
-                          amount: value.nightHalt ? Number(value.nightHalt) : 0,
+                          amount: value.nightHaltAmount === '' ? 0 : Number(value.nightHaltAmount),
                         },
                       },
                     })
                   }}
-                  required
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.nightHalt.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.nightHalt.amount']}
                 />
@@ -1526,14 +1869,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={5}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <RadioGroup
-                  question="Include Night Halt in driver salary?"
-                  name="includeNightHaltInDriverSalary"
-                  options={[
-                    { key: 'include-night-halt-yes', value: 'Yes' },
-                    { key: 'include-night-halt-no', value: 'No' },
-                  ]}
-                  value={monthlyFixedRequest.otherCharges.nightHalt.isPayableWithSalary ? 'Yes' : 'No'}
+                <Toggle
+                  className={bemClass([blk, 'toggle'])}
+                  label="Include Night Halt in driver salary?"
+                  name="nightHaltPayableWithSalary"
+                  checked={monthlyFixedRequest.otherCharges.nightHalt.isPayableWithSalary}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1541,12 +1881,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         nightHalt: {
                           ...monthlyFixedRequest.otherCharges.nightHalt,
-                          isPayableWithSalary: value.includeNightHaltInDriverSalary === 'Yes',
+                          isPayableWithSalary: !!value.nightHaltPayableWithSalary,
                         },
                       },
                     })
                   }}
-                  direction="horizontal"
                 />
               </Column>
             </Row>
@@ -1582,9 +1921,10 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                   />
                 </div>
                 <TextInput
-                  name="driverAllowance"
-                  placeholder="Driver Allowance"
-                  value={monthlyFixedRequest.otherCharges.driverAllowance.amount}
+                  name="driverAllowanceAmount"
+                  type="number"
+                  placeholder="Driver Allowance Amount"
+                  value={monthlyFixedRequest.otherCharges.driverAllowance.amount === 0 ? '' : monthlyFixedRequest.otherCharges.driverAllowance.amount}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1592,12 +1932,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         driverAllowance: {
                           ...monthlyFixedRequest.otherCharges.driverAllowance,
-                          amount: value.driverAllowance ? Number(value.driverAllowance) : 0,
+                          amount: value.driverAllowanceAmount === '' ? 0 : Number(value.driverAllowanceAmount),
                         },
                       },
                     })
                   }}
-                  required
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.driverAllowance.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.driverAllowance.amount']}
                 />
@@ -1606,14 +1945,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={5}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <RadioGroup
-                  question="Include Driver Allowance in driver salary?"
-                  name="includeDriverAllowanceInDriverSalary"
-                  options={[
-                    { key: 'include-driver-allowance-yes', value: 'Yes' },
-                    { key: 'include-driver-allowance-no', value: 'No' },
-                  ]}
-                  value={monthlyFixedRequest.otherCharges.driverAllowance.isPayableWithSalary ? 'Yes' : 'No'}
+                <Toggle
+                  className={bemClass([blk, 'toggle'])}
+                  label="Include Driver Allowance in driver salary?"
+                  name="driverAllowancePayableWithSalary"
+                  checked={monthlyFixedRequest.otherCharges.driverAllowance.isPayableWithSalary}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
@@ -1621,18 +1957,19 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         driverAllowance: {
                           ...monthlyFixedRequest.otherCharges.driverAllowance,
-                          isPayableWithSalary: value.includeDriverAllowanceInDriverSalary === 'Yes',
+                          isPayableWithSalary: !!value.driverAllowancePayableWithSalary,
                         },
                       },
                     })
                   }}
-                  direction="horizontal"
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Payment Details Panel */}
           <Panel
-            title="Advance Payment"
+            title="Payment Details"
             className={bemClass([blk, 'margin-bottom'])}
           >
             <Row>
@@ -1641,47 +1978,28 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 className={bemClass([blk, 'margin-bottom'])}
               >
                 <TextInput
-                  label="Advance from Customer"
-                  name="advanceFromCustomer"
-                  value={monthlyFixedRequest.advancePayment.advancedFromCustomer}
+                  label="Advance Amount Paid"
+                  name="advanceAmountPaid"
+                  type="number"
+                  placeholder="Enter advance amount paid"
+                  value={monthlyFixedRequest.paymentDetails.advanceAmountPaid === 0 ? '' : monthlyFixedRequest.paymentDetails.advanceAmountPaid}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
-                      advancePayment: {
-                        ...monthlyFixedRequest.advancePayment,
-                        advancedFromCustomer: value.advanceFromCustomer ? Number(value.advanceFromCustomer) : 0,
+                      paymentDetails: {
+                        ...monthlyFixedRequest.paymentDetails,
+                        advanceAmountPaid: value.advanceAmountPaid === '' ? 0 : Number(value.advanceAmountPaid),
                       },
                     })
                   }}
-                  required
-                  errorMessage={monthlyFixedRequestErrorMap['advancePayment.advancedFromCustomer']}
-                  invalid={!!monthlyFixedRequestErrorMap['advancePayment.advancedFromCustomer']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Advance to Driver"
-                  name="advanceToDriver"
-                  value={monthlyFixedRequest.advancePayment.advancedToDriver}
-                  changeHandler={value => {
-                    setMonthlyFixedRequest({
-                      ...monthlyFixedRequest,
-                      advancePayment: {
-                        ...monthlyFixedRequest.advancePayment,
-                        advancedToDriver: value.advanceToDriver ? Number(value.advanceToDriver) : 0,
-                      },
-                    })
-                  }}
-                  required
-                  errorMessage={monthlyFixedRequestErrorMap['advancePayment.advancedToDriver']}
-                  invalid={!!monthlyFixedRequestErrorMap['advancePayment.advancedToDriver']}
+                  errorMessage={monthlyFixedRequestErrorMap['paymentDetails.advanceAmountPaid']}
+                  invalid={!!monthlyFixedRequestErrorMap['paymentDetails.advanceAmountPaid']}
                 />
               </Column>
             </Row>
           </Panel>
+
+          {/* Comments Panel */}
           <Panel
             title="Comments"
             className={bemClass([blk, 'margin-bottom'])}
@@ -1699,26 +2017,28 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               placeholder="Enter any additional comments or notes here..."
             />
           </Panel>
-        </>
-        <div className={bemClass([blk, 'action-items'])}>
-          <Button
-            size="medium"
-            category="default"
-            className={bemClass([blk, 'margin-right'])}
-            clickHandler={navigateBack}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="medium"
-            category="primary"
-            clickHandler={submitHandler}
-          >
-            {isEditing ? 'Update' : 'Submit'}
-          </Button>
+
+          <div className={bemClass([blk, 'action-items'])}>
+            <Button
+              size="medium"
+              category="default"
+              className={bemClass([blk, 'margin-right'])}
+              clickHandler={navigateBack}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="medium"
+              category="primary"
+              clickHandler={submitHandler}
+              disabled={Object.values(apiErrors).some(error => error !== '')}
+            >
+              {isEditing ? 'Update' : 'Submit'}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

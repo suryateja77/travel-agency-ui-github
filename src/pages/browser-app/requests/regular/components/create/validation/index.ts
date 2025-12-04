@@ -4,95 +4,99 @@ import { nameToPath } from '@utils'
 
 const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   const baseFields = [
-    emptyField('customerType'),
-    emptyField('vehicleType'),
-    emptyField('staffType'),
-    emptyField('requestType'),
-    emptyField('pickUpLocation'),
-    emptyField('dropOffLocation'),
-    emptyField('pickUpDateTime'),
-    emptyField('dropDateTime'),
-    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
-    emptyField('openingKm'),
-    numberFieldGreaterThanZero('openingKm'),
-    emptyField('closingKm'),
-    numberFieldGreaterThanZero('closingKm'),
-    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
-    emptyField('packageCategory'),
-    emptyField('package'),
-    emptyField('paymentDetails.status'),
-    emptyField('paymentDetails.paymentMethod'),
-    emptyField('paymentDetails.paymentDate'),
+    // Package Details
+    emptyField('packageDetails.packageCategory'),
+    emptyField('packageDetails.package'),
+    
+    // Request Details
+    emptyField('requestDetails.requestType'),
+    emptyField('requestDetails.pickUpLocation'),
+    emptyField('requestDetails.dropOffLocation'),
+    emptyField('requestDetails.pickUpDateTime'),
+    emptyField('requestDetails.dropDateTime'),
+    dateTimeGreaterThanField('requestDetails.dropDateTime', 'requestDetails.pickUpDateTime', 'pick-up'),
+    emptyField('requestDetails.openingKm'),
+    numberFieldGreaterThanZero('requestDetails.openingKm'),
+    emptyField('requestDetails.closingKm'),
+    numberFieldGreaterThanZero('requestDetails.closingKm'),
+    numberGreaterThanField('requestDetails.closingKm', 'requestDetails.openingKm', 'opening km'),
   ]
 
   const conditionalFields = []
 
-  // Customer type conditional fields
-  if (regularRequestData.customerType === 'existing') {
-    conditionalFields.push(emptyField('customerCategory'), emptyField('customer'))
+  // Payment Details - only required when status is CLOSED
+  if (regularRequestData.status === 'CLOSED') {
+    conditionalFields.push(
+      emptyField('paymentDetails.paymentMethod'),
+      emptyField('paymentDetails.paymentDate')
+    )
   }
 
-  if (regularRequestData.customerType === 'new' && regularRequestData.customerDetails) {
-    conditionalFields.push(emptyField('customerDetails.name'), emptyField('customerDetails.contact'))
+  // Customer type conditional fields
+  if (regularRequestData.customerDetails.customerType === 'existing') {
+    conditionalFields.push(
+      emptyField('customerDetails.customerCategory'),
+      emptyField('customerDetails.customer')
+    )
+  }
+
+  if (regularRequestData.customerDetails.customerType === 'new' && regularRequestData.customerDetails.newCustomerDetails) {
+    conditionalFields.push(
+      emptyField('customerDetails.newCustomerDetails.name'),
+      emptyField('customerDetails.newCustomerDetails.contact')
+    )
     // Email validation if provided
-    if (regularRequestData.customerDetails.email) {
-      conditionalFields.push(emailField('customerDetails.email'))
+    if (regularRequestData.customerDetails.newCustomerDetails.email) {
+      conditionalFields.push(emailField('customerDetails.newCustomerDetails.email'))
     }
   }
 
   // Vehicle type conditional fields
-  if (regularRequestData.vehicleType === 'existing') {
-    conditionalFields.push(emptyField('vehicleCategory'), emptyField('vehicle'))
-    if (regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
-      conditionalFields.push(emptyField('supplier'), emptyField('supplierPackage'))
+  if (regularRequestData.vehicleDetails.vehicleType === 'existing') {
+    conditionalFields.push(
+      emptyField('vehicleDetails.vehicleCategory'),
+      emptyField('vehicleDetails.vehicle')
+    )
+    if (regularRequestData.vehicleDetails.vehicleCategory && nameToPath(regularRequestData.vehicleDetails.vehicleCategory) === 'supplier') {
+      conditionalFields.push(
+        emptyField('vehicleDetails.supplierDetails.supplier'),
+        emptyField('vehicleDetails.supplierDetails.package')
+      )
     }
   }
 
-  if (regularRequestData.vehicleType === 'new' && regularRequestData.vehicleDetails) {
+  if (regularRequestData.vehicleDetails.vehicleType === 'new' && regularRequestData.vehicleDetails.newVehicleDetails) {
     conditionalFields.push(
-      emptyField('vehicleDetails.ownerName'),
-      emptyField('vehicleDetails.ownerContact'),
-      emptyField('vehicleDetails.manufacturer'),
-      emptyField('vehicleDetails.name'),
-      emptyField('vehicleDetails.registrationNo'),
+      emptyField('vehicleDetails.newVehicleDetails.ownerName'),
+      emptyField('vehicleDetails.newVehicleDetails.ownerContact'),
+      emptyField('vehicleDetails.newVehicleDetails.manufacturer'),
+      emptyField('vehicleDetails.newVehicleDetails.name'),
+      emptyField('vehicleDetails.newVehicleDetails.registrationNo')
     )
     // Email validation if provided
-    if (regularRequestData.vehicleDetails.ownerEmail) {
-      conditionalFields.push(emailField('vehicleDetails.ownerEmail'))
+    if (regularRequestData.vehicleDetails.newVehicleDetails.ownerEmail) {
+      conditionalFields.push(emailField('vehicleDetails.newVehicleDetails.ownerEmail'))
     }
     // Provider package validation when vehicle type is new
-    if (regularRequestData.packageFromProvidedVehicle) {
-      conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.package'))
+    if (regularRequestData.vehicleDetails.newVehicleDetails.package) {
+      conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.package'))
     }
   }
 
   // Staff type conditional fields
-  if (regularRequestData.staffType === 'existing') {
-    conditionalFields.push(emptyField('staffCategory'), emptyField('staff'))
-  }
-
-  if (regularRequestData.staffType === 'new' && regularRequestData.staffDetails) {
-    conditionalFields.push(emptyField('staffDetails.name'), emptyField('staffDetails.contact'), emptyField('staffDetails.license'))
-  }
-
-  // Advanced payment validation - custom logic with proper format
-  const advanceFromCustomerAmount = regularRequestData.advancedPayment?.advancedFromCustomer?.amount
-  if (advanceFromCustomerAmount && Number(advanceFromCustomerAmount) > 0) {
+  if (regularRequestData.staffDetails.staffType === 'existing') {
     conditionalFields.push(
-      emptyField('advancedPayment.advancedFromCustomer.paymentMethod'),
-      emptyField('advancedPayment.advancedFromCustomer.paymentDate')
+      emptyField('staffDetails.staffCategory'),
+      emptyField('staffDetails.staff')
     )
   }
 
-  // Advanced to supplier validation (only when supplier vehicles)
-  if (regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
-    const advanceToSupplierAmount = regularRequestData.advancedPayment?.advancedToSupplier?.amount
-    if (advanceToSupplierAmount && Number(advanceToSupplierAmount) > 0) {
-      conditionalFields.push(
-        emptyField('advancedPayment.advancedToSupplier.paymentMethod'),
-        emptyField('advancedPayment.advancedToSupplier.paymentDate')
-      )
-    }
+  if (regularRequestData.staffDetails.staffType === 'new' && regularRequestData.staffDetails.newStaffDetails) {
+    conditionalFields.push(
+      emptyField('staffDetails.newStaffDetails.name'),
+      emptyField('staffDetails.newStaffDetails.contact'),
+      emptyField('staffDetails.newStaffDetails.license')
+    )
   }
 
   return [...baseFields, ...conditionalFields]
@@ -100,27 +104,31 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
 
 const calculateTotalValidationSchema = (regularRequestData: RegularRequestModel) => {
   const baseFields = [
-    emptyField('pickUpDateTime'),
-    emptyField('dropDateTime'),
-    dateTimeGreaterThanField('dropDateTime', 'pickUpDateTime', 'pick-up'),
-    emptyField('openingKm'),
-    numberFieldGreaterThanZero('openingKm'),
-    emptyField('closingKm'),
-    numberFieldGreaterThanZero('closingKm'),
-    numberGreaterThanField('closingKm', 'openingKm', 'opening km'),
-    emptyField('packageCategory'),
-    emptyField('package'),
+    emptyField('requestDetails.pickUpDateTime'),
+    emptyField('requestDetails.dropDateTime'),
+    dateTimeGreaterThanField('requestDetails.dropDateTime', 'requestDetails.pickUpDateTime', 'pick-up'),
+    emptyField('requestDetails.openingKm'),
+    numberFieldGreaterThanZero('requestDetails.openingKm'),
+    emptyField('requestDetails.closingKm'),
+    numberFieldGreaterThanZero('requestDetails.closingKm'),
+    numberGreaterThanField('requestDetails.closingKm', 'requestDetails.openingKm', 'opening km'),
+    emptyField('packageDetails.packageCategory'),
+    emptyField('packageDetails.package'),
   ]
 
   const conditionalFields = []
 
   // Package validation based on vehicle type
-  if (regularRequestData.vehicleType === 'existing' && regularRequestData.vehicleCategory && nameToPath(regularRequestData.vehicleCategory) === 'supplier') {
-    conditionalFields.push(emptyField('supplierPackage'))
+  if (
+    regularRequestData.vehicleDetails.vehicleType === 'existing' &&
+    regularRequestData.vehicleDetails.vehicleCategory &&
+    nameToPath(regularRequestData.vehicleDetails.vehicleCategory) === 'supplier'
+  ) {
+    conditionalFields.push(emptyField('vehicleDetails.supplierDetails.package'))
   }
 
-  if (regularRequestData.vehicleType === 'new' && regularRequestData.packageFromProvidedVehicle) {
-    conditionalFields.push(emptyField('packageFromProvidedVehicle.packageCategory'), emptyField('packageFromProvidedVehicle.package'))
+  if (regularRequestData.vehicleDetails.vehicleType === 'new' && regularRequestData.vehicleDetails.newVehicleDetails?.package) {
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.package'))
   }
 
   return [...baseFields, ...conditionalFields]

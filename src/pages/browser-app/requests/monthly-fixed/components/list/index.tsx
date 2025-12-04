@@ -104,24 +104,27 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
   }, [vehicles, vehiclesError, vehiclesIsError])
 
   const getVehicleName = (request: any) => {
-    if (request.vehicleType === 'existing' && request.vehicle?.name) {
-      return request.vehicle.name
-    } else if (request.vehicleType === 'new' && request.vehicleDetails) {
-      return request.vehicleDetails.name || '-'
-    } else if (request.vehicleType === 'supplier' && request.vehicle?.name) {
-      return request.vehicle.name
+    // For regular/existing vehicleType, use assignmentDetails.vehicle
+    if (request.vehicleDetails?.vehicleType === 'regular' && request.assignmentDetails?.vehicle?.name) {
+      return request.assignmentDetails.vehicle.name
+    } else if (request.vehicleDetails?.vehicleType === 'existing' && request.vehicleDetails?.vehicle?.name) {
+      return request.vehicleDetails.vehicle.name
+    } else if (request.vehicleDetails?.vehicleType === 'new' && request.vehicleDetails?.newVehicleDetails) {
+      return request.vehicleDetails.newVehicleDetails.name || '-'
     }
     return '-'
   }
 
   const getVehicleProvided = (request: any) => {
-    if (request.vehicleType === 'regular') {
+    const vehicleType = request.vehicleDetails?.vehicleType
+    if (vehicleType === 'regular') {
       return 'Regular'
-    } else if (request.vehicleType === 'own') {
-      return 'Own'
-    } else if (request.vehicleType === 'supplier') {
-      return 'Supplier'
-    } else if (request.vehicleType === 'new') {
+    } else if (vehicleType === 'existing') {
+      const category = request.vehicleDetails?.vehicleCategory
+      if (category === 'own') return 'Own'
+      if (category === 'supplier') return 'Supplier'
+      return 'Existing'
+    } else if (vehicleType === 'new') {
       return 'New'
     }
     return '-'
@@ -141,15 +144,15 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
     },
     {
       label: 'Date',
-      custom: ({ pickUpDateTime }: any) => <>{formatDateValueForDisplay(pickUpDateTime)}</>,
+      custom: ({ requestDetails }: any) => <>{formatDateValueForDisplay(requestDetails?.pickUpDateTime)}</>,
     },
     {
       label: 'Customer Name',
-      custom: (request: any) => <>{request.customer.name || '-'}</>,
+      custom: (request: any) => <>{request.customerDetails?.customer?.name || '-'}</>,
     },
     {
       label: 'Request type',
-      custom: ({ requestType }: any) => <>{requestType || '-'}</>,
+      custom: ({ requestDetails }: any) => <>{requestDetails?.requestType || '-'}</>,
     },
     {
       label: 'Vehicle provided',
@@ -161,11 +164,11 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
     },
     {
       label: 'Total KM',
-      custom: ({ totalKm }: any) => <>{totalKm ? `${totalKm} km` : '-'}</>,
+      custom: ({ requestDetails }: any) => <>{requestDetails?.totalKm ? `${requestDetails.totalKm} km` : '-'}</>,
     },
     {
       label: 'Total HR',
-      custom: ({ totalHr }: any) => <>{formatMinutesToDuration(totalHr)}</>,
+      custom: ({ requestDetails }: any) => <>{formatMinutesToDuration(requestDetails?.totalHr)}</>,
     },
     {
       label: 'Invoice',
@@ -181,7 +184,6 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
     const filters: Record<string, any> = {}
     if (filterData.vehicle) filters.vehicle = filterData.vehicle
     if (filterData.vehicleCategory) filters.vehicleCategory = nameToPath(filterData.vehicleCategory)
-    console.log('Applying search filters:', filters)
     setSearchFilters(Object.keys(filters).length > 0 ? filters : undefined)
   }
 

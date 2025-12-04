@@ -32,10 +32,10 @@ export const ToastProvider: FunctionComponent<ToastProviderProps> = ({ children 
     show: false,
     message: '',
     type: 'success',
-    duration: 2000,
+    duration: 4000,
   })
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning', duration: number = 2000) => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning', duration: number = 4000) => {
     setToast({
       show: true,
       message,

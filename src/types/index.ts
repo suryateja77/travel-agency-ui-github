@@ -168,168 +168,338 @@ export const INITIAL_STAFF: StaffModel = {
 
 // --------------------------------------------------------------------------------------------------------
 
+// New nested schema structure matching backend model
 export interface RegularRequestModel {
-  customerType: 'existing' | 'new'
-  vehicleType: 'existing' | 'new'
-  staffType: 'existing' | 'new'
-  requestType: string
-
-  customerCategory: string | null
-  customer: string | null
-  customerDetails: null | {
-    name: string
-    contact: string
-    email: string
+  _id?: string
+  consumerId?: string
+  requestNo?: number
+  
+  packageDetails: {
+    packageCategory: string
+    package: string | { _id: string; packageCode?: string; [key: string]: any }
   }
-  vehicleCategory: string | null
-  supplier: string | null
-  supplierPackage: string | null
-  vehicle: string | null
-  vehicleDetails: null | {
-    ownerName: string
-    ownerContact: string
-    ownerEmail: string
-    manufacturer: string
-    name: string
-    registrationNo: string
+  
+  requestDetails: {
+    requestType: string
+    pickUpLocation: string
+    dropOffLocation: string
+    pickUpDateTime: Date | string | null
+    dropDateTime: Date | string | null
+    openingKm: number | null
+    closingKm: number | null
+    totalKm: number | null
+    totalHr: number | null
+    ac: boolean
   }
-  packageFromProvidedVehicle:
-    | undefined
-    | {
-        packageCategory: string
-        package: string
-      }
-  ac: boolean
-  packageCategory: string | null
-  package: string | null
-  staffCategory: string | null
-  staff: string | null
-  staffDetails: null | {
-    name: string
-    contact: string
-    license: string
+  
+  customerDetails: {
+    customerType: 'existing' | 'new'
+    customerCategory: string | null
+    customer: string | { _id: string; name?: string; [key: string]: any } | null
+    newCustomerDetails: {
+      name: string
+      contact: string
+      email: string
+    } | null
   }
-  pickUpLocation: string
-  dropOffLocation: string
-  pickUpDateTime: Date | null
-  dropDateTime: Date | null
-  openingKm: number | null
-  closingKm: number | null
-  totalKm: number | null
-  totalHr: number | null
-
-  paymentDetails: {
-    status: '' | 'BILL_GENERATED' | 'BILL_SENT_TO_CUSTOMER' | 'PAYMENT_RECEIVED'
-    paymentMethod: string
-    paymentDate: Date | null
+  
+  vehicleDetails: {
+    vehicleType: 'existing' | 'new'
+    vehicleCategory: string | null
+    vehicle: string | { _id: string; name?: string; registrationNo?: string; [key: string]: any } | null
+    supplierDetails: {
+      supplier: string | { _id: string; name?: string; [key: string]: any } | null
+      package: string | { _id: string; packageCode?: string; [key: string]: any } | null
+    }
+    newVehicleDetails: {
+      ownerName: string
+      ownerContact: string
+      ownerEmail: string
+      manufacturer: string
+      name: string
+      registrationNo: string
+      package?: string | { _id: string; packageCode?: string; [key: string]: any } | null
+    } | null
   }
+  
+  staffDetails: {
+    staffType: 'existing' | 'new'
+    staffCategory: string | null
+    staff: string | { _id: string; name?: string; [key: string]: any } | null
+    newStaffDetails: {
+      name: string
+      contact: string
+      license: string
+    } | null
+  }
+  
   otherCharges: {
     toll: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
     }
     parking: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
     }
     nightHalt: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
       isPayableWithSalary: boolean
     }
     driverAllowance: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
       isPayableWithSalary: boolean
     }
   }
-  advancedPayment: {
-    advancedFromCustomer: {
-      amount: string | number
-      paymentMethod: string | null
-      paymentDate: Date | null
-    }
-    advancedToSupplier: null | {
-      amount: string | number
-      paymentMethod: string | null
-      paymentDate: Date | null
-    }
+  
+  status: 'ONGOING' | 'PAYMENT_PENDING' | 'CLOSED'
+  
+  paymentDetails: {
+    amountPaid: number
+    paymentMethod: string | null
+    paymentDate: Date | string | null
   }
-  comment: string
+  
   requestTotal: number
-  providedVehiclePayment: number
   requestExpense: number
   requestProfit: number
   customerBill: number
+  comment: string
+  createdAt?: Date | string
 }
-//
-export interface MonthlyFixedRequestModel {
-  customerCategory: string
-  customer: string
-  vehicleType: string
-  staffType: string
-  requestType: string
-  requestPackage: string
-  vehicleCategory: string | null
-  vehicle: string | null
-  supplier: string | null
-  supplierPackage: string | null
-  vehicleDetails: null | {
-    ownerName: string
-    ownerContact: string
-    ownerEmail: string
-    manufacturer: string
-    name: string
-    registrationNo: string
-  }
-  pickUpLocation: string
-  dropOffLocation: string
-  pickUpDateTime: Date | null
-  dropDateTime: Date | null
-  openingKm: number | null
-  closingKm: number | null
-  totalKm: number | null
-  totalHr: number | null
-  ac: boolean
-  packageFromProvidedVehicle:
-    | undefined
-    | {
-        packageCategory: string
-        packageId: string
-      }
-  staffCategory: string | null
-  staff: string | null
-  staffDetails: null | {
-    name: string
-    contact: string
-    license: string
-  }
+
+export const INITIAL_REGULAR_REQUEST: RegularRequestModel = {
+  packageDetails: {
+    packageCategory: '',
+    package: '',
+  },
+  requestDetails: {
+    requestType: '',
+    pickUpLocation: '',
+    dropOffLocation: '',
+    pickUpDateTime: null,
+    dropDateTime: null,
+    openingKm: null,
+    closingKm: null,
+    totalKm: null,
+    totalHr: null,
+    ac: true,
+  },
+  customerDetails: {
+    customerType: 'existing',
+    customerCategory: null,
+    customer: null,
+    newCustomerDetails: null,
+  },
+  vehicleDetails: {
+    vehicleType: 'existing',
+    vehicleCategory: null,
+    vehicle: null,
+    supplierDetails: {
+      supplier: null,
+      package: null,
+    },
+    newVehicleDetails: null,
+  },
+  staffDetails: {
+    staffType: 'existing',
+    staffCategory: null,
+    staff: null,
+    newStaffDetails: null,
+  },
   otherCharges: {
     toll: {
-      amount: string | number
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    parking: {
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    nightHalt: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+    driverAllowance: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+  },
+  status: 'ONGOING',
+  paymentDetails: {
+    amountPaid: 0,
+    paymentMethod: null,
+    paymentDate: null,
+  },
+  requestTotal: 0,
+  requestExpense: 0,
+  requestProfit: 0,
+  customerBill: 0,
+  comment: '',
+} as const
+// New nested schema structure matching backend FixedRequest model
+export interface MonthlyFixedRequestModel {
+  _id?: string
+  consumerId?: string
+  requestNo?: number
+  
+  customerDetails: {
+    customerCategory: string
+    customer: string | { _id: string; name?: string; [key: string]: any }
+  }
+  
+  requestDetails: {
+    requestType: string
+    ac: boolean
+    pickUpLocation: string
+    dropOffLocation: string
+    pickUpDateTime: Date | string | null
+    dropDateTime: Date | string | null
+    openingKm: number | null
+    closingKm: number | null
+    totalKm: number | null
+    totalHr: number | null
+  }
+  
+  assignmentDetails: {
+    packageCategory: string
+    package: string | { _id: string; packageCode?: string; [key: string]: any }
+    vehicleCategory: string
+    vehicle: string | { _id: string; name?: string; registrationNo?: string; [key: string]: any }
+    staffCategory: string
+    staff: string | { _id: string; name?: string; [key: string]: any }
+  }
+  
+  vehicleDetails: {
+    vehicleType: 'regular' | 'existing' | 'new'
+    vehicleCategory: string | null
+    vehicle: string | { _id: string; name?: string; registrationNo?: string; [key: string]: any } | null
+    supplierDetails: {
+      supplier: string | { _id: string; companyName?: string; [key: string]: any } | null
+      package: string | { _id: string; packageCode?: string; [key: string]: any } | null
+    }
+    newVehicleDetails: {
+      ownerName: string
+      ownerContact: string
+      ownerEmail: string
+      manufacturer: string
+      name: string
+      registrationNo: string
+    } | null
+  }
+  
+  staffDetails: {
+    staffType: 'regular' | 'existing' | 'new'
+    staffCategory: string | null
+    staff: string | { _id: string; name?: string; [key: string]: any } | null
+    newStaffDetails: {
+      name: string
+      contact: string
+      license: string
+    } | null
+  }
+  
+  otherCharges: {
+    toll: {
+      amount: number
       isChargeableToCustomer: boolean
     }
     parking: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
     }
     nightHalt: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
       isPayableWithSalary: boolean
     }
     driverAllowance: {
-      amount: string | number
+      amount: number
       isChargeableToCustomer: boolean
       isPayableWithSalary: boolean
     }
   }
-  advancePayment: {
-    advancedFromCustomer: number
-    advancedToDriver: number
+  
+  paymentDetails: {
+    advanceAmountPaid: number
   }
+  
+  supplierExpense: number
   comment: string
+  createdAt?: Date | string
 }
+
+export const INITIAL_MONTHLY_FIXED_REQUEST: MonthlyFixedRequestModel = {
+  customerDetails: {
+    customerCategory: '',
+    customer: '',
+  },
+  requestDetails: {
+    requestType: '',
+    ac: true,
+    pickUpLocation: '',
+    dropOffLocation: '',
+    pickUpDateTime: null,
+    dropDateTime: null,
+    openingKm: null,
+    closingKm: null,
+    totalKm: null,
+    totalHr: null,
+  },
+  assignmentDetails: {
+    packageCategory: '',
+    package: '',
+    vehicleCategory: '',
+    vehicle: '',
+    staffCategory: '',
+    staff: '',
+  },
+  vehicleDetails: {
+    vehicleType: 'regular',
+    vehicleCategory: null,
+    vehicle: null,
+    supplierDetails: {
+      supplier: null,
+      package: null,
+    },
+    newVehicleDetails: null,
+  },
+  staffDetails: {
+    staffType: 'regular',
+    staffCategory: null,
+    staff: null,
+    newStaffDetails: null,
+  },
+  otherCharges: {
+    toll: {
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    parking: {
+      amount: 0,
+      isChargeableToCustomer: false,
+    },
+    nightHalt: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+    driverAllowance: {
+      amount: 0,
+      isChargeableToCustomer: false,
+      isPayableWithSalary: false,
+    },
+  },
+  paymentDetails: {
+    advanceAmountPaid: 0,
+  },
+  supplierExpense: 0,
+  comment: '',
+} as const
 //
 export interface AdvanceBookingModel {
   customerType: string
@@ -587,5 +757,71 @@ export interface StaffAccountModel {
   totalNightHalt: number
   totalDriverAllowance: number
   requests: StaffAccountRequest[]
+  createdAt: Date | string
+}
+
+//
+export interface SupplierPaymentRequest {
+  requestType: 'FixedRequest' | 'RegularRequest'
+  request: {
+    _id: string
+    requestNo?: string
+    customer?: {
+      name: string
+      _id: string
+    }
+    pickUpLocation?: string
+    dropOffLocation?: string
+    pickUpDateTime?: Date | string
+    dropDateTime?: Date | string
+    [key: string]: any
+  }
+  vehicle: {
+    _id: string
+    registrationNo: string
+    [key: string]: any
+  }
+  package: {
+    _id: string
+    packageCode: string
+    baseAmount: number
+    minimumKm: number
+    minimumHr: number
+    extraKmPerKmRate: number
+    extraHrPerHrRate: number
+    [key: string]: any
+  }
+  totalKm: number
+  totalHr: number
+  extraKm: number
+  extraHr: number
+  amount: number
+}
+
+export interface SupplierPaymentModel {
+  _id: string
+  year: string
+  month: string
+  supplier: {
+    _id: string
+    companyName: string
+    [key: string]: any
+  }
+  vehicle: {
+    _id: string
+    registrationNo: string
+    [key: string]: any
+  }
+  totalAmount: number
+  totalKm: number
+  totalHr: number
+  totalExtraKm: number
+  totalExtraHr: number
+  requests: SupplierPaymentRequest[]
+  paymentDetails: {
+    status: '' | 'BILL_GENERATED' | 'BILL_SENT_TO_SUPPLIER' | 'PAYMENT_MADE'
+    paymentDate?: Date | string
+    paymentMethod?: string
+  }
   createdAt: Date | string
 }

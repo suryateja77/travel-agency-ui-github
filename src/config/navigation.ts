@@ -156,6 +156,10 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
             path: '/staff',
             name: 'Staff',
           },
+          {
+            path: '/supplier',
+            name: 'Supplier',
+          },
         ],
       },
       {

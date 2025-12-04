@@ -2,55 +2,80 @@ import { Panel } from "@types";
 
 export const monthlyFixedRequestDetailsFields: Panel[] = [
   {
+    panel: 'Assignment Details',
+    fields: [
+      {
+        label: 'Package Category',
+        path: 'assignmentDetails.packageCategory',
+      },
+      {
+        label: 'Package',
+        path: 'assignmentDetails.package.packageCode',
+      },
+      {
+        label: 'Vehicle Category',
+        path: 'assignmentDetails.vehicleCategory',
+      },
+      {
+        label: 'Vehicle',
+        path: 'assignmentDetails.vehicle.name',
+      },
+      {
+        label: 'Vehicle Registration',
+        path: 'assignmentDetails.vehicle.registrationNo',
+      },
+      {
+        label: 'Staff Category',
+        path: 'assignmentDetails.staffCategory',
+      },
+      {
+        label: 'Staff',
+        path: 'assignmentDetails.staff.name',
+      },
+    ],
+  },
+  {
     panel: 'Request Details',
     fields: [
       {
-        label: 'Vehicle Type',
-        path: 'vehicleType',
-      },
-      {
-        label: 'Staff Type',
-        path: 'staffType',
-      },
-      {
         label: 'Request Type',
-        path: 'requestType',
+        path: 'requestDetails.requestType',
       },
       {
         label: 'Pickup Location',
-        path: 'pickUpLocation',
+        path: 'requestDetails.pickUpLocation',
       },
       {
         label: 'Drop Location',
-        path: 'dropOffLocation',
+        path: 'requestDetails.dropOffLocation',
       },
       {
         label: 'Pickup Date and Time',
-        path: 'pickUpDateTime',
+        path: 'requestDetails.pickUpDateTime',
       },
       {
         label: 'Drop Date and Time',
-        path: 'dropDateTime',
+        path: 'requestDetails.dropDateTime',
       },
       {
         label: 'Duration',
-        path: 'totalHr',
+        path: 'requestDetails.totalHr',
       },
       {
         label: 'Opening Km',
-        path: 'openingKm',
+        path: 'requestDetails.openingKm',
       },
       {
         label: 'Closing Km',
-        path: 'closingKm',
+        path: 'requestDetails.closingKm',
       },
       {
         label: 'Total Distance',
-        path: 'totalKm',
+        path: 'requestDetails.totalKm',
       },
       {
         label: 'AC Required',
-        path: 'ac',
+        path: 'requestDetails.ac',
       },
     ],
   },
@@ -59,11 +84,11 @@ export const monthlyFixedRequestDetailsFields: Panel[] = [
     fields: [
       {
         label: 'Customer Category',
-        path: 'customerCategory',
+        path: 'customerDetails.customerCategory',
       },
       {
         label: 'Customer',
-        path: 'customer.name',
+        path: 'customerDetails.customer.name',
       },
     ],
   },
@@ -71,57 +96,52 @@ export const monthlyFixedRequestDetailsFields: Panel[] = [
     panel: 'Vehicle Details',
     fields: [
       {
+        label: 'Vehicle Type',
+        path: 'vehicleDetails.vehicleType',
+      },
+      {
         label: 'Vehicle Category',
-        path: 'vehicleCategory',
-      },
-      {
-        label: 'Supplier',
-        path: 'supplier.companyName',
-      },
-      {
-        label: 'Supplier Package',
-        path: 'supplierPackage.packageCode',
+        path: 'vehicleDetails.vehicleCategory',
       },
       {
         label: 'Vehicle',
-        path: 'vehicle.name',
+        path: 'vehicleDetails.vehicle.name',
       },
       {
-        label: 'Owner Name',
-        path: 'vehicleDetails.ownerName',
+        label: 'Vehicle Registration',
+        path: 'vehicleDetails.vehicle.registrationNo',
       },
       {
-        label: 'Owner Contact',
-        path: 'vehicleDetails.ownerContact',
+        label: 'Supplier',
+        path: 'vehicleDetails.supplierDetails.supplier.companyName',
       },
       {
-        label: 'Owner Email',
-        path: 'vehicleDetails.ownerEmail',
+        label: 'Supplier Package',
+        path: 'vehicleDetails.supplierDetails.package.packageCode',
       },
       {
-        label: 'Manufacturer',
-        path: 'vehicleDetails.manufacturer',
+        label: 'New Vehicle Owner Name',
+        path: 'vehicleDetails.newVehicleDetails.ownerName',
       },
       {
-        label: 'Vehicle Name',
-        path: 'vehicleDetails.name',
+        label: 'New Vehicle Owner Contact',
+        path: 'vehicleDetails.newVehicleDetails.ownerContact',
       },
       {
-        label: 'Registration Number',
-        path: 'vehicleDetails.registrationNo',
-      },
-    ],
-  },
-  {
-    panel: 'Provider Package Details',
-    fields: [
-      {
-        label: 'Package Category',
-        path: 'packageFromProvidedVehicle.packageCategory',
+        label: 'New Vehicle Owner Email',
+        path: 'vehicleDetails.newVehicleDetails.ownerEmail',
       },
       {
-        label: 'Package',
-        path: 'packageFromProvidedVehicle.package.packageCode',
+        label: 'New Vehicle Manufacturer',
+        path: 'vehicleDetails.newVehicleDetails.manufacturer',
+      },
+      {
+        label: 'New Vehicle Name',
+        path: 'vehicleDetails.newVehicleDetails.name',
+      },
+      {
+        label: 'New Vehicle Registration',
+        path: 'vehicleDetails.newVehicleDetails.registrationNo',
       },
     ],
   },
@@ -129,24 +149,28 @@ export const monthlyFixedRequestDetailsFields: Panel[] = [
     panel: 'Staff Details',
     fields: [
       {
+        label: 'Staff Type',
+        path: 'staffDetails.staffType',
+      },
+      {
         label: 'Staff Category',
-        path: 'staffCategory',
+        path: 'staffDetails.staffCategory',
       },
       {
         label: 'Staff',
-        path: 'staff.name',
+        path: 'staffDetails.staff.name',
       },
       {
-        label: 'Staff Name',
-        path: 'staffDetails.name',
+        label: 'New Staff Name',
+        path: 'staffDetails.newStaffDetails.name',
       },
       {
-        label: 'Staff Contact',
-        path: 'staffDetails.contact',
+        label: 'New Staff Contact',
+        path: 'staffDetails.newStaffDetails.contact',
       },
       {
-        label: 'Staff License',
-        path: 'staffDetails.license',
+        label: 'New Staff License',
+        path: 'staffDetails.newStaffDetails.license',
       },
     ],
   },
@@ -192,19 +216,6 @@ export const monthlyFixedRequestDetailsFields: Panel[] = [
       {
         label: 'Driver Allowance Payable with Salary',
         path: 'otherCharges.driverAllowance.isPayableWithSalary',
-      },
-    ],
-  },
-  {
-    panel: 'Advance Payment',
-    fields: [
-      {
-        label: 'Advance from Customer',
-        path: 'advancePayment.advancedFromCustomer',
-      },
-      {
-        label: 'Advance to Driver',
-        path: 'advancePayment.advancedToDriver',
       },
     ],
   },

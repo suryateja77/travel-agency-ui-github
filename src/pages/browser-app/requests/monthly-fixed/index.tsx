@@ -1,7 +1,7 @@
 import React, { FunctionComponent } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MonthlyFixedRequestsList from './components/list'
-import CreateMonthlyFixedRequest from './components/create'
+import CreateMonthlyFixedRequest from './components/create/index'
 import MonthlyFixedRequestDetail from './components/detail'
 
 interface MonthlyFixedRequestsProps {}

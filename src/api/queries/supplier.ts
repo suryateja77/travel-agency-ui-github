@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const { get, getById, create, updateById, delete: deleteById, getByCategory, exportExcel, exportCsv } = generateAPIMethods('/supplier')
 
-export const useSuppliersQuery = () => {
+export const useSuppliersQuery = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ['suppliers'],
     queryFn: async () => {
       const response = await get({})
       return response.data
     },
+    enabled,
   })
 }
 

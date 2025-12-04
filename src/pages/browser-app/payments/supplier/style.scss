@@ -1,0 +1,63 @@
+@import '~/src/sass/style';
+
+.supplier-payments {
+  padding: $space-default;
+
+  &__filter-section {
+    margin-bottom: $space-large;
+  }
+
+  &__button-column {
+    display: flex;
+    gap: $space-small;
+    align-items: flex-end;
+    padding-bottom: 5px;
+  }
+
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+
+  &__content {
+    margin-top: $space-large;
+  }
+
+  &__modal-content {
+    padding: $space-default;
+  }
+
+  &__modal-header {
+    margin-bottom: $space-default;
+    padding-bottom: $space-default;
+    border-bottom: 1px solid $gray-light;
+  }
+
+  &__modal-label {
+    margin-bottom: $space-small;
+    font-size: 14px;
+    color: $gray-darker;
+
+    strong {
+      color: $black;
+      margin-left: 5px;
+    }
+  }
+
+  &__modal-subtitle {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: $space-default;
+    color: $theme;
+  }
+
+  &__modal-body {
+    margin-bottom: $space-default;
+  }
+
+  &__modal-footer {
+    padding-top: $space-default;
+    border-top: 1px solid $gray-light;
+    display: flex;
+    justify-content: flex-end;
+  }
+}

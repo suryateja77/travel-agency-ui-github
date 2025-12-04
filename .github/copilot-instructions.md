@@ -258,6 +258,202 @@ if (isEditing) {
 }
 ```
 
+### Creating Detail Page with Nested Schema
+For complex entities with nested schemas (e.g., RegularRequest, MonthlyFixedRequest):
+
+```typescript
+// 1. Define transformed data interface matching display format
+interface TransformedData extends Record<string, any> {
+  packageDetails: { packageCategory: string; package: { packageCode: string } }
+  requestDetails: { requestType: string; pickUpLocation: string; /* ... */ }
+  customerDetails: {
+    customerType: string
+    customer: { name: string } | null
+    newCustomerDetails: { name: string; contact: string } | null
+  }
+  // ... other nested groups
+}
+
+// 2. Transform function to format API response for display
+const transformData = (
+  data: ApiModel,
+  relatedData?: RelatedModel  // Conditionally fetched
+): TransformedData => {
+  return {
+    packageDetails: {
+      packageCategory: data.packageDetails.packageCategory || '-',
+      package: relatedData?.packageCode || '-'
+    },
+    requestDetails: {
+      requestType: data.requestDetails.requestType || '-',
+      pickUpLocation: data.requestDetails.pickUpLocation || '-',
+      pickUpDateTime: formatDateValueForDisplay(data.requestDetails.pickUpDateTime)
+    },
+    customerDetails: {
+      customerType: data.customerDetails.customerType || '-',
+      customer: relatedData ? { name: relatedData.name } : null,
+      newCustomerDetails: data.customerDetails.newCustomerDetails || null
+    }
+  }
+}
+
+// 3. Extract IDs from nested structures for fetching related data
+const customerId = currentData?.customerDetails.customer && 
+  typeof currentData.customerDetails.customer === 'string'
+  ? currentData.customerDetails.customer : ''
+
+// 4. Conditionally fetch related data
+const shouldFetchCustomer = currentData?.customerDetails.customerType === 'existing' && !!customerId
+const { data: customerData, isLoading: isCustomerLoading } = useCustomerByIdQuery(
+  shouldFetchCustomer ? customerId : ''
+)
+
+// 5. Filter panel fields based on entity types
+const createFilteredTemplate = (template: Panel[], data: ApiModel): Panel[] => {
+  return template.map(panel => {
+    if (panel.panel === 'Customer Details') {
+      return {
+        ...panel,
+        fields: panel.fields.filter(field => {
+          // Show customer fields only for existing
+          if (field.path === 'customerDetails.customer.name' && 
+              data.customerDetails.customerType === 'new') {
+            return false
+          }
+          // Show newCustomerDetails only for new
+          if (field.path.startsWith('customerDetails.newCustomerDetails.') && 
+              data.customerDetails.customerType === 'existing') {
+            return false
+          }
+          return true
+        })
+      }
+    }
+    return panel
+  })
+}
+```
+
+**Key Patterns for Nested Schema Detail Pages**:
+- Extract IDs from nested structures for related data fetching
+- Conditionally fetch only needed related entities
+- Transform nested API data to flat display format
+- Filter panel fields based on entity types (existing vs new vs regular)
+- Handle both populated objects and string IDs
+- Use `formatDateValueForDisplay` for date fields (accepts Date | string | null | undefined)
+
+### Creating Forms with Nested Schema (Regular/Existing/New Pattern)
+
+**Critical Pattern**: For entities with regular/existing/new type selection (e.g., MonthlyFixedRequest):
+
+```typescript
+// 1. Type Selection Validation - Conditional Requirements
+const validationSchema = (data: FormData) => {
+  const conditionalFields = []
+  
+  // Regular type - Uses assignmentDetails (no validation needed for vehicleDetails)
+  // Existing type - Must select vehicle/staff from dropdown (requires vehicleCategory + vehicle)
+  // New type - Must enter all new vehicle/staff details
+  
+  if (data.vehicleDetails.vehicleType === 'existing') {
+    conditionalFields.push(emptyField('vehicleDetails.vehicleCategory'))
+    
+    // If supplier category, additional requirements
+    if (nameToPath(data.vehicleDetails.vehicleCategory) === 'supplier') {
+      conditionalFields.push(emptyField('vehicleDetails.supplierDetails.supplier'))
+      conditionalFields.push(emptyField('vehicleDetails.supplierDetails.package'))
+    }
+    
+    conditionalFields.push(emptyField('vehicleDetails.vehicle'))
+  } else if (data.vehicleDetails.vehicleType === 'new') {
+    conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.vehicleName'))
+    // ... other new vehicle fields
+  }
+  // Note: No validation for 'regular' type - uses assignmentDetails from customer
+  
+  return conditionalFields
+}
+
+// 2. Supplier Filtering - Vehicle/Package Selection
+// When vehicleCategory is 'supplier', must show supplier dropdown first
+const isSupplierVehicle = useMemo(() => 
+  nameToPath(monthlyFixedRequest.vehicleDetails.vehicleCategory) === 'supplier',
+  [monthlyFixedRequest.vehicleDetails.vehicleCategory]
+)
+
+// Filter vehicles by selected supplier
+useEffect(() => {
+  if (isSupplierVehicle && selectedSupplier && supplierVehicles.data) {
+    const filtered = supplierVehicles.data.filter(
+      vehicle => vehicle.supplier?._id === selectedSupplier
+    )
+    setVehicleOptions(filtered)
+  }
+}, [isSupplierVehicle, selectedSupplier, supplierVehicles.data])
+
+// Filter packages by selected supplier
+useEffect(() => {
+  if (isSupplierVehicle && selectedSupplier && supplierPackages.data) {
+    const filtered = supplierPackages.data.filter(
+      pkg => pkg.supplier === selectedSupplier
+    )
+    setPackageOptions(filtered)
+  }
+}, [isSupplierVehicle, selectedSupplier, supplierPackages.data])
+
+// 3. Conditional UI Rendering
+{monthlyFixedRequest.vehicleDetails.vehicleType === 'regular' && (
+  // Regular type: Show info message, no selection needed
+  <Alert type="info" message="Uses assigned vehicle from customer's monthly fixed setup" />
+)}
+
+{monthlyFixedRequest.vehicleDetails.vehicleType === 'existing' && (
+  <>
+    <SelectInput label="Vehicle Category" /* ... */ />
+    
+    {isSupplierVehicle && (
+      <SelectInput label="Supplier" /* Shown first for supplier category */ />
+    )}
+    
+    <SelectInput 
+      label="Vehicle" 
+      options={vehicleOptions}  // Filtered by supplier if applicable
+      disabled={isSupplierVehicle && !selectedSupplier}  // Disabled until supplier selected
+    />
+    
+    {isSupplierVehicle && (
+      <SelectInput label="Supplier Package" options={packageOptions} />
+    )}
+  </>
+)}
+
+{monthlyFixedRequest.vehicleDetails.vehicleType === 'new' && (
+  <>
+    <TextInput label="Vehicle Name" /* ... */ />
+    <TextInput label="Registration Number" /* ... */ />
+    // ... other new vehicle fields
+  </>
+)}
+```
+
+**Key Design Principles**:
+- **Regular Type**: Uses `assignmentDetails` from customer's monthly fixed setup
+  - Backend: `assignmentDetails.vehicle` used for tracking
+  - Frontend: No vehicle selection shown, validated via customer selection
+  - Schema: `vehicleDetails.vehicle` can be null
+- **Existing Type**: Uses `vehicleDetails` for additional/different vehicle
+  - Backend: `vehicleDetails.vehicle` used, may trigger supplier payment if supplier category
+  - Frontend: Shows vehicle category + vehicle selection
+  - Schema: `vehicleDetails.vehicle` required
+- **New Type**: Uses `newVehicleDetails` for temporary vehicle
+  - Backend: New vehicle details stored, no tracking in vehicle reports
+  - Frontend: Shows all new vehicle detail fields
+  - Schema: All `newVehicleDetails` fields required
+- **Supplier Flow**: When category is 'supplier', show supplier → vehicle → package
+  - Vehicle dropdown filtered by selected supplier
+  - Package dropdown filtered by selected supplier
+  - Backend creates supplier payment record when supplier vehicle used
+
 ## Dashboard & Data Visualization Patterns
 
 ### Recharts Component Pattern
@@ -428,7 +624,9 @@ export const useMonthlyTripsQuery = (year: number, type: string) => {
 
 **Pattern Examples**:
 - Backend: `src/controllers/customer.js`, `src/models/customer.js`
+- **Backend Nested Schema**: `src/models/fixedRequest.js` (regular/existing/new pattern with conditional validation)
 - Frontend: `src/pages/browser-app/customers/category/components/`
+- **Frontend Nested Schema**: `src/pages/browser-app/requests/monthly-fixed/components/create/` (complete regular/existing/new implementation)
 - API Queries: `src/api/queries/customer.ts`
 - Base Components: `src/base/button/index.tsx`
 - **Dashboard**: `src/pages/browser-app/dashboard/` (modular data fetching, Recharts)
@@ -439,6 +637,9 @@ export const useMonthlyTripsQuery = (year: number, type: string) => {
 - `src/api/index.ts` - generateAPIMethods for CRUD operations
 - `src/api/queries/dashboard.ts` - Modular dashboard hooks with optimized caching
 - `src/middlewares/cookieAuth.js` - JWT authentication
+
+**Reference Documents**:
+- `Prompts/MONTHLY-FIXED-REQUEST-AUDIT.md` - Complete audit of nested schema implementation with regular/existing/new pattern
 
 ## Development Commands
 
