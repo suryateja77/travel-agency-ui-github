@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'react'
 import { useParams } from 'react-router-dom'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor, Currency } from '@base'
@@ -28,6 +29,11 @@ const formatDate = (dateString: string | Date) => {
 
 
 const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
+  // Get permissions for Staff module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Staff')
+  const hasDeletePermission = canDelete(permissions, 'Staff')
+  
   // Use category-specific query when category is provided, otherwise fetch all
   const { data: staffData, isLoading } = category 
     ? useStaffByCategory(category) 
@@ -145,8 +151,8 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
       <PageHeader
         title={`${categoryName} Staff`}
         total={filteredStaffData.length}
-        btnRoute={`/staff/${category}/create`}
-        btnLabel={`Add new ${categoryName}`}
+        btnRoute={hasEditPermission ? `/staff/${category}/create` : undefined}
+        btnLabel={hasEditPermission ? `Add new ${categoryName}` : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -157,8 +163,8 @@ const StaffList: FunctionComponent<Props> = ({ category = '' }) => {
           columns={columns}
           data={filteredStaffData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteStaff}
-          editRoute={`/staff/${category}`}
+          deleteHandler={hasDeletePermission ? handleDeleteStaff : undefined}
+          editRoute={hasEditPermission ? `/staff/${category}` : undefined}
           routeParams={{ category }}
           queryParams={{ category }}
         />

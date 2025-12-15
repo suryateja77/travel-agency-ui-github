@@ -121,6 +121,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const [packageOptions, setPackageOptions] = useState<{ key: any; value: any }[]>([])
   const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
   const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
+  const [supplierVehicleOptions, setSupplierVehicleOptions] = useState<{ key: any; value: any }[]>([])
   const [supplierOptions, setSupplierOptions] = useState<{ key: any; value: any }[]>([])
   const [supplierPackageOptions, setSupplierPackageOptions] = useState<{ key: any; value: any }[]>([])
   const [staffOptions, setStaffOptions] = useState<{ key: any; value: any }[]>([])
@@ -178,6 +179,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   // API query for suppliers (only when supplier vehicle)
   const { data: suppliers, error: suppliersError, isLoading: suppliersLoading, isError: suppliersIsError } = useSuppliersQuery(!!isSupplierVehicle)
+
+  // API query for supplier vehicles (only when supplier is selected)
+  const supplierVehicleFilter = isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier
+    ? { supplier: regularRequest.vehicleDetails.supplierDetails.supplier }
+    : null
+  const { data: supplierVehicles, error: supplierVehiclesError, isLoading: supplierVehiclesLoading, isError: supplierVehiclesIsError } = useVehicleByCategory('supplier')
 
   // API query for supplier packages (only when supplier is selected)
   const supplierPackageFilter = isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier
@@ -451,34 +458,50 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     }
   }, [customers, customersError, customersIsError])
 
-  // Handle vehicle API response
+  // Handle supplier vehicles API response
   useEffect(() => {
-    if (vehiclesIsError) {
-      const errorMessage = 'Unable to load vehicle data. Please check your connection and try again.'
+    if (!isSupplierVehicle || !regularRequest.vehicleDetails.supplierDetails.supplier) {
+      setSupplierVehicleOptions([])
+      setVehicleOptions([])
+      setApiErrors(prev => ({ ...prev, vehicles: '' }))
+      return
+    }
+
+    if (supplierVehiclesIsError) {
+      const errorMessage = 'Unable to load supplier vehicle data. Please check your connection and try again.'
       setApiErrors(prev => ({
         ...prev,
         vehicles: errorMessage,
       }))
+      setSupplierVehicleOptions([])
       setVehicleOptions([])
       showToast(errorMessage, 'error')
-    } else if (vehicles?.data?.length > 0) {
-      const options = vehicles.data.map((vehicle: { _id: any; name: any }) => ({
+    } else if (supplierVehicles?.data?.length > 0) {
+      // Filter vehicles by selected supplier
+      const filtered = supplierVehicles.data.filter(
+        (vehicle: any) => vehicle.supplier?._id === regularRequest.vehicleDetails.supplierDetails.supplier || vehicle.supplier === regularRequest.vehicleDetails.supplierDetails.supplier
+      )
+      
+      const options = filtered.map((vehicle: { _id: any; name: any }) => ({
         key: vehicle._id,
         value: vehicle.name,
       }))
+      
+      setSupplierVehicleOptions(options)
       setVehicleOptions(options)
       setApiErrors(prev => ({
         ...prev,
         vehicles: '',
       }))
     } else {
+      setSupplierVehicleOptions([])
       setVehicleOptions([])
       setApiErrors(prev => ({
         ...prev,
         vehicles: '',
       }))
     }
-  }, [vehicles, vehiclesError, vehiclesIsError])
+  }, [isSupplierVehicle, regularRequest.vehicleDetails.supplierDetails.supplier, supplierVehicles, supplierVehiclesError, supplierVehiclesIsError])
 
   // Handle supplier API response
   useEffect(() => {
@@ -1297,9 +1320,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       label="Vehicle"
                       name="vehicle"
                       options={
-                        vehiclesLoading
+                        vehiclesLoading || (isSupplierVehicle && supplierVehiclesLoading)
                           ? [{ key: 'loading', value: 'Please wait...' }]
-                          : vehiclesIsError
+                          : vehiclesIsError || (isSupplierVehicle && supplierVehiclesIsError)
                             ? [{ key: 'error', value: 'Unable to load options' }]
                             : vehicleOptions.length > 0
                               ? vehicleOptions
@@ -1330,7 +1353,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       required
                       errorMessage={regularRequestErrorMap['vehicleDetails.vehicle']}
                       invalid={!!regularRequestErrorMap['vehicleDetails.vehicle']}
-                      disabled={!regularRequest.vehicleDetails.vehicleCategory}
+                      disabled={!regularRequest.vehicleDetails.vehicleCategory || (isSupplierVehicle && !regularRequest.vehicleDetails.supplierDetails.supplier) || false}
                     />
                   </Column>
                 </Row>

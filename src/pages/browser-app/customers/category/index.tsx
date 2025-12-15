@@ -2,6 +2,7 @@ import { FunctionComponent } from 'react'
 import { Routes, Route, useParams } from 'react-router-dom'
 import { CustomersList, CreateCustomer } from './components'
 import CustomerDetail from './components/detail'
+import { PermissionGuard } from '@components'
 
 const CategoryCustomers: FunctionComponent = () => {
   const params = useParams()
@@ -9,19 +10,35 @@ const CategoryCustomers: FunctionComponent = () => {
     <Routes>
       <Route
         path=""
-        element={<CustomersList category={params.category} />}
+        element={
+          <PermissionGuard module="Customers" requiredPermission="view">
+            <CustomersList category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreateCustomer category={params.category} />}
+        element={
+          <PermissionGuard module="Customers" requiredPermission="edit">
+            <CreateCustomer category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreateCustomer category={params.category} />}
+        element={
+          <PermissionGuard module="Customers" requiredPermission="edit">
+            <CreateCustomer category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<CustomerDetail />}
+        element={
+          <PermissionGuard module="Customers" requiredPermission="view">
+            <CustomerDetail />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

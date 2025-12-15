@@ -1,6 +1,5 @@
-import React, { FunctionComponent, useEffect, useState, useMemo, useCallback, useReducer } from 'react'
+import React, { FunctionComponent, useEffect, useState, useMemo, useCallback } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
-import { PageHeader } from '@components'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -35,24 +34,6 @@ interface SelectOption {
   value: string
 }
 
-// State interface for useReducer
-interface FormState {
-  package: PackageModel
-  isEditing: boolean
-  packageId: string
-  validationErrors: ValidationErrors
-  isValidationError: boolean
-  supplierOptions: SelectOption[]
-}
-
-// Action types for useReducer
-type FormAction =
-  | { type: 'SET_PACKAGE'; payload: PackageModel }
-  | { type: 'UPDATE_PACKAGE_FIELD'; payload: { field: keyof PackageModel; value: any } }
-  | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; packageId: string } }
-  | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
-  | { type: 'SET_SUPPLIER_OPTIONS'; payload: SelectOption[] }
-
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -68,55 +49,6 @@ const INITIAL_PACKAGE: PackageModel = {
   comment: '',
   isActive: true,
 } as const
-
-// ============================================================================
-// REDUCER & INITIAL STATE
-// ============================================================================
-
-const initialState: FormState = {
-  package: INITIAL_PACKAGE,
-  isEditing: false,
-  packageId: '',
-  validationErrors: {},
-  isValidationError: false,
-  supplierOptions: [],
-}
-
-function formReducer(state: FormState, action: FormAction): FormState {
-  switch (action.type) {
-    case 'SET_PACKAGE':
-      return { ...state, package: action.payload }
-    
-    case 'UPDATE_PACKAGE_FIELD':
-      return {
-        ...state,
-        package: { ...state.package, [action.payload.field]: action.payload.value },
-      }
-    
-    case 'SET_EDITING_MODE':
-      return {
-        ...state,
-        isEditing: action.payload.isEditing,
-        packageId: action.payload.packageId,
-      }
-    
-    case 'SET_VALIDATION_ERRORS':
-      return {
-        ...state,
-        validationErrors: action.payload.errors,
-        isValidationError: action.payload.hasError,
-      }
-    
-    case 'SET_SUPPLIER_OPTIONS':
-      return {
-        ...state,
-        supplierOptions: action.payload,
-      }
-    
-    default:
-      return state
-  }
-}
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -138,25 +70,18 @@ const transformPackageResponse = (response: PackageResponseModel, category: stri
 const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' }) => {
   const navigate = useNavigate()
   const params = useParams()
-  
-  const [state, dispatch] = useReducer(formReducer, {
-    ...initialState,
-    package: {
-      ...INITIAL_PACKAGE,
-      category: nameToPath(category),
-    },
-  })
-  
   const { showToast } = useToast()
-  
-  const {
-    package: packageData,
-    isEditing,
-    packageId,
-    validationErrors,
-    isValidationError,
-    supplierOptions,
-  } = state
+
+  const [packageData, setPackageData] = useState<PackageModel>({
+    ...INITIAL_PACKAGE,
+    category: nameToPath(category),
+  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [packageId, setPackageId] = useState('')
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [isValidationError, setIsValidationError] = useState(false)
+  const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>([])
+  const [apiErrors, setApiErrors] = useState<{ suppliers: string }>({ suppliers: '' })
 
   // API Hooks
   const createPackage = useCreatePackageMutation()
@@ -170,9 +95,37 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
 
   const handlePackageFieldChange = useCallback(
     <K extends keyof PackageModel>(field: K, value: PackageModel[K]) => {
-      dispatch({ type: 'UPDATE_PACKAGE_FIELD', payload: { field, value } })
+      setPackageData(prev => ({ ...prev, [field]: value }))
     },
     []
+  )
+
+  const validateField = useCallback(
+    (field: keyof PackageModel, nextData: PackageModel) => {
+      const validationSchema = createValidationSchema(nextData, category)
+      const { errorMap } = validatePayload(validationSchema, nextData)
+      
+      // Only update the error for the specific field being validated
+      setValidationErrors(prev => {
+        const updated = { ...prev }
+        if (errorMap[field]) {
+          updated[field] = errorMap[field]
+        } else {
+          delete updated[field]
+        }
+        return updated
+      })
+      
+      // Clear validation error banner if no errors remain (but never set it during field validation)
+      const hasErrors = Object.keys({ ...validationErrors, [field]: errorMap[field] })
+        .filter(key => key !== field)
+        .some(key => validationErrors[key])
+      
+      if (!hasErrors && !errorMap[field]) {
+        setIsValidationError(false)
+      }
+    },
+    [category, validationErrors]
   )
 
   const handleSupplierChange = useCallback(
@@ -181,9 +134,12 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
       if (['Please wait...', 'Unable to load options', 'No suppliers found'].includes(supplierValue)) return
 
       const selectedOption = supplierOptions.find(option => option.value === supplierValue)
-      handlePackageFieldChange('supplier', selectedOption?.key || '')
+      setPackageData(prev => ({
+        ...prev,
+        supplier: selectedOption?.key || '',
+      }))
     },
-    [supplierOptions, handlePackageFieldChange]
+    [supplierOptions]
   )
 
   const navigateBack = useCallback(() => {
@@ -191,14 +147,11 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   }, [navigate, category])
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
     const validationSchema = createValidationSchema(packageData, category)
     const { isValid, errorMap } = validatePayload(validationSchema, packageData)
 
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
+    setValidationErrors(errorMap)
+    setIsValidationError(!isValid)
 
     if (!isValid) {
       console.error('Validation Error', errorMap)
@@ -206,11 +159,18 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     }
 
     try {
+      const supplierValue = category === 'supplier' ? (packageData.supplier || null) : null
+      const payload = {
+        ...packageData,
+        supplier: supplierValue,
+        category: nameToPath(category),
+      }
+
       if (isEditing) {
-        await updatePackage.mutateAsync({ _id: packageId, ...packageData })
+        await updatePackage.mutateAsync({ _id: packageId, ...payload })
         showToast('Package updated successfully!', 'success')
       } else {
-        await createPackage.mutateAsync({ ...packageData, category: nameToPath(category) })
+        await createPackage.mutateAsync(payload)
         showToast('New package created successfully!', 'success')
       }
       navigateBack()
@@ -228,26 +188,42 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   useEffect(() => {
     if (packageDataResponse) {
       const transformedPackage = transformPackageResponse(packageDataResponse, category)
-      dispatch({ type: 'SET_PACKAGE', payload: transformedPackage })
-      dispatch({
-        type: 'SET_EDITING_MODE',
-        payload: { isEditing: true, packageId: params.id || '' },
-      })
+      setPackageData(transformedPackage)
+      setIsEditing(true)
+      setPackageId(params.id || '')
+      setValidationErrors({})
+      setIsValidationError(false)
     }
   }, [packageDataResponse, params.id, category])
 
   // Handle suppliers data
   useEffect(() => {
-    if (suppliersQuery.data?.data && suppliersQuery.data.data.length > 0) {
+    if (category !== 'supplier') {
+      setSupplierOptions([])
+      setApiErrors(prev => ({ ...prev, suppliers: '' }))
+      return
+    }
+
+    if (suppliersQuery.isError) {
+      const errorMessage = 'Unable to load supplier data. Please check your connection and try again.'
+      setApiErrors(prev => ({ ...prev, suppliers: errorMessage }))
+      setSupplierOptions([])
+      showToast(errorMessage, 'error')
+      return
+    }
+
+    if (suppliersQuery.data?.data?.length) {
       const options = suppliersQuery.data.data.map((supplier: any) => ({
         key: supplier._id,
         value: supplier.companyName,
       }))
-      dispatch({ type: 'SET_SUPPLIER_OPTIONS', payload: options })
+      setSupplierOptions(options)
+      setApiErrors(prev => ({ ...prev, suppliers: '' }))
     } else {
-      dispatch({ type: 'SET_SUPPLIER_OPTIONS', payload: [] })
+      setSupplierOptions([])
+      setApiErrors(prev => ({ ...prev, suppliers: '' }))
     }
-  }, [suppliersQuery.data])
+  }, [category, suppliersQuery.data, suppliersQuery.isError, showToast])
 
   // ============================================================================
   // MEMOIZED VALUES
@@ -305,6 +281,13 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
           className={bemClass([blk, 'margin-bottom'])}
         />
       )}
+      {apiErrors.suppliers && (
+        <Alert
+          type="error"
+          message={apiErrors.suppliers}
+          className={bemClass([blk, 'margin-bottom'])}
+        />
+      )}
       <div className={bemClass([blk, 'content'])}>
         {isLoading ? (
           <Loader type="form" />
@@ -332,6 +315,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                       options={supplierSelectOptions}
                       value={selectedSupplierValue}
                       changeHandler={handleSupplierChange}
+                      onBlur={() => validateField('supplier', packageData)}
                       required={category === 'supplier'}
                       errorMessage={validationErrors.supplier}
                       invalid={!!validationErrors.supplier}
@@ -352,6 +336,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('packageCode', value.packageCode?.toString() ?? '')
                     }}
+                    onBlur={() => validateField('packageCode', packageData)}
                     required
                     errorMessage={validationErrors['packageCode']}
                     invalid={!!validationErrors['packageCode']}
@@ -369,6 +354,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('minimumKm', value.minimumKm ? Number(value.minimumKm) : '')
                     }}
+                    onBlur={() => validateField('minimumKm', packageData)}
                     required
                     errorMessage={validationErrors['minimumKm']}
                     invalid={!!validationErrors['minimumKm']}
@@ -386,6 +372,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('minimumHr', value.minimumHr ? Number(value.minimumHr) : '')
                     }}
+                    onBlur={() => validateField('minimumHr', packageData)}
                     required
                     errorMessage={validationErrors['minimumHr']}
                     invalid={!!validationErrors['minimumHr']}
@@ -405,6 +392,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('baseAmount', value.baseAmount ? Number(value.baseAmount) : '')
                     }}
+                    onBlur={() => validateField('baseAmount', packageData)}
                     required
                     errorMessage={validationErrors['baseAmount']}
                     invalid={!!validationErrors['baseAmount']}
@@ -422,6 +410,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('extraKmPerKmRate', value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '')
                     }}
+                    onBlur={() => validateField('extraKmPerKmRate', packageData)}
                     required
                     errorMessage={validationErrors['extraKmPerKmRate']}
                     invalid={!!validationErrors['extraKmPerKmRate']}
@@ -439,6 +428,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('extraHrPerHrRate', value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '')
                     }}
+                    onBlur={() => validateField('extraHrPerHrRate', packageData)}
                     required
                     errorMessage={validationErrors['extraHrPerHrRate']}
                     invalid={!!validationErrors['extraHrPerHrRate']}

@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import TanstackQueryProvider from '@api/queryProvider'
 import { ToastProvider } from './src/contexts/ToastContext'
+import { AuthProvider } from './src/contexts/AuthContext'
 
 import App from './src/app'
 
@@ -15,7 +16,9 @@ const root = createRoot(rootElement)
 root.render(
   <TanstackQueryProvider>
     <ToastProvider>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ToastProvider>
   </TanstackQueryProvider>,
 )

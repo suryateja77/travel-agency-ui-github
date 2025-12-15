@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'react'
-import { bemClass, downloadFile } from '@utils'
+import { bemClass, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -29,6 +30,11 @@ const formatAmount = (amount: number) => {
 const AdvancePaymentList: FunctionComponent<Props> = () => {
   const { data: advancePaymentsResponse, isLoading } = useAdvancedPaymentsQuery()
   const deleteAdvancePaymentMutation = useDeleteAdvancePaymentMutation()
+  
+  // Get permissions for Advance Payments module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Advance Payments')
+  const hasDeletePermission = canDelete(permissions, 'Advance Payments')
 
   // Extract data from the response structure
   const advancePaymentsData = advancePaymentsResponse?.data || []
@@ -109,8 +115,8 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
       <PageHeader
         title="Advance Payments"
         total={advancePaymentsData.length}
-        btnRoute="/advance-payments/create"
-        btnLabel="Add new Advance Payment"
+        btnRoute={hasEditPermission ? "/advance-payments/create" : undefined}
+        btnLabel={hasEditPermission ? "Add new Advance Payment" : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -121,8 +127,8 @@ const AdvancePaymentList: FunctionComponent<Props> = () => {
           columns={columns}
           data={advancePaymentsData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteAdvancePayment}
-          editRoute="/advance-payments"
+          deleteHandler={hasDeletePermission ? handleDeleteAdvancePayment : undefined}
+          editRoute={hasEditPermission ? "/advance-payments" : undefined}
         />
       </div>
     </div>

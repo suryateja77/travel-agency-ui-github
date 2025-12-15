@@ -83,6 +83,28 @@
   }
   &__margin-bottom {
     margin-bottom: $space-default;
+    
+    &--disabled {
+      cursor: not-allowed;
+      
+      input,
+      textarea,
+      select {
+        cursor: not-allowed;
+        background-color: $gray-lighter;
+        opacity: 0.7;
+        user-select: none;
+        pointer-events: none;
+        
+        &:hover {
+          border-color: $gray-light;
+        }
+      }
+      
+      label {
+        opacity: 0.7;
+      }
+    }
   }
   &__margin-right {
     margin-right: $space-small;

@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'react'
 import { useParams } from 'react-router-dom'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -17,6 +18,11 @@ interface Props {
 }
 
 const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
+  // Get permissions for Vehicles module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Vehicles')
+  const hasDeletePermission = canDelete(permissions, 'Vehicles')
+  
   // Use category-specific query when category is provided, otherwise fetch all
   const { data: vehicleData, isLoading } = category 
     ? useVehicleByCategory(category) 
@@ -133,8 +139,8 @@ const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
       <PageHeader
         title={`${categoryName} Vehicles`}
         total={filteredVehicleData.length}
-        btnRoute={`/vehicles/${category}/create`}
-        btnLabel={`Add ${categoryName} Vehicle`}
+        btnRoute={hasEditPermission ? `/vehicles/${category}/create` : undefined}
+        btnLabel={hasEditPermission ? `Add ${categoryName} Vehicle` : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -145,8 +151,8 @@ const VehiclesList: FunctionComponent<Props> = ({ category = '' }) => {
           columns={columns}
           data={filteredVehicleData || []}
           isLoading={isLoading}
-          deleteHandler={handleDeleteVehicle}
-          editRoute={`/vehicles/${category}`}
+          deleteHandler={hasDeletePermission ? handleDeleteVehicle : undefined}
+          editRoute={hasEditPermission ? `/vehicles/${category}` : undefined}
           routeParams={{ category }}
           queryParams={{ category }}
         />

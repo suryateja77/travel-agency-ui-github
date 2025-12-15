@@ -1,0 +1,21 @@
+@import '~/src/sass/style';
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+  
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: $white;
+  }
+}

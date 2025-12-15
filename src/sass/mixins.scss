@@ -66,3 +66,19 @@
     @include grid-col($i);
   }
 }
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'mobile' {
+    @media #{$medium-down} {
+      @content;
+    }
+  } @else if $breakpoint == 'tablet' {
+    @media #{$medium-down} {
+      @content;
+    }
+  } @else if $breakpoint == 'desktop' {
+    @media #{$large} {
+      @content;
+    }
+  }
+}

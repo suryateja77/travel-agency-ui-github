@@ -3,6 +3,7 @@ import { Routes, Route, useParams } from 'react-router-dom'
 import PackagesList from './components/list'
 import CreatePackage from './components/create'
 import PackageDetail from './components/detail'
+import { PermissionGuard } from '@components'
 
 interface PackagesProps {}
 
@@ -14,19 +15,35 @@ const CategoryPackages: FunctionComponent<PackagesProps> = () => {
     <Routes>
       <Route
         path=""
-        element={<PackagesList category={category} />}
+        element={
+          <PermissionGuard module="Packages" requiredPermission="view">
+            <PackagesList category={category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreatePackage category={category} />}
+        element={
+          <PermissionGuard module="Packages" requiredPermission="edit">
+            <CreatePackage category={category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreatePackage category={category} />}
+        element={
+          <PermissionGuard module="Packages" requiredPermission="edit">
+            <CreatePackage category={category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<PackageDetail category={category} />}
+        element={
+          <PermissionGuard module="Packages" requiredPermission="view">
+            <PackageDetail category={category} />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

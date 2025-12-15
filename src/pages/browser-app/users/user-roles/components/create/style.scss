@@ -1,0 +1,67 @@
+@import '~/src/sass/style';
+
+.create-user-role {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+
+  &__margin-right {
+    margin-right: $space-small;
+  }
+
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: $space-large;
+  }
+
+  &__permissions-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__permissions-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: $space-default;
+    padding: $space-small $space-default;
+    background-color: $gray-lighter;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  &__permission-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: $space-default;
+    padding: $space-small $space-default;
+    border-bottom: 1px solid $gray-light;
+
+    &--even {
+      background-color: $gray-lightest;
+    }
+  }
+
+  &__permission-module {
+    display: flex;
+    align-items: center;
+  }
+
+  &__permission-action {
+    display: flex;
+    align-items: center;
+  }
+}

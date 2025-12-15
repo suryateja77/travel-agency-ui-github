@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'react'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -22,6 +23,11 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
     : useCustomersQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deleteCustomerMutation = useDeleteCustomerMutation()
+  
+  // Get permissions for Customers module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Customers')
+  const hasDeletePermission = canDelete(permissions, 'Customers')
 
   // Extract data from the response structure
   const customersList = customersData?.data || []
@@ -126,8 +132,8 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
       <PageHeader
         title={`${categoryName} Customers`}
         total={filteredCustomersData.length}
-        btnRoute={`/customers/${category}/create`}
-        btnLabel={`Add ${categoryName} Customer`}
+        btnRoute={hasEditPermission ? `/customers/${category}/create` : undefined}
+        btnLabel={hasEditPermission ? `Add ${categoryName} Customer` : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -138,8 +144,8 @@ const CustomersList: FunctionComponent<Props> = ({ category = '' }) => {
           columns={columns}
           data={filteredCustomersData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteCustomer}
-          editRoute={`/customers/${category}`}
+          deleteHandler={hasDeletePermission ? handleDeleteCustomer : undefined}
+          editRoute={hasEditPermission ? `/customers/${category}` : undefined}
           routeParams={{ category }}
           queryParams={{ category }}
         />

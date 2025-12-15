@@ -11,4 +11,8 @@ export const LOGIN_ERROR_CODES = [
     code: 'INVALID_PASSWORD',
     message: 'Incorrect password',
   },
+  {
+    code: 'USER_INACTIVE',
+    message: 'Your account is inactive. Please contact your administrator.',
+  },
 ]

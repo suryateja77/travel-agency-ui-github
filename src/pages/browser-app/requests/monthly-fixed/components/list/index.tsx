@@ -1,5 +1,6 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
-import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile } from '@utils'
+import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Alert, Anchor, Button, Column, Row, SelectInput } from '@base'
@@ -16,6 +17,11 @@ const blk = 'monthly-fixed-requests-list'
 interface Props {}
 
 const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
+  // Get permissions for Monthly Fixed Requests module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Monthly Fixed Requests')
+  const hasDeletePermission = canDelete(permissions, 'Monthly Fixed Requests')
+  
   const [filterData, setFilterData] = useState({
     vehicleCategory: '',
     vehicle: '',
@@ -245,8 +251,8 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
       <PageHeader
         title="Monthly Fixed Requests"
         total={requestsData?.data.length}
-        btnRoute="/requests/monthly-fixed/create"
-        btnLabel="New Monthly Fixed Request"
+        btnRoute={hasEditPermission ? "/requests/monthly-fixed/create" : undefined}
+        btnLabel={hasEditPermission ? "New Monthly Fixed Request" : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -325,8 +331,8 @@ const MonthlyFixedRequestsList: FunctionComponent<Props> = () => {
           columns={columns}
           data={requestsData?.data || []}
           isLoading={isLoading}
-          deleteHandler={handleDeleteFixedRequest}
-          editRoute="/requests/monthly-fixed"
+          deleteHandler={hasDeletePermission ? handleDeleteFixedRequest : undefined}
+          editRoute={hasEditPermission ? "/requests/monthly-fixed" : undefined}
         />
       </div>
       <div className={bemClass([blk, 'pagination'])}>

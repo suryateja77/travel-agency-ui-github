@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
 import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle } from '@base'
-import { PageHeader } from '@components'
+import { PageHeader, PermissionGuard } from '@components'
 import { CustomerModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'

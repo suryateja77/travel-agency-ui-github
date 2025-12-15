@@ -1,5 +1,6 @@
 import React, { FunctionComponent } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { PermissionGuard } from '@components'
 import RegularRequestsList from './components/list'
 import CreateRegularRequest from './components/create'
 import RegularRequestDetail from './components/detail'
@@ -11,19 +12,35 @@ const RegularRequests: FunctionComponent<RegularRequestsProps> = () => {
     <Routes>
       <Route
         path=""
-        element={<RegularRequestsList />}
+        element={
+          <PermissionGuard module="Regular Requests" requiredPermission="view">
+            <RegularRequestsList />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreateRegularRequest />}
+        element={
+          <PermissionGuard module="Regular Requests" requiredPermission="edit">
+            <CreateRegularRequest />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreateRegularRequest />}
+        element={
+          <PermissionGuard module="Regular Requests" requiredPermission="edit">
+            <CreateRegularRequest />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<RegularRequestDetail />}
+        element={
+          <PermissionGuard module="Regular Requests" requiredPermission="view">
+            <RegularRequestDetail />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

@@ -1,5 +1,6 @@
 import { FunctionComponent, useState, useMemo, useEffect } from 'react'
-import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile } from '@utils'
+import { bemClass, formatDateValueForDisplay, formatMinutesToDuration, nameToPath, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 import { RegularRequestModel } from '@types'
 
 import './style.scss'
@@ -17,6 +18,11 @@ const blk = 'regular-requests-list'
 interface Props {}
 
 const RegularRequestsList: FunctionComponent<Props> = () => {
+  // Get permissions for Regular Requests module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Regular Requests')
+  const hasDeletePermission = canDelete(permissions, 'Regular Requests')
+  
   const [filterData, setFilterData] = useState({
     vehicleCategory: '',
     vehicle: '',
@@ -252,8 +258,8 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
       <PageHeader
         title="Regular Requests"
         total={requestsData?.data.length}
-        btnRoute="/requests/regular/create"
-        btnLabel="New Regular Request"
+        btnRoute={hasEditPermission ? "/requests/regular/create" : undefined}
+        btnLabel={hasEditPermission ? "New Regular Request" : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -332,8 +338,8 @@ const RegularRequestsList: FunctionComponent<Props> = () => {
           columns={columns}
           data={requestsData?.data || []}
           isLoading={isLoading}
-          deleteHandler={handleDeleteRegularRequest}
-          editRoute="/requests/regular"
+          deleteHandler={hasDeletePermission ? handleDeleteRegularRequest : undefined}
+          editRoute={hasEditPermission ? "/requests/regular" : undefined}
         />
       </div>
       <div className={bemClass([blk, 'pagination'])}>

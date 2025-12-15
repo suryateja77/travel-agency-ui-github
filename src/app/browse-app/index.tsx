@@ -26,6 +26,7 @@ import CategoryCustomers from '@pages/browser-app/customers/category'
 import Suppliers from '@pages/browser-app/suppliers'
 import Reports from '@pages/browser-app/reports'
 import Payments from '@pages/browser-app/payments'
+import Users from '@pages/browser-app/users'
 
 const blk = 'browse-app'
 
@@ -169,6 +170,10 @@ const BrowseApp = () => {
                 <Route
                   path="/reports/*"
                   element={<Reports />}
+                />
+                <Route
+                  path="/users/*"
+                  element={<Users />}
                 />
                 <Route
                   path="/settings/*"

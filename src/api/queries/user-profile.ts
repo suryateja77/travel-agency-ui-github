@@ -3,13 +3,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 
 const API_BASE_URL = '/user-profile'
 
-export const useUserProfileQuery = () => {
+export const useUserProfileQuery = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => {
       const response = await get(`${API_BASE_URL}`)
       return response.data
     },
+    enabled: options?.enabled ?? true,
   })
 }
 

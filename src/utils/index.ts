@@ -296,3 +296,6 @@ export {
   generatePeriodOptions,
   downloadFile
 }
+
+// Re-export permission utilities
+export * from './permissions'

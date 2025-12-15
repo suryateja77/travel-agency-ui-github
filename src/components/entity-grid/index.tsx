@@ -23,9 +23,20 @@ export interface EntityGridProps {
   editRoute?: string
   routeParams?: Record<string, any>
   queryParams?: Record<string, any>
+  canEdit?: (row: any) => boolean
+  canDelete?: (row: any) => boolean
 }
 
-const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoading = false, deleteHandler, editRoute, routeParams = {} }) => {
+const EntityGrid: FunctionComponent<EntityGridProps> = ({ 
+  columns, 
+  data, 
+  isLoading = false, 
+  deleteHandler, 
+  editRoute, 
+  routeParams = {}, 
+  canEdit, 
+  canDelete 
+}) => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
   const [itemIdToDelete, setItemIdToDelete] = useState('')
   const { showToast } = useToast()
@@ -35,40 +46,45 @@ const EntityGrid: FunctionComponent<EntityGridProps> = ({ columns, data, isLoadi
     enhancedColumns.push({
       label: 'Action',
       className: bemClass([blk, 'table-action']),
-      custom: ({ _id }: { _id: string }) => (
-        <div className={bemClass([blk, 'action-buttons'])}>
-          {editRoute && (
-            <Button
-              asLink
-              href={`${editRoute}/${_id}/edit`}
-              size="small"
-              className={bemClass([blk, 'first-button'])}
-            >
-              <Icon
-                name="pencil"
-                color="white"
-              />
-            </Button>
-          )}
-          {deleteHandler && (
-            <Button
-              category="error"
-              size="small"
-              clickHandler={() => {
-                setItemIdToDelete(_id)
-                setTimeout(() => {
-                  setShowConfirmationModal(true)
-                }, 100)
-              }}
-            >
-              <Icon
-                name="trash"
-                color="white"
-              />
-            </Button>
-          )}
-        </div>
-      ),
+      custom: (row: any) => {
+        const showEdit = editRoute && (!canEdit || canEdit(row))
+        const showDelete = deleteHandler && (!canDelete || canDelete(row))
+        
+        return (
+          <div className={bemClass([blk, 'action-buttons'])}>
+            {showEdit && (
+              <Button
+                asLink
+                href={`${editRoute}/${row._id}/edit`}
+                size="small"
+                className={bemClass([blk, 'first-button'])}
+              >
+                <Icon
+                  name="pencil"
+                  color="white"
+                />
+              </Button>
+            )}
+            {showDelete && (
+              <Button
+                category="error"
+                size="small"
+                clickHandler={() => {
+                  setItemIdToDelete(row._id)
+                  setTimeout(() => {
+                    setShowConfirmationModal(true)
+                  }, 100)
+                }}
+              >
+                <Icon
+                  name="trash"
+                  color="white"
+                />
+              </Button>
+            )}
+          </div>
+        )
+      },
     })
   }
 

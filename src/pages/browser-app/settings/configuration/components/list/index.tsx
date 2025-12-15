@@ -44,15 +44,14 @@ const Configuration: FunctionComponent<ConfigurationProps> = () => {
         >
           Configurations
         </Text>
-        <Button
+        {/* <Button
           category="primary"
           asLink
           href={`${location.pathname}/create`}
           size="medium"
-          // disabled={true}
         >
           New Configuration
-        </Button>
+        </Button> */}
       </div>
       <div className={bemClass([blk, 'content'])}>
         {isLoading ? (

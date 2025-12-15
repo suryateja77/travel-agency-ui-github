@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'react'
 import { useParams } from 'react-router-dom'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor, Currency } from '@base'
@@ -23,6 +24,11 @@ const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
     : usePackagesQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deletePackageMutation = useDeletePackageMutation()
+  
+  // Get permissions for Packages module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Packages')
+  const hasDeletePermission = canDelete(permissions, 'Packages')
 
   // Extract data from the response structure
   const packagesData = packageData?.data || []
@@ -136,8 +142,8 @@ const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
       <PageHeader
         title={`${categoryName} Packages`}
         total={filteredPackageData.length}
-        btnRoute={`/packages/${category}/create`}
-        btnLabel={`Add ${categoryName} Package`}
+        btnRoute={hasEditPermission ? `/packages/${category}/create` : undefined}
+        btnLabel={hasEditPermission ? `Add ${categoryName} Package` : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -148,8 +154,8 @@ const PackagesList: FunctionComponent<Props> = ({ category = '' }) => {
           columns={columns}
           data={filteredPackageData}
           isLoading={isLoading}
-          deleteHandler={handleDeletePackage}
-          editRoute={`/packages/${category}`}
+          deleteHandler={hasDeletePermission ? handleDeletePackage : undefined}
+          editRoute={hasEditPermission ? `/packages/${category}` : undefined}
           routeParams={{ category }}
           queryParams={{ category }}
         />

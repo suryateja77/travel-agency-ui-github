@@ -147,23 +147,26 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
     },
     {
       label: 'Profit',
-      custom: ({ income, expense }: any) => {
+      custom: ({ income, expense, profit }: any) => {
         const numIncome = typeof income === 'string' ? parseFloat(income) : income
         const numExpense = typeof expense === 'string' ? parseFloat(expense) : expense
+        const numProfit = typeof profit === 'string' ? parseFloat(profit) : profit
+
+        const hasProfit = numProfit !== undefined && numProfit !== null && !isNaN(numProfit)
+        if (hasProfit) return <>{`₹${numProfit.toLocaleString()}`}</>
 
         const hasIncome = numIncome !== undefined && numIncome !== null && !isNaN(numIncome)
         const hasExpense = numExpense !== undefined && numExpense !== null && !isNaN(numExpense)
 
         if (hasIncome && hasExpense) {
-          const profit = numIncome - numExpense
-          return <>{`₹${profit.toLocaleString()}`}</>
+          const fallbackProfit = numIncome - numExpense
+          return <>{`₹${fallbackProfit.toLocaleString()}`}</>
         } else if (hasIncome) {
           return <>{`₹${numIncome.toLocaleString()}`}</>
         } else if (hasExpense) {
           return <>{`-₹${numExpense.toLocaleString()}`}</>
-        } else {
-          return <>-</>
         }
+        return <>-</>
       },
     },
   ]
@@ -188,16 +191,21 @@ const VehicleReport: FunctionComponent<VehicleReportProps> = () => {
         totalExpense += numExpense
       }
 
-      // Calculate profit (income - expense for each row)
-      const hasIncome = numIncome !== undefined && numIncome !== null && !isNaN(numIncome)
-      const hasExpense = numExpense !== undefined && numExpense !== null && !isNaN(numExpense)
-
-      if (hasIncome && hasExpense) {
-        totalProfit += (numIncome - numExpense)
-      } else if (hasIncome) {
-        totalProfit += numIncome
-      } else if (hasExpense) {
-        totalProfit += (-numExpense)
+      // Calculate profit (prefer stored profit, fall back to income - expense)
+      const numProfit = typeof item.profit === 'string' ? parseFloat(item.profit) : item.profit
+      const hasProfit = numProfit !== undefined && numProfit !== null && !isNaN(numProfit)
+      if (hasProfit) {
+        totalProfit += numProfit
+      } else {
+        const hasIncome = numIncome !== undefined && numIncome !== null && !isNaN(numIncome)
+        const hasExpense = numExpense !== undefined && numExpense !== null && !isNaN(numExpense)
+        if (hasIncome && hasExpense) {
+          totalProfit += (numIncome - numExpense)
+        } else if (hasIncome) {
+          totalProfit += numIncome
+        } else if (hasExpense) {
+          totalProfit += (-numExpense)
+        }
       }
     })
 

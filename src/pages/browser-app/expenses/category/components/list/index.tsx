@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'react'
-import { bemClass, pathToName, downloadFile } from '@utils'
+import { bemClass, pathToName, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor, Currency } from '@base'
@@ -31,6 +32,11 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
     : useExpensesQuery()
   const { data: configurations } = useConfigurationsQuery()
   const deleteExpenseMutation = useDeleteExpenseMutation()
+  
+  // Get permissions for Expenses module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Expenses')
+  const hasDeletePermission = canDelete(permissions, 'Expenses')
 
   // Extract data from the response structure
   const expensesData = expensesResponse?.data || []
@@ -168,8 +174,8 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
       <PageHeader
         title={`${categoryName} Expenses`}
         total={filteredExpensesData.length}
-        btnRoute={`/expenses/${category}/create`}
-        btnLabel={`Add new ${categoryName} Expense`}
+        btnRoute={hasEditPermission ? `/expenses/${category}/create` : undefined}
+        btnLabel={hasEditPermission ? `Add new ${categoryName} Expense` : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -180,8 +186,8 @@ const ExpensesList: FunctionComponent<Props> = ({ category = '' }) => {
           columns={columns}
           data={filteredExpensesData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteExpense}
-          editRoute={`/expenses/${category}`}
+          deleteHandler={hasDeletePermission ? handleDeleteExpense : undefined}
+          editRoute={hasEditPermission ? `/expenses/${category}` : undefined}
           routeParams={{ category }}
           queryParams={{ category }}
         />

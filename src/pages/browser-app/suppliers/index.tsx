@@ -1,5 +1,6 @@
 import React, { FunctionComponent } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { PermissionGuard } from '@components'
 import { SupplierList, CreateSupplier, SupplierDetail } from './components'
 
 interface SupplierProps {}
@@ -9,19 +10,35 @@ const Suppliers: FunctionComponent<SupplierProps> = () => {
     <Routes>
       <Route
         path=""
-        element={<SupplierList />}
+        element={
+          <PermissionGuard module="Suppliers" requiredPermission="view">
+            <SupplierList />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreateSupplier />}
+        element={
+          <PermissionGuard module="Suppliers" requiredPermission="edit">
+            <CreateSupplier />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreateSupplier />}
+        element={
+          <PermissionGuard module="Suppliers" requiredPermission="edit">
+            <CreateSupplier />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<SupplierDetail />}
+        element={
+          <PermissionGuard module="Suppliers" requiredPermission="view">
+            <SupplierDetail />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

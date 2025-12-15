@@ -670,37 +670,52 @@ export const INITIAL_EXPENSE: ExpenseModel = {
 } as const
 //
 export interface UserProfile {
-  id: string
-  firstName: string
-  lastName: string
+  // User details
+  userId: string
+  name: string
+  contactNumber: string
   email: string
-  isActive: boolean
+  designation: string
+  role: any // Can be UserRole ObjectId or legacy string
+  userGroup?: any // Can be UserGroup ObjectId or null
+  isAdmin: boolean
+  
+  // Client details
+  clientId: string
   agencyName: string
-  agencyRegistrationNo: string
+  agencyContactNumber: string
+  agencyEmail: string
   address: Address
-  primaryContact: string
-  secondaryContact: string
-  websiteLink: string
-  linkedInLink: string
-  facebookLink: string
-  instagramLink: string
+  pointOfContact: {
+    name: string
+    designation: string
+    contactNumber: string
+    email: string
+  }
+  subscriptionStatus: string
 }
 
 export const sampleUserProfile: UserProfile = {
-  id: '',
-  firstName: '',
-  lastName: '',
+  userId: '',
+  name: '',
+  contactNumber: '',
   email: '',
-  isActive: true,
+  designation: '',
+  role: null,
+  userGroup: null,
+  isAdmin: false,
+  clientId: '',
   agencyName: '',
-  agencyRegistrationNo: '',
+  agencyContactNumber: '',
+  agencyEmail: '',
   address: sampleAddress,
-  primaryContact: '',
-  secondaryContact: '',
-  websiteLink: '',
-  linkedInLink: '',
-  facebookLink: '',
-  instagramLink: '',
+  pointOfContact: {
+    name: '',
+    designation: '',
+    contactNumber: '',
+    email: '',
+  },
+  subscriptionStatus: 'active',
 }
 //
 export interface SupplierModel {
@@ -824,4 +839,126 @@ export interface SupplierPaymentModel {
     paymentMethod?: string
   }
   createdAt: Date | string
+}
+
+// --------------------------------------------------------------------------------------------------------
+// User Role Types
+// --------------------------------------------------------------------------------------------------------
+
+export type ModuleName =
+  | 'Dashboard'
+  | 'Regular Requests'
+  | 'Monthly Fixed Requests'
+  | 'Packages'
+  | 'Vehicles'
+  | 'Staff'
+  | 'Customers'
+  | 'Expenses'
+  | 'Vehicle Payments'
+  | 'Staff Payments'
+  | 'Supplier Payments'
+  | 'Business Reports'
+  | 'Vehicle Reports'
+  | 'Advance Bookings'
+  | 'Advance Payments'
+  | 'User List'
+  | 'User Roles'
+  | 'User Groups'
+  | 'Suppliers'
+  | 'Configurations'
+  | 'Profile'
+
+export interface Permission {
+  module: ModuleName
+  view: boolean
+  edit: boolean
+  delete: boolean
+}
+
+export interface UserRoleModel {
+  _id?: string
+  roleName: string
+  permissions: Permission[]
+  isSystemRole?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+}
+
+export const MODULES: ModuleName[] = [
+  'Dashboard',
+  'Regular Requests',
+  'Monthly Fixed Requests',
+  'Packages',
+  'Vehicles',
+  'Staff',
+  'Customers',
+  'Expenses',
+  'Vehicle Payments',
+  'Staff Payments',
+  'Supplier Payments',
+  'Business Reports',
+  'Vehicle Reports',
+  'Advance Bookings',
+  'Advance Payments',
+  'User List',
+  'User Roles',
+  'User Groups',
+  'Suppliers',
+  'Configurations',
+  'Profile',
+]
+
+export const INITIAL_USER_ROLE: UserRoleModel = {
+  roleName: '',
+  permissions: MODULES.map(module => ({
+    module,
+    view: false,
+    edit: false,
+    delete: false,
+  })),
+  isActive: true,
+}
+
+// User Management Types
+export interface UserModel {
+  _id?: string
+  clientId: string
+  name: string
+  contactNumber: string
+  email: string
+  password?: string // User-set password for creation
+  role: string | UserRoleModel // Can be populated or just ID
+  userGroup?: string | UserGroupModel | null // Can be populated or just ID
+  designation?: string
+  isActive: boolean
+  isAdmin?: boolean // Flag to identify admin user (cannot be edited/deleted)
+  createdAt?: Date | string
+}
+
+export const INITIAL_USER: UserModel = {
+  clientId: '',
+  name: '',
+  contactNumber: '',
+  email: '',
+  role: '',
+  userGroup: null,
+  password: '',
+  designation: '',
+  isActive: true,
+}
+
+// User Group Types
+export interface UserGroupModel {
+  _id?: string
+  clientId?: string
+  groupName: string
+  isSystemGroup?: boolean
+  isActive: boolean
+  createdAt?: Date | string
+}
+
+export const INITIAL_USER_GROUP: UserGroupModel = {
+  groupName: '',
+  isSystemGroup: false,
+  isActive: true,
 }

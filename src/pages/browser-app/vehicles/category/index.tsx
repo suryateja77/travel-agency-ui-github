@@ -1,5 +1,6 @@
 import React, { FunctionComponent } from 'react'
 import { Routes, Route, useParams } from 'react-router-dom'
+import { PermissionGuard } from '@components'
 import VehiclesList from './components/list'
 import CreateVehicle from './components/create'
 import VehicleDetail from './components/detail'
@@ -12,19 +13,35 @@ const CategoryVehicles: FunctionComponent<VehiclesProps> = () => {
     <Routes>
       <Route
         path=""
-        element={<VehiclesList category={params.category} />}
+        element={
+          <PermissionGuard module="Vehicles" requiredPermission="view">
+            <VehiclesList category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreateVehicle category={params.category} />}
+        element={
+          <PermissionGuard module="Vehicles" requiredPermission="edit">
+            <CreateVehicle category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreateVehicle category={params.category} />}
+        element={
+          <PermissionGuard module="Vehicles" requiredPermission="edit">
+            <CreateVehicle category={params.category} />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<VehicleDetail category={params.category} />}
+        element={
+          <PermissionGuard module="Vehicles" requiredPermission="view">
+            <VehicleDetail category={params.category} />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

@@ -31,6 +31,7 @@ const LogOut = ({
     try {
       await logout()
       removeStorageItem('session', 'isLoggedIn')
+      removeStorageItem('session', 'sessionExpiry')
       window.location.replace('/')
     } catch (error) {
       console.log(error)

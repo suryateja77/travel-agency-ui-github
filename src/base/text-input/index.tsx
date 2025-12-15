@@ -36,6 +36,7 @@ interface TextInputProps {
   attributes?: {
     maxLength: number
   }
+  autoComplete?: string
 }
 
 const TextInput = (props: TextInputProps) => {
@@ -123,6 +124,7 @@ const TextInput = (props: TextInputProps) => {
         onKeyDown={handleKeyDown}
         onBlur={onBlur}
         {...attributes}
+        autoComplete={props.autoComplete || 'off'}
       />
       <div className={iconClass}>
         {invalid && <i className="fa fa-exclamation-triangle" />}

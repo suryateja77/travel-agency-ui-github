@@ -39,6 +39,7 @@ API.interceptors.response.use(
       if (errorCode === 'NO_TOKEN' || errorCode === 'USER_NOT_FOUND' || originalRequest._retry) {
         // Clear session and redirect to login
         removeStorageItem('session', 'isLoggedIn')
+        removeStorageItem('session', 'sessionExpiry')
         window.location.replace('/')
         return Promise.reject(error)
       }
@@ -71,9 +72,23 @@ API.interceptors.response.use(
           isRefreshing = false
           processQueue(refreshError)
           removeStorageItem('session', 'isLoggedIn')
+          removeStorageItem('session', 'sessionExpiry')
           window.location.replace('/')
           return Promise.reject(refreshError)
         }
+      }
+    }
+
+    // Handle 403 Forbidden errors (e.g., subscription inactive)
+    if (error.response?.status === 403) {
+      const errorCode = error.response?.data?.code
+      
+      if (errorCode === 'SUBSCRIPTION_INACTIVE') {
+        // Clear session and redirect to login with error message
+        removeStorageItem('session', 'isLoggedIn')
+        removeStorageItem('session', 'sessionExpiry')
+        window.location.replace('/')
+        return Promise.reject(error)
       }
     }
 

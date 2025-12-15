@@ -1,0 +1,47 @@
+@import '~/src/sass/style';
+
+.create-user {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: $space-default;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-default;
+  }
+
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+
+  &__alert {
+    margin-bottom: $space-default;
+  }
+
+  &__toggle {
+    margin-top: 0px;
+  }
+
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    gap: $space-small;
+    margin-top: $space-large;
+  }
+}
+
+@include large-up {
+  .create-user {
+    &__toggle {
+      margin-top: 34px;
+    }
+  }
+}

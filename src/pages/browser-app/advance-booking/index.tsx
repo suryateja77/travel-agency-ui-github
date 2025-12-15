@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import AdvanceBookingList from './components/list'
 import CreateAdvanceBooking from './components/create'
 import AdvanceBookingDetail from './components/detail'
+import { PermissionGuard } from '@components'
 
 interface AdvanceBookingsProps {}
 
@@ -11,19 +12,35 @@ const AdvanceBookings: FunctionComponent<AdvanceBookingsProps> = () => {
     <Routes>
       <Route
         path=""
-        element={<AdvanceBookingList />}
+        element={
+          <PermissionGuard module="Advance Bookings" requiredPermission="view">
+            <AdvanceBookingList />
+          </PermissionGuard>
+        }
       />
       <Route
         path="create"
-        element={<CreateAdvanceBooking />}
+        element={
+          <PermissionGuard module="Advance Bookings" requiredPermission="edit">
+            <CreateAdvanceBooking />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/edit"
-        element={<CreateAdvanceBooking />}
+        element={
+          <PermissionGuard module="Advance Bookings" requiredPermission="edit">
+            <CreateAdvanceBooking />
+          </PermissionGuard>
+        }
       />
       <Route
         path=":id/detail"
-        element={<AdvanceBookingDetail />}
+        element={
+          <PermissionGuard module="Advance Bookings" requiredPermission="view">
+            <AdvanceBookingDetail />
+          </PermissionGuard>
+        }
       />
     </Routes>
   )

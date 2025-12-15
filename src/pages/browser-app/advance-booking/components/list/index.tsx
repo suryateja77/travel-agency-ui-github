@@ -1,5 +1,6 @@
 import { FunctionComponent } from 'react'
-import { bemClass, downloadFile } from '@utils'
+import { bemClass, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -34,6 +35,11 @@ const formatTime = (dateString: string | Date) => {
 const AdvanceBookingList: FunctionComponent<Props> = () => {
   const { data: advanceBookingsResponse, isLoading } = useAdvanceBookingsQuery()
   const deleteAdvanceBookingMutation = useDeleteAdvanceBookingMutation()
+  
+  // Get permissions for Advance Bookings module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Advance Bookings')
+  const hasDeletePermission = canDelete(permissions, 'Advance Bookings')
 
   // Extract data from the response structure
   const advanceBookingsData = advanceBookingsResponse?.data || []
@@ -143,8 +149,8 @@ const AdvanceBookingList: FunctionComponent<Props> = () => {
       <PageHeader
         title="Advanced Bookings"
         total={advanceBookingsData.length}
-        btnRoute="/advance-booking/create"
-        btnLabel="Add new Advanced Booking"
+        btnRoute={hasEditPermission ? "/advance-booking/create" : undefined}
+        btnLabel={hasEditPermission ? "Add new Advanced Booking" : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -155,8 +161,8 @@ const AdvanceBookingList: FunctionComponent<Props> = () => {
           columns={columns}
           data={advanceBookingsData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteAdvanceBooking}
-          editRoute="/advance-booking"
+          deleteHandler={hasDeletePermission ? handleDeleteAdvanceBooking : undefined}
+          editRoute={hasEditPermission ? "/advance-booking" : undefined}
         />
       </div>
     </div>

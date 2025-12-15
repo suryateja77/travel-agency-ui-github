@@ -209,6 +209,29 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
         },
       },
       {
+        path: '/users',
+        configurable: false,
+        name: 'Users',
+        image: {
+          selected: StaffIconSelected,
+          unselected: StaffIcon,
+        },
+        subRoutes: [
+          {
+            path: '/user-list',
+            name: 'User List',
+          },
+          {
+            path: '/user-roles',
+            name: 'User Roles',
+          },
+          {
+            path: '/user-groups',
+            name: 'User Groups',
+          },
+        ],
+      },
+      {
         path: '/settings',
         configurable: false,
         name: 'Settings',

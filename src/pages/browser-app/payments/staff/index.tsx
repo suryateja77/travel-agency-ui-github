@@ -217,15 +217,18 @@ const StaffPayments: FunctionComponent<StaffPaymentsProps> = () => {
     },
     {
       label: 'Customer Name',
-      custom: ({ request }: any) => <>{request?.customer?.name || '-'}</>,
+      custom: ({ request }: any) => {
+        const customerName = request?.customerDetails?.customer?.name || request?.customerDetails?.newCustomerDetails?.name
+        return <>{customerName || '-'}</>
+      },
     },
     {
       label: 'Pickup',
-      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.pickUpDateTime)}</>,
+      custom: ({ request }: any) => <>{request?.requestDetails?.pickUpLocation || '-'}</>,
     },
     {
       label: 'Drop',
-      custom: ({ request }: any) => <>{formatDateValueForDisplay(request?.dropDateTime)}</>,
+      custom: ({ request }: any) => <>{request?.requestDetails?.dropOffLocation || '-'}</>,
     },
     {
       label: 'Driver Allowance',

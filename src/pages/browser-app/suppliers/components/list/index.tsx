@@ -1,5 +1,6 @@
 import { FunctionComponent, useEffect } from 'react'
-import { bemClass, downloadFile } from '@utils'
+import { bemClass, downloadFile, canEdit, canDelete } from '@utils'
+import { useAuth } from '@contexts/AuthContext'
 
 import './style.scss'
 import { Anchor } from '@base'
@@ -12,6 +13,11 @@ const blk = 'suppliers-list'
 interface Props {}
 
 const SupplierList: FunctionComponent<Props> = () => {
+  // Get permissions for Suppliers module
+  const { permissions } = useAuth()
+  const hasEditPermission = canEdit(permissions, 'Suppliers')
+  const hasDeletePermission = canDelete(permissions, 'Suppliers')
+  
   const { data: suppliersResponse, isLoading } = useSuppliersQuery()
   const deleteSupplierMutation = useDeleteSupplierMutation()
 
@@ -99,8 +105,8 @@ const SupplierList: FunctionComponent<Props> = () => {
       <PageHeader
         title="Suppliers"
         total={suppliersData.length}
-        btnRoute="/suppliers/create"
-        btnLabel="Add new Supplier"
+        btnRoute={hasEditPermission ? "/suppliers/create" : undefined}
+        btnLabel={hasEditPermission ? "Add new Supplier" : undefined}
         showExport
         onExportExcel={handleExportExcel}
         onExportCsv={handleExportCsv}
@@ -111,8 +117,8 @@ const SupplierList: FunctionComponent<Props> = () => {
           columns={columns}
           data={suppliersData}
           isLoading={isLoading}
-          deleteHandler={handleDeleteSupplier}
-          editRoute="/suppliers"
+          deleteHandler={hasDeletePermission ? handleDeleteSupplier : undefined}
+          editRoute={hasEditPermission ? "/suppliers" : undefined}
         />
       </div>
     </div>
