@@ -1,7 +1,7 @@
 import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useUserGroupByIdQuery, useCreateUserGroupMutation, useUpdateUserGroupMutation } from '@api/queries/userGroup'
-import { Button, CheckBox, TextInput, Text, Breadcrumb, Alert, Panel, Row, Column } from '@base'
+import { Button, CheckBox, TextInput, Text, Breadcrumb, Alert, Panel, Row, Column, Toggle } from '@base'
 import Loader from '@components/loader'
 import { bemClass, validatePayload } from '@utils'
 import { INITIAL_USER_GROUP, UserGroupModel } from '@types'
@@ -23,6 +23,7 @@ const UserGroupForm: FunctionComponent<CreateUserGroupProps> = () => {
   const [userGroup, setUserGroup] = useState<UserGroupModel>(INITIAL_USER_GROUP)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isValidationError, setIsValidationError] = useState(false)
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
 
   const { data: existingUserGroup, isLoading, error: fetchError } = useUserGroupByIdQuery(params.id || '')
   const createMutation = useCreateUserGroupMutation()
@@ -46,30 +47,26 @@ const UserGroupForm: FunctionComponent<CreateUserGroupProps> = () => {
     }))
   }, [])
 
-  const handleIsActiveChange = useCallback((value: { isActive?: boolean }) => {
-    setUserGroup(prev => ({
-      ...prev,
-      isActive: value.isActive ?? true,
-    }))
-  }, [])
-
   const navigateBack = useCallback(() => {
     navigate('/users/user-groups')
   }, [navigate])
 
   const handleSubmit = useCallback(async () => {
-    const validationSchema = createValidationSchema(userGroup)
-    const { isValid, errorMap } = validatePayload(validationSchema, userGroup)
-
-    setValidationErrors(errorMap)
-    setIsValidationError(!isValid)
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      setSubmitButtonLoading(true)
+
+      const validationSchema = createValidationSchema(userGroup)
+      const { isValid, errorMap } = validatePayload(validationSchema, userGroup)
+
+      setValidationErrors(errorMap)
+      setIsValidationError(!isValid)
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        setSubmitButtonLoading(false)
+        return
+      }
+
       if (isEditing) {
         const updateData = {
           _id: params.id!,
@@ -82,8 +79,10 @@ const UserGroupForm: FunctionComponent<CreateUserGroupProps> = () => {
         await createMutation.mutateAsync(userGroup)
         showToast('User group created successfully', 'success')
       }
+      setSubmitButtonLoading(false)
       navigateBack()
     } catch (error: any) {
+      setSubmitButtonLoading(false)
       console.error('Unable to create/update user group', error)
       const errorMessage = error?.response?.data?.message || `Unable to ${isEditing ? 'update' : 'create'} user group. Please try again.`
       showToast(errorMessage, 'error')
@@ -127,15 +126,24 @@ const UserGroupForm: FunctionComponent<CreateUserGroupProps> = () => {
               message="Unable to get the user group data. Please try again later."
               className={bemClass([blk, 'margin-bottom'])}
             />
-            <Button size="medium" clickHandler={navigateBack}>
+            <Button
+              size="medium"
+              clickHandler={navigateBack}
+            >
               Go Back
             </Button>
           </>
         ) : (
           <>
-            <Panel title="Group Details" className={bemClass([blk, 'margin-bottom'])}>
+            <Panel
+              title="Group Details"
+              className={bemClass([blk, 'margin-bottom'])}
+            >
               <Row>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
                   <TextInput
                     label="Group Name"
                     name="groupName"
@@ -148,22 +156,42 @@ const UserGroupForm: FunctionComponent<CreateUserGroupProps> = () => {
                 </Column>
               </Row>
               <Row>
-                <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                  <CheckBox
-                    id="isActive"
-                    label="Active"
+                <Column
+                  col={4}
+                  className={bemClass([blk, 'margin-bottom'])}
+                >
+                  <Toggle
+                    className={bemClass([blk, 'toggle'])}
+                    label="Is Active"
+                    name="isActive"
                     checked={userGroup.isActive}
-                    changeHandler={handleIsActiveChange}
+                    changeHandler={value => {
+                      setUserGroup(prev => ({
+                        ...prev,
+                        isActive: !!value.isActive,
+                      }))
+                    }}
                   />
                 </Column>
               </Row>
             </Panel>
 
             <div className={bemClass([blk, 'action-items'])}>
-              <Button size="medium" category="default" className={bemClass([blk, 'margin-right'])} clickHandler={navigateBack}>
+              <Button
+                size="medium"
+                category="default"
+                className={bemClass([blk, 'margin-right'])}
+                clickHandler={navigateBack}
+                disabled={submitButtonLoading}
+              >
                 Cancel
               </Button>
-              <Button size="medium" category="primary" clickHandler={handleSubmit}>
+              <Button
+                size="medium"
+                category="primary"
+                clickHandler={handleSubmit}
+                loading={submitButtonLoading}
+              >
                 {isEditing ? 'Update' : 'Submit'}
               </Button>
             </div>

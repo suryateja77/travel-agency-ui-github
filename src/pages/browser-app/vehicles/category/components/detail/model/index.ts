@@ -29,7 +29,7 @@ export const vehicleDetailsFields: Panel[] = [
         path: 'registrationNo',
       },
       {
-        label: 'Is AC Required',
+        label: 'AC',
         path: 'hasAc',
       },
       {

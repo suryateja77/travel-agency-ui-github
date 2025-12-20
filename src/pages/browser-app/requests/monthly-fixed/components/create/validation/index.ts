@@ -1,4 +1,4 @@
-import { emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
+import { emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, contactField, numberGreaterThanField, registrationNoField } from '@config/validation'
 import { MonthlyFixedRequestModel } from '@types'
 
 const createValidationSchema = (monthlyFixedRequestData: MonthlyFixedRequestModel) => {
@@ -44,9 +44,11 @@ const createValidationSchema = (monthlyFixedRequestData: MonthlyFixedRequestMode
     // New vehicle requires all newVehicleDetails fields
     conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.ownerName'))
     conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.ownerContact'))
+    conditionalFields.push(contactField('vehicleDetails.newVehicleDetails.ownerContact'))
     conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.manufacturer'))
     conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.name'))
     conditionalFields.push(emptyField('vehicleDetails.newVehicleDetails.registrationNo'))
+    conditionalFields.push(registrationNoField('vehicleDetails.newVehicleDetails.registrationNo'))
   }
   // Note: vehicleType 'regular' uses assigned vehicle, no additional validation needed
 
@@ -61,6 +63,7 @@ const createValidationSchema = (monthlyFixedRequestData: MonthlyFixedRequestMode
     // New staff requires all newStaffDetails fields
     conditionalFields.push(emptyField('staffDetails.newStaffDetails.name'))
     conditionalFields.push(emptyField('staffDetails.newStaffDetails.contact'))
+    conditionalFields.push(contactField('staffDetails.newStaffDetails.contact'))
     conditionalFields.push(emptyField('staffDetails.newStaffDetails.license'))
   }
   // Note: staffType 'regular' uses assigned staff, no additional validation needed

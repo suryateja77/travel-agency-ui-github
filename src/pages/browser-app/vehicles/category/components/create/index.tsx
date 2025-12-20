@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, Alert, Toggle } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, NumberInput, Button, SelectInput, TextArea, Alert, Toggle } from '@base'
 import { VehicleModel, CustomerModel, PackageModel, StaffModel, SupplierModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -86,6 +86,7 @@ interface FormState {
   apiErrors: ApiErrors
   selectOptions: SelectOptions
   originalCustomer: string | null
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -97,6 +98,7 @@ type FormAction =
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
   | { type: 'SET_SELECT_OPTIONS'; payload: { dataType: keyof SelectOptions; options: SelectOption[] } }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 type ApiDataType = keyof SelectOptions
 
@@ -167,6 +169,7 @@ const initialState: FormState = {
     suppliers: [],
   },
   originalCustomer: null,
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -219,6 +222,9 @@ function formReducer(state: FormState, action: FormAction): FormState {
         ...state,
         selectOptions: { ...state.selectOptions, [action.payload.dataType]: action.payload.options },
       }
+    
+    case 'SET_SUBMIT_LOADING':
+      return { ...state, submitButtonLoading: action.payload }
     
     default:
       return state
@@ -299,6 +305,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
     apiErrors,
     selectOptions,
     originalCustomer,
+    submitButtonLoading,
   } = state
   const { showToast } = useToast()
 
@@ -369,34 +376,38 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
   }, [navigate, category])
 
   const handleSubmit = useCallback(async () => {
-    // Check for API errors
-    const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
-    if (hasApiErrors) {
-      console.error('Cannot submit: API errors present', apiErrors)
-      return
-    }
-
-    // Validate form
-    const validationSchema = createValidationSchema(vehicle, category)
-    const { isValid, errorMap } = validatePayload(validationSchema, vehicle)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
-    // Prepare data for submission
-    const dataToSave: VehicleModel = {
-      ...vehicle,
-      monthlyFixedDetails: vehicle.isMonthlyFixed ? vehicle.monthlyFixedDetails : null,
-    }
-
     try {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+      
+      // Check for API errors
+      const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
+      if (hasApiErrors) {
+        console.error('Cannot submit: API errors present', apiErrors)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
+      // Validate form
+      const validationSchema = createValidationSchema(vehicle, category)
+      const { isValid, errorMap } = validatePayload(validationSchema, vehicle)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
+      // Prepare data for submission
+      const dataToSave: VehicleModel = {
+        ...vehicle,
+        monthlyFixedDetails: vehicle.isMonthlyFixed ? vehicle.monthlyFixedDetails : null,
+      }
+
       if (isEditing) {
         await updateVehicle.mutateAsync({ _id: vehicleId, ...dataToSave })
         // Invalidate customer queries for both old and new customers if they changed
@@ -417,8 +428,10 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
         }
         showToast('New vehicle created successfully!', 'success')
       }
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       console.error('Unable to create/update vehicle', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} vehicle. Please try again.`, 'error')
     }
@@ -759,14 +772,14 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                     </Row>
                     <Row>
                       <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
-                        <TextInput
+                        <NumberInput
                           label="Number of Seats"
                           name="noOfSeats"
-                          type="number"
                           value={vehicle.noOfSeats ?? ''}
                           changeHandler={value => {
-                            handleVehicleFieldChange('noOfSeats', value.noOfSeats ? Number(value.noOfSeats) : '')
+                            handleVehicleFieldChange('noOfSeats', value.noOfSeats ?? '')
                           }}
+                          min={1}
                           required
                           errorMessage={validationErrors.noOfSeats}
                           invalid={!!validationErrors.noOfSeats}
@@ -774,11 +787,11 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                       </Column>
                       <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
                         <TextInput
-                          label="Registration Number"
+                          label="Registration No"
                           name="registrationNo"
                           value={vehicle.registrationNo}
                           changeHandler={value => {
-                            handleVehicleFieldChange('registrationNo', value.registrationNo?.toString() ?? '')
+                            handleVehicleFieldChange('registrationNo', (value.registrationNo?.toString() ?? '').toUpperCase())
                           }}
                           required
                           errorMessage={validationErrors.registrationNo}
@@ -790,7 +803,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                       <Column col={4} className={bemClass([blk, 'margin-bottom'])}>
                         <Toggle
                           name="hasAc"
-                          label="Is AC Required"
+                          label="AC"
                           checked={vehicle.hasAc}
                           changeHandler={obj => {
                             handleVehicleFieldChange('hasAc', !!obj.hasAc)
@@ -1016,6 +1029,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                       category="default"
                       className={bemClass([blk, 'margin-right'])}
                       clickHandler={navigateBack}
+                      disabled={submitButtonLoading}
                     >
                       Cancel
                     </Button>
@@ -1024,6 +1038,7 @@ const CreateVehicle: FunctionComponent<CreateVehicleProps> = ({ category = '' })
                       category="primary"
                       clickHandler={handleSubmit}
                       disabled={hasApiErrors}
+                      loading={submitButtonLoading}
                     >
                       {isEditing ? 'Update' : 'Submit'}
                     </Button>

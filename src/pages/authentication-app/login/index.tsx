@@ -52,12 +52,15 @@ const Login = () => {
       const response = await authenticateUser(reqBody)
       const { expiresIn } = response.data
       
-      // Store login state and expiration time
-      setStorageItem('session', 'isLoggedIn', 'true')
+      // Store login state and expiration time (using localStorage for multi-tab support)
+      setStorageItem('local', 'isLoggedIn', 'true')
       
       // Store session expiration timestamp (current time + expiresIn seconds)
       const expirationTime = Date.now() + (expiresIn * 1000)
-      setStorageItem('session', 'sessionExpiry', expirationTime.toString())
+      setStorageItem('local', 'sessionExpiry', expirationTime.toString())
+      
+      // Initialize last activity timestamp
+      setStorageItem('local', 'lastActivity', Date.now().toString())
       
       window.location.replace('/')
     } catch (error: any) {

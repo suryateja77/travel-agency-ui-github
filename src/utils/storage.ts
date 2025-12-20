@@ -1,4 +1,6 @@
 const getStorage = (type: string) => {
+  // 'local' = localStorage (shared across tabs)
+  // 'session' = sessionStorage (isolated per tab)
   if (type === 'session') {
     return sessionStorage
   }

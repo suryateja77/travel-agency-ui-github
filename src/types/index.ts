@@ -886,12 +886,13 @@ export interface UserRoleModel {
 
 export const MODULES: ModuleName[] = [
   'Dashboard',
+  'Suppliers',
+  'Customers',
+  'Vehicles',
+  'Packages',
+  'Staff',
   'Regular Requests',
   'Monthly Fixed Requests',
-  'Packages',
-  'Vehicles',
-  'Staff',
-  'Customers',
   'Expenses',
   'Vehicle Payments',
   'Staff Payments',
@@ -903,7 +904,6 @@ export const MODULES: ModuleName[] = [
   'User List',
   'User Roles',
   'User Groups',
-  'Suppliers',
   'Configurations',
   'Profile',
 ]

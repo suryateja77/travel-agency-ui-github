@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false)
   const [permissions, setPermissions] = useState<Permission[]>([])
-  const isLoggedIn = !!getStorageItem('session', 'isLoggedIn')
+  const isLoggedIn = !!getStorageItem('local', 'isLoggedIn')
   
   // Only fetch user profile if logged in
   const { data: userProfileResponse, isLoading } = useUserProfileQuery({

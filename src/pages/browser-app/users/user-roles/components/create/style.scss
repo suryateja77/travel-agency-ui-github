@@ -25,43 +25,115 @@
     display: flex;
     justify-content: flex-end;
     margin-top: $space-large;
+    margin-bottom: $space-extra-large;
+  }
+
+  &__permissions-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: $space-default;
+  }
+
+  &__permissions-header {
+    display: flex;
+    align-items: center;
+    padding: $space-small $space-default;
+    background-color: $gray-lighter;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid $gray-light;
+    border-bottom: 2px solid $gray;
   }
 
   &__permissions-grid {
     display: flex;
     flex-direction: column;
+    border: 1px solid $gray-light;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
   }
 
-  &__permissions-header {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: $space-default;
+  &__permission-section {
     padding: $space-small $space-default;
-    background-color: $gray-lighter;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
+    background-color: rgba($gray-lightest, 0.5);
+    border-top: 1px solid $gray-light;
+    border-bottom: 1px solid $gray-light;
+    margin-top: $space-small;
+  }
+
+  &__section-divider {
+    height: $space-default;
+    border-bottom: 1px solid $gray-light;
+    background-color: $white;
   }
 
   &__permission-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: $space-default;
+    display: flex;
+    align-items: center;
     padding: $space-small $space-default;
     border-bottom: 1px solid $gray-light;
+    transition: background-color 0.15s ease;
 
-    &--even {
-      background-color: $gray-lightest;
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: rgba($gray-lightest, 0.7);
+    }
+
+    &--standalone {
+      background-color: rgba($gray-lightest, 0.3);
+    }
+
+    &--all-modules {
+      background-color: rgba($gray, 0.05);
+      border-bottom: 2px solid $gray;
+      
+      &:hover {
+        background-color: rgba($gray, 0.08);
+      }
     }
   }
 
   &__permission-module {
     display: flex;
     align-items: center;
+    flex: 0 0 40%;
+    padding-right: $space-default;
+  }
+
+  &__module-select-checkbox {
+    opacity: 0.9;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &--standalone-label {
+      label {
+        font-weight: bold;
+        font-size: $font-size-s;
+      }
+    }
+  }
+
+  &__permission-actions {
+    display: flex;
+    flex: 1;
+    align-items: center;
+  }
+
+  &__arrow-prefix {
+    color: $gray;
+    margin-right: 6px;
+    font-size: 14px;
   }
 
   &__permission-action {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
   }
 }

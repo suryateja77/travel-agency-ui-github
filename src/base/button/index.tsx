@@ -100,8 +100,12 @@ const Button = ({
     <button
       type={type}
       className={eltClassName}
-      disabled={disabled}
-      onClick={clickHandler}
+      disabled={disabled || loading}
+      onClick={(e) => {
+        if (!loading && !disabled) {
+          clickHandler(e)
+        }
+      }}
     >
       {loading && (
         <Icon

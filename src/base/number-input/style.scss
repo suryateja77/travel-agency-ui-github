@@ -1,0 +1,69 @@
+@import '~/src/sass/style';
+
+.number-input {
+  position: relative;
+  &__textField {
+    width: 100%;
+    background-color: $white;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    font-size: 14px;
+    transition: border-color ease-in-out 0.2s;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    height: 40px;
+    &--rounded {
+      border-radius: 20px;
+    }
+    &--disabled {
+      color: $gray;
+    }
+    &--validity {
+      border: 1px solid $gray-light;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    &--valid {
+      border: 1px solid $success;
+      padding-left: 10px;
+      padding-right: 30px;
+    }
+    &--invalid {
+      border: 1px solid $error;
+      padding-left: 10px;
+      padding-right: 30px;
+    }
+    &--small {
+      height: 30px;
+    }
+    &--large {
+      height: 50px;
+    }
+    &:focus {
+      border-color: $primary;
+      outline: 0;
+    }
+  }
+  &__icon {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    &--valid {
+      color: $success;
+    }
+    &--invalid {
+      color: $error;
+    }
+  }
+  &__label-container{
+    display: flex;
+    justify-content: space-between;
+  }
+  &__label{
+    display: block;
+    padding-bottom: 5px;
+  }
+  &__star{
+    color: $error;
+  }
+}

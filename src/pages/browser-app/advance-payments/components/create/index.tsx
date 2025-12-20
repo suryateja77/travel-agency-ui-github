@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, Alert } from '@base'
+import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, NumberInput, Alert } from '@base'
 import { AdvancePaymentModel, StaffModel } from '@types'
 import { bemClass, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -39,6 +39,7 @@ interface FormState {
   validationErrors: ValidationErrors
   isValidationError: boolean
   staffSelectOptions: SelectOption[]
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -48,6 +49,7 @@ type FormAction =
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; advancePaymentId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_STAFF_OPTIONS'; payload: SelectOption[] }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 // ============================================================================
 // CONSTANTS
@@ -81,6 +83,7 @@ const initialState: FormState = {
   validationErrors: {},
   isValidationError: false,
   staffSelectOptions: [],
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -112,6 +115,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
       return {
         ...state,
         staffSelectOptions: action.payload,
+      }
+
+    case 'SET_SUBMIT_LOADING':
+      return {
+        ...state,
+        submitButtonLoading: action.payload,
       }
 
     default:
@@ -167,7 +176,7 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
   const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { advancePayment, isEditing, advancePaymentId, validationErrors, isValidationError, staffSelectOptions } = state
+  const { advancePayment, isEditing, advancePaymentId, validationErrors, isValidationError, staffSelectOptions, submitButtonLoading } = state
 
   // API Hooks
   const createAdvancePayment = useCreateAdvancePaymentMutation()
@@ -209,21 +218,25 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
   )
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(advancePayment)
-    const { isValid, errorMap } = validatePayload(validationSchema, advancePayment)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      // Set loading state
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+
+      // Validate form
+      const validationSchema = createValidationSchema(advancePayment)
+      const { isValid, errorMap } = validatePayload(validationSchema, advancePayment)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
       const dataToSave = {
         ...advancePayment,
         staffCategory: nameToPath(advancePayment.staffCategory),
@@ -236,10 +249,14 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
         await createAdvancePayment.mutateAsync(dataToSave)
         showToast('New advance payment created successfully!', 'success')
       }
+
+      // Clear loading state before navigation
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
       console.error('Unable to create/update advance payment', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} advance payment. Please try again.`, 'error')
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
     }
   }, [advancePayment, isEditing, advancePaymentId, createAdvancePayment, updateAdvancePayment, showToast, navigateBack])
 
@@ -430,14 +447,14 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
                       col={4}
                       className={bemClass([blk, 'margin-bottom'])}
                     >
-                      <TextInput
+                      <NumberInput
                         label="Amount"
                         name="amount"
-                        type="number"
                         value={advancePayment.amount ?? ''}
                         changeHandler={value => {
-                          handleFieldChange('amount', value.amount ? Number(value.amount) : '')
+                          handleFieldChange('amount', value.amount ?? '')
                         }}
+                        min={0.01}
                         required
                         errorMessage={validationErrors.amount}
                         invalid={!!validationErrors.amount}
@@ -485,6 +502,7 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
                     category="default"
                     className={bemClass([blk, 'margin-right'])}
                     clickHandler={navigateBack}
+                    disabled={submitButtonLoading}
                   >
                     Cancel
                   </Button>
@@ -493,6 +511,7 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
                     category="primary"
                     clickHandler={handleSubmit}
                     disabled={hasApiErrors}
+                    loading={submitButtonLoading}
                   >
                     {isEditing ? 'Update' : 'Submit'}
                   </Button>

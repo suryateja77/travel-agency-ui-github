@@ -27,6 +27,7 @@ const Profile: FunctionComponent<ProfileProps> = () => {
   const [userProfile, setUserProfile] = useState<UserProfile>(sampleUserProfile)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isValidationError, setIsValidationError] = useState(false)
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
 
   // Load user profile data
   useEffect(() => {
@@ -62,22 +63,27 @@ const Profile: FunctionComponent<ProfileProps> = () => {
 
   // Handle submit
   const handleSubmit = async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(userProfile)
-    const { isValid, errorMap } = validatePayload(validationSchema, userProfile)
-
-    setValidationErrors(errorMap)
-    setIsValidationError(!isValid)
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      setSubmitButtonLoading(true)
+      
+      // Validate form
+      const validationSchema = createValidationSchema(userProfile)
+      const { isValid, errorMap } = validatePayload(validationSchema, userProfile)
+
+      setValidationErrors(errorMap)
+      setIsValidationError(!isValid)
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        setSubmitButtonLoading(false)
+        return
+      }
+
       await updateUserProfile.mutateAsync({ ...userProfile })
       showToast('Profile updated successfully!', 'success')
+      setSubmitButtonLoading(false)
     } catch (error) {
+      setSubmitButtonLoading(false)
       console.error('Unable to update profile', error)
       showToast('Unable to update profile. Please try again.', 'error')
     }
@@ -572,9 +578,9 @@ const Profile: FunctionComponent<ProfileProps> = () => {
                       size="medium"
                       category="primary"
                       clickHandler={handleSubmit}
-                      disabled={updateUserProfile.isPending}
+                      loading={submitButtonLoading}
                     >
-                      {updateUserProfile.isPending ? 'Updating...' : 'Update Profile'}
+                      Update Profile
                     </Button>
                   </div>
                 </>

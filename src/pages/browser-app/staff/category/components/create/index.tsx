@@ -1,5 +1,5 @@
 import { FunctionComponent, useReducer, useEffect, useMemo, useCallback } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle, Text, Breadcrumb } from '@base'
+import { Panel, Row, Column, TextInput, NumberInput, Button, TextArea, Alert, Toggle, Text, Breadcrumb } from '@base'
 import { INITIAL_STAFF, StaffModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -35,6 +35,7 @@ interface FormState {
   staffId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -44,6 +45,7 @@ type FormAction =
   | { type: 'UPDATE_ADDRESS_FIELD'; payload: { field: string; value: string } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; staffId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 // ============================================================================
 // REDUCER & INITIAL STATE
@@ -55,6 +57,7 @@ const initialState: FormState = {
   staffId: '',
   validationErrors: {},
   isValidationError: false,
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -90,6 +93,9 @@ function formReducer(state: FormState, action: FormAction): FormState {
         validationErrors: action.payload.errors,
         isValidationError: action.payload.hasError,
       }
+    
+    case 'SET_SUBMIT_LOADING':
+      return { ...state, submitButtonLoading: action.payload }
     
     default:
       return state
@@ -132,6 +138,7 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
     staffId,
     validationErrors,
     isValidationError,
+    submitButtonLoading,
   } = state
 
   // API Hooks
@@ -159,21 +166,24 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
   }, [navigate, category])
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(staff)
-    const { isValid, errorMap } = validatePayload(validationSchema, staff)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+      
+      // Validate form
+      const validationSchema = createValidationSchema(staff)
+      const { isValid, errorMap } = validatePayload(validationSchema, staff)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
       if (isEditing) {
         await updateStaff.mutateAsync({ _id: staffId, ...staff })
         showToast('Staff updated successfully!', 'success')
@@ -181,8 +191,10 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
         await createStaff.mutateAsync({ ...staff, category: nameToPath(category) })
         showToast('New staff created successfully!', 'success')
       }
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       console.error('Unable to create/update staff', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} staff. Please try again.`, 'error')
     }
@@ -333,14 +345,14 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
                         col={4}
                         className={bemClass([blk, 'margin-bottom'])}
                       >
-                        <TextInput
+                        <NumberInput
                           label="Salary"
                           name="salary"
-                          type="number"
                           value={staff.salary ?? ''}
                           changeHandler={value => {
-                            handleStaffFieldChange('salary', value.salary ? Number(value.salary) : '')
+                            handleStaffFieldChange('salary', value.salary ?? '')
                           }}
+                          min={1}
                           required
                           errorMessage={validationErrors.salary}
                           invalid={!!validationErrors.salary}
@@ -514,6 +526,7 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
                       category="default"
                       className={bemClass([blk, 'margin-right'])}
                       clickHandler={navigateBack}
+                      disabled={submitButtonLoading}
                     >
                       Cancel
                     </Button>
@@ -521,6 +534,7 @@ const CreateStaff: FunctionComponent<CreateStaffProps> = ({ category = '' }) => 
                       size="medium"
                       category="primary"
                       clickHandler={handleSubmit}
+                      loading={submitButtonLoading}
                     >
                       {isEditing ? 'Update' : 'Submit'}
                     </Button>

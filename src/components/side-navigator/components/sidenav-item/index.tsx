@@ -72,7 +72,6 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
               />
             )}
             <Text
-              typography="xs"
               fontWeight="bold"
               color={isRouteActive() ? 'success' : 'white'}
               tag="p"
@@ -101,7 +100,6 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
                 }}
               >
                 <Text
-                  typography="xs"
                   fontWeight="bold"
                   color="gray"
                   tag="p"
@@ -136,7 +134,6 @@ const SideNavItem: FunctionComponent<SideNavItemProps> = ({ isSideNavExpanded, s
         />
       )}
       <Text
-        typography="xs"
         fontWeight="bold"
         color={isRouteActive() ? 'success' : 'white'}
         tag="p"

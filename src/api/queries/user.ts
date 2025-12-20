@@ -42,6 +42,14 @@ export const useLogoutMutation = () => {
   })
 }
 
+export const useRefreshTokenMutation = () => {
+  return useMutation({
+    mutationFn: async () => {
+      return await post(`${API_BASE_URL}/refresh-token`, {})
+    },
+  })
+}
+
 // User Management CRUD Operations
 
 // Query to get all users

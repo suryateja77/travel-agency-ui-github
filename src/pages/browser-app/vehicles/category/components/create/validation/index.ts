@@ -1,4 +1,4 @@
-import { emailField, emptyField, numberFieldGreaterThanZero } from '@config/validation'
+import { emailField, emptyField, numberFieldGreaterThanZero, registrationNoField } from '@config/validation'
 import { VehicleModel } from '@types'
 
 const createValidationSchema = (vehicleData: VehicleModel, category: string = '') => {
@@ -24,6 +24,7 @@ const createValidationSchema = (vehicleData: VehicleModel, category: string = ''
     emptyField('noOfSeats'),
     numberFieldGreaterThanZero('noOfSeats'),
     emptyField('registrationNo'),
+    registrationNoField('registrationNo'),
     emptyField('hasAc'),
     emptyField('isMonthlyFixed'),
     ...conditionalFields,

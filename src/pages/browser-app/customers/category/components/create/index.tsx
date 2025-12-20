@@ -36,6 +36,7 @@ interface FormState {
   customerId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -45,6 +46,7 @@ type FormAction =
   | { type: 'UPDATE_ADDRESS_FIELD'; payload: { field: keyof CustomerModel['address']; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; customerId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 // ============================================================================
 // CONSTANTS
@@ -77,6 +79,7 @@ const initialState: FormState = {
   customerId: '',
   validationErrors: {},
   isValidationError: false,
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -116,6 +119,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isValidationError: action.payload.hasError,
       }
 
+    case 'SET_SUBMIT_LOADING':
+      return {
+        ...state,
+        submitButtonLoading: action.payload,
+      }
+
     default:
       return state
   }
@@ -148,7 +157,7 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
   const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { customer, isEditing, customerId, validationErrors, isValidationError } = state
+  const { customer, isEditing, customerId, validationErrors, isValidationError, submitButtonLoading } = state
 
   // API Hooks
   const createCustomer = useCreateCustomerMutation()
@@ -178,27 +187,31 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
   }, [navigate, category])
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(customer)
-    const { isValid, errorMap } = validatePayload(validationSchema, customer)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
-    // Prepare data for submission
-    const dataToSave: CustomerModel = {
-      ...customer,
-      category: nameToPath(category),
-    }
-
     try {
+      // Set loading state
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+
+      // Validate form
+      const validationSchema = createValidationSchema(customer)
+      const { isValid, errorMap } = validatePayload(validationSchema, customer)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
+      // Prepare data for submission
+      const dataToSave: CustomerModel = {
+        ...customer,
+        category: nameToPath(category),
+      }
+
       if (isEditing) {
         await updateCustomer.mutateAsync({ _id: customerId, ...dataToSave })
         showToast('Customer updated successfully!', 'success')
@@ -206,10 +219,14 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
         await createCustomer.mutateAsync(dataToSave)
         showToast('New customer created successfully!', 'success')
       }
+
+      // Clear loading state before navigation
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
       console.error('Unable to create/update customer', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} customer. Please try again.`, 'error')
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
     }
   }, [customer, isEditing, customerId, updateCustomer, createCustomer, category, showToast, navigateBack])
 
@@ -456,6 +473,7 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
                     category="default"
                     className={bemClass([blk, 'margin-right'])}
                     clickHandler={navigateBack}
+                    disabled={submitButtonLoading}
                   >
                     Cancel
                   </Button>
@@ -463,6 +481,7 @@ const CreateCustomer: FunctionComponent<CreateCustomerProps> = ({ category = '' 
                     size="medium"
                     category="primary"
                     clickHandler={handleSubmit}
+                    loading={submitButtonLoading}
                   >
                     {isEditing ? 'Update' : 'Submit'}
                   </Button>

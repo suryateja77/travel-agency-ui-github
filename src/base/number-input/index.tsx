@@ -2,11 +2,11 @@ import React from 'react'
 
 import { bemClass } from '@utils'
 
-
 import './style.scss'
 import Text from '@base/text'
 
-const blk = 'text-input'
+const blk = 'number-input'
+
 interface InputEvent {
   target: {
     value: string
@@ -14,11 +14,11 @@ interface InputEvent {
 }
 
 interface ChangeArg {
-  [arg: string]: string
+  [arg: string]: number
 }
-interface TextInputProps {
+
+interface NumberInputProps {
   label?: string
-  type?: string
   disabled?: boolean
   size?: 'small' | 'large'
   placeholder?: string
@@ -26,23 +26,24 @@ interface TextInputProps {
   valid?: boolean
   rounded?: boolean
   required?: boolean
-  value?: string
+  value?: number | string
   name?: string
   className?: string
   controlClasses?: string
   errorMessage?: string
   changeHandler?: (arg: ChangeArg) => void
   onBlur?: () => void
+  min?: number
+  max?: number
   attributes?: {
-    maxLength: number
+    maxLength?: number
   }
   autoComplete?: string
 }
 
-const TextInput = (props: TextInputProps) => {
+const NumberInput = (props: NumberInputProps) => {
   const {
     label = '',
-    type = 'text',
     disabled = false,
     size = '',
     placeholder = '',
@@ -57,21 +58,61 @@ const TextInput = (props: TextInputProps) => {
     controlClasses = '',
     changeHandler = () => {},
     onBlur,
+    min,
+    max,
     attributes = {},
+    autoComplete,
   } = props
 
   const handleInputChange = ({ target: { value } }: InputEvent) => {
-    changeHandler({ [name]: value })
+    // Allow empty string for clearing the field
+    if (value === '') {
+      changeHandler({ [name]: 0 })
+      return
+    }
+
+    // Parse as number
+    const numValue = Number(value)
+
+    // Only allow valid numbers
+    if (!isNaN(numValue)) {
+      changeHandler({ [name]: numValue })
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // For datetime-local inputs, prevent all keyboard input except tab navigation
-    if (type === 'datetime-local') {
-      // Allow tab, shift+tab, and other navigation keys
-      if (e.key === 'Tab' || e.key === 'Shift' || e.key === 'Enter' || e.key === 'Escape') {
-        return
-      }
-      // Prevent all other key inputs
+    // Allow: backspace, delete, tab, escape, enter
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Delete' ||
+      e.key === 'Tab' ||
+      e.key === 'Escape' ||
+      e.key === 'Enter' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Home' ||
+      e.key === 'End'
+    ) {
+      return
+    }
+
+    // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    if (e.ctrlKey || e.metaKey) {
+      return
+    }
+
+    // Allow: minus sign only at the start
+    if (e.key === '-' && (e.target as HTMLInputElement).selectionStart === 0) {
+      return
+    }
+
+    // Allow: decimal point (only one)
+    if (e.key === '.' && !(e.target as HTMLInputElement).value.includes('.')) {
+      return
+    }
+
+    // Prevent non-numeric input
+    if (!/^\d$/.test(e.key)) {
       e.preventDefault()
     }
   }
@@ -114,7 +155,8 @@ const TextInput = (props: TextInputProps) => {
       </div>
 
       <input
-        type={type}
+        type="text"
+        inputMode="numeric"
         className={textFieldClass}
         value={value}
         placeholder={placeholder}
@@ -122,8 +164,10 @@ const TextInput = (props: TextInputProps) => {
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onBlur={onBlur}
+        min={min}
+        max={max}
         {...attributes}
-        autoComplete={props.autoComplete || 'off'}
+        autoComplete={autoComplete || 'off'}
       />
       <div className={iconClass}>
         {invalid && <i className="fa fa-exclamation-triangle" />}
@@ -133,4 +177,4 @@ const TextInput = (props: TextInputProps) => {
   )
 }
 
-export default TextInput
+export default NumberInput

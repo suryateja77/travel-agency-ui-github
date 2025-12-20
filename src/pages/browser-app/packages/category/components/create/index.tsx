@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useState, useMemo, useCallback } from 'react'
-import { Panel, Row, Column, TextInput, Button, TextArea, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
+import { Panel, Row, Column, TextInput, NumberInput, Button, TextArea, Alert, Toggle, Breadcrumb, Text, SelectInput } from '@base'
 import { PackageModel } from '@types'
 import { bemClass, pathToName, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -82,6 +82,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   const [isValidationError, setIsValidationError] = useState(false)
   const [supplierOptions, setSupplierOptions] = useState<SelectOption[]>([])
   const [apiErrors, setApiErrors] = useState<{ suppliers: string }>({ suppliers: '' })
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
 
   // API Hooks
   const createPackage = useCreatePackageMutation()
@@ -147,18 +148,22 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
   }, [navigate, category])
 
   const handleSubmit = useCallback(async () => {
-    const validationSchema = createValidationSchema(packageData, category)
-    const { isValid, errorMap } = validatePayload(validationSchema, packageData)
-
-    setValidationErrors(errorMap)
-    setIsValidationError(!isValid)
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      // Set loading state
+      setSubmitButtonLoading(true)
+
+      const validationSchema = createValidationSchema(packageData, category)
+      const { isValid, errorMap } = validatePayload(validationSchema, packageData)
+
+      setValidationErrors(errorMap)
+      setIsValidationError(!isValid)
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        setSubmitButtonLoading(false)
+        return
+      }
+
       const supplierValue = category === 'supplier' ? (packageData.supplier || null) : null
       const payload = {
         ...packageData,
@@ -173,10 +178,14 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
         await createPackage.mutateAsync(payload)
         showToast('New package created successfully!', 'success')
       }
+
+      // Clear loading state before navigation
+      setSubmitButtonLoading(false)
       navigateBack()
     } catch (error) {
       console.error('Unable to create/update package', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} package. Please try again.`, 'error')
+      setSubmitButtonLoading(false)
     }
   }, [packageData, isEditing, packageId, updatePackage, createPackage, category, showToast, navigateBack])
 
@@ -346,15 +355,15 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <TextInput
+                  <NumberInput
                     label="Minimum Km"
                     name="minimumKm"
-                    type="number"
                     value={packageData.minimumKm ?? ''}
                     changeHandler={value => {
-                      handlePackageFieldChange('minimumKm', value.minimumKm ? Number(value.minimumKm) : '')
+                      handlePackageFieldChange('minimumKm', value.minimumKm ?? '')
                     }}
                     onBlur={() => validateField('minimumKm', packageData)}
+                    min={0.01}
                     required
                     errorMessage={validationErrors['minimumKm']}
                     invalid={!!validationErrors['minimumKm']}
@@ -364,15 +373,15 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <TextInput
+                  <NumberInput
                     label="Minimum Hours"
                     name="minimumHr"
-                    type="number"
                     value={packageData.minimumHr ?? ''}
                     changeHandler={value => {
-                      handlePackageFieldChange('minimumHr', value.minimumHr ? Number(value.minimumHr) : '')
+                      handlePackageFieldChange('minimumHr', value.minimumHr ?? '')
                     }}
                     onBlur={() => validateField('minimumHr', packageData)}
+                    min={0.01}
                     required
                     errorMessage={validationErrors['minimumHr']}
                     invalid={!!validationErrors['minimumHr']}
@@ -384,15 +393,15 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <TextInput
+                  <NumberInput
                     label="Base Amount"
                     name="baseAmount"
-                    type="number"
                     value={packageData.baseAmount ?? ''}
                     changeHandler={value => {
-                      handlePackageFieldChange('baseAmount', value.baseAmount ? Number(value.baseAmount) : '')
+                      handlePackageFieldChange('baseAmount', value.baseAmount ?? '')
                     }}
                     onBlur={() => validateField('baseAmount', packageData)}
+                    min={0.01}
                     required
                     errorMessage={validationErrors['baseAmount']}
                     invalid={!!validationErrors['baseAmount']}
@@ -402,15 +411,15 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <TextInput
+                  <NumberInput
                     label="Extra Km Per Km Rate"
                     name="extraKmPerKmRate"
-                    type="number"
                     value={packageData.extraKmPerKmRate ?? ''}
                     changeHandler={value => {
-                      handlePackageFieldChange('extraKmPerKmRate', value.extraKmPerKmRate ? Number(value.extraKmPerKmRate) : '')
+                      handlePackageFieldChange('extraKmPerKmRate', value.extraKmPerKmRate ?? '')
                     }}
                     onBlur={() => validateField('extraKmPerKmRate', packageData)}
+                    min={0.01}
                     required
                     errorMessage={validationErrors['extraKmPerKmRate']}
                     invalid={!!validationErrors['extraKmPerKmRate']}
@@ -420,15 +429,15 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                   col={4}
                   className={bemClass([blk, 'margin-bottom'])}
                 >
-                  <TextInput
+                  <NumberInput
                     label="Extra Hr Per Hr Rate"
                     name="extraHrPerHrRate"
-                    type="number"
                     value={packageData.extraHrPerHrRate ?? ''}
                     changeHandler={value => {
-                      handlePackageFieldChange('extraHrPerHrRate', value.extraHrPerHrRate ? Number(value.extraHrPerHrRate) : '')
+                      handlePackageFieldChange('extraHrPerHrRate', value.extraHrPerHrRate ?? '')
                     }}
                     onBlur={() => validateField('extraHrPerHrRate', packageData)}
+                    min={0.01}
                     required
                     errorMessage={validationErrors['extraHrPerHrRate']}
                     invalid={!!validationErrors['extraHrPerHrRate']}
@@ -478,6 +487,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                 category="default"
                 className={bemClass([blk, 'margin-right'])}
                 clickHandler={navigateBack}
+                disabled={submitButtonLoading}
               >
                 Cancel
               </Button>
@@ -485,6 +495,7 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                 size="medium"
                 category="primary"
                 clickHandler={handleSubmit}
+                loading={submitButtonLoading}
               >
                 {isEditing ? 'Update' : 'Submit'}
               </Button>

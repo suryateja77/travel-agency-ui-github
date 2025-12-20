@@ -67,6 +67,137 @@ const API = axios.create({
 ❌ **NEVER hardcode URLs or use fallback values** (e.g., `|| 'https://...'`)  
 ✅ **ALWAYS require .env file** - app should fail if missing
 
+**Session Management Configuration**:
+```env
+# Inactivity timeout in minutes (default: 120 minutes = 2 hours)
+REACT_APP_INACTIVITY_TIMEOUT_MINUTES=120
+```
+
+---
+
+## Authentication & Session Management
+
+### Activity-Based Session Management (NEW)
+
+The system implements **activity-based token refresh** and **inactivity-based logout** for seamless user experience:
+
+**Key Features**:
+- ✅ Token automatically refreshes when user is active and token is near expiry (30 min threshold)
+- ✅ User logged out after 2 hours of inactivity (configurable)
+- ✅ No interruptions during active sessions
+- ✅ Multi-tab support with visibility tracking
+
+**Architecture**:
+```typescript
+// src/contexts/ActivityContext.tsx - Core activity tracking
+const INACTIVITY_TIMEOUT = 120 minutes (configurable via env)
+const TOKEN_REFRESH_THRESHOLD = 30 minutes
+const ACTIVITY_THROTTLE = 60 seconds
+
+// Activity events tracked:
+// - mousedown, mousemove, keypress, scroll, touchstart, click
+// - Throttled to once per second for performance
+```
+
+**Flow**:
+```
+User Activity Detected
+    ↓
+Check if token expires within 30 min
+    ↓
+YES → Refresh Token (POST /user/refresh-token)
+NO  → Continue Session
+    ↓
+Reset 2-hour inactivity timer
+    ↓
+If no activity for 2 hours → Logout
+```
+
+**Session Storage** (uses localStorage with 'local' parameter for multi-tab sharing):
+```typescript
+// Storage utility: src/utils/storage.ts
+// 'local' → localStorage (shared across tabs)
+// 'session' → sessionStorage (isolated per tab)
+getStorage('local')  // Returns localStorage for session data
+
+// Session data stored in localStorage
+setStorageItem('local', 'isLoggedIn', 'true')           // Login state
+setStorageItem('local', 'sessionExpiry', timestamp)      // Token expiry
+setStorageItem('local', 'lastActivity', timestamp)       // Last activity
+```
+
+**Integration Pattern**:
+```typescript
+// src/app/wrapper/index.tsx
+import { ActivityProvider } from '@contexts/ActivityContext'
+import { getStorageItem } from '@utils'
+
+const Wrapper = () => {
+  const isLoggedIn = !!getStorageItem('local', 'isLoggedIn')
+  
+  return (
+    <Suspense>
+      {isLoggedIn ? (
+        <ActivityProvider>
+          <BrowseApp />
+        </ActivityProvider>
+      ) : (
+        <AuthenticationApp />
+      )}
+    </Suspense>
+  )
+}
+```
+
+**React Query Hook**:
+```typescript
+// src/api/queries/user.ts
+export const useRefreshTokenMutation = () => {
+  return useMutation({
+    mutationFn: async () => {
+      return await post(`${API_BASE_URL}/refresh-token`, {})
+    },
+  })
+}
+```
+
+**Benefits**:
+- Users can work continuously without unexpected logouts
+- Token refreshes seamlessly in background
+- Enhanced security with inactivity timeout
+- Configurable timeout via environment variable
+- Handles tab switching and visibility changes
+
+**Configuration**:
+```env
+# Change inactivity timeout (minutes)
+REACT_APP_INACTIVITY_TIMEOUT_MINUTES=30   # 30 minutes
+REACT_APP_INACTIVITY_TIMEOUT_MINUTES=60   # 1 hour
+REACT_APP_INACTIVITY_TIMEOUT_MINUTES=120  # 2 hours (default)
+REACT_APP_INACTIVITY_TIMEOUT_MINUTES=240  # 4 hours
+```
+
+**Monitoring**:
+```javascript
+// Check session state in browser console (uses localStorage for multi-tab support)
+const expiry = parseInt(localStorage.getItem('sessionExpiry'))
+const minutes = (expiry - Date.now()) / 1000 / 60
+console.log(`Token expires in ${minutes.toFixed(1)} minutes`)
+
+const lastActivity = parseInt(localStorage.getItem('lastActivity'))
+const inactiveMinutes = (Date.now() - lastActivity) / 1000 / 60
+console.log(`Inactive for ${inactiveMinutes.toFixed(1)} minutes`)
+```
+
+**Console Logs**:
+- "Refreshing token due to user activity"
+- "Token refreshed successfully"
+- "User logged out due to inactivity"
+- "Session expired, logging out"
+- "Login detected from another tab - syncing session"
+- "Logout detected from another tab - syncing logout"
+- "Activity detected from another tab - resetting inactivity timer"
+
 ---
 
 ## Essential Patterns
@@ -86,6 +217,175 @@ pathToName('regular-customer') → 'Regular Customer'  // For display
 - URL routing: `/customers/regular-customer`
 - API requests: `category: nameToPath('Regular Customer')`
 - Display: `pathToName(data.category)`
+
+### Input Components (TextInput vs NumberInput) - CRITICAL
+
+**ALWAYS use NumberInput for numeric values. NEVER use TextInput with type="number".**
+
+#### TextInput - For string values only
+
+```typescript
+import { TextInput } from '@base'
+
+<TextInput
+  label="Name"
+  name="name"
+  value={formData.name}  // string
+  changeHandler={(value) => setFormData({ ...formData, ...value })}
+  required
+  placeholder="Enter name"
+  errorMessage={validationErrors.name}
+  invalid={!!validationErrors.name}
+  disabled={false}
+  size="small" | "large"
+  type="text" | "email" | "password" | "datetime-local" | "date"
+  onBlur={() => validateField('name')}
+  autoComplete="off"
+/>
+```
+
+**TextInput Props**:
+- `value`: `string` - String value only
+- `type`: `"text"` | `"email"` | `"password"` | `"datetime-local"` | `"date"` - NO "number" type
+- Returns `string` in changeHandler: `{ [name]: string }`
+
+#### NumberInput - For numeric values with validation
+
+```typescript
+import { NumberInput } from '@base'
+
+<NumberInput
+  label="Age"
+  name="age"
+  value={formData.age}  // number | ''
+  changeHandler={(value) => setFormData({ ...formData, ...value })}
+  min={18}       // Optional minimum value (enforced at input level)
+  max={100}      // Optional maximum value (enforced at input level)
+  required
+  placeholder="Enter age"
+  errorMessage={validationErrors.age}
+  invalid={!!validationErrors.age}
+  disabled={false}
+  size="small" | "large"
+  onBlur={() => validateField('age')}
+/>
+```
+
+**NumberInput Props**:
+- `value`: `number | ''` - Numeric value or empty string for display
+- `min`: `number` (optional) - Minimum allowed value
+- `max`: `number` (optional) - Maximum allowed value
+- Returns `number` in changeHandler: `{ [name]: number }`
+- Empty field returns `0` (not empty string)
+
+**NumberInput Features**:
+1. **Keyboard Control**: Prevents non-numeric input at keyboard level
+2. **Decimal Support**: Allows decimal point (only one)
+3. **Negative Support**: Allows minus sign (only at start)
+4. **Navigation Keys**: Allows arrows, home, end, backspace, delete
+5. **Copy/Paste**: Supports Ctrl+C, Ctrl+V, Ctrl+X
+6. **Mobile Support**: Uses `inputMode="numeric"` for numeric keyboard
+7. **Min/Max Validation**: Browser-level enforcement of numeric ranges
+
+**When to Use**:
+- ✅ Use **TextInput** for: names, emails, addresses, descriptions, passwords, dates, datetime
+- ✅ Use **NumberInput** for: quantities, ages, prices, distances, KM readings, percentages, amounts
+
+**Common NumberInput Patterns**:
+
+```typescript
+// 1. Simple quantity (min=1)
+<NumberInput
+  label="Number of Seats"
+  name="noOfSeats"
+  value={vehicle.noOfSeats}
+  changeHandler={(value) => setVehicle({ ...vehicle, ...value })}
+  min={1}
+  required
+/>
+
+// 2. Monetary value (min=0.01)
+<NumberInput
+  label="Amount"
+  name="amount"
+  value={payment.amount}
+  changeHandler={(value) => setPayment({ ...payment, ...value })}
+  min={0.01}
+  required
+/>
+
+// 3. Distance/measurement (min=0)
+<NumberInput
+  label="Opening KM"
+  name="openingKm"
+  value={request.openingKm ?? ''}
+  changeHandler={(value) => setRequest({ ...request, ...value })}
+  min={0}
+  required
+/>
+
+// 4. Dynamic min (closing KM must be > opening KM)
+<NumberInput
+  label="Closing KM"
+  name="closingKm"
+  value={request.closingKm ?? ''}
+  changeHandler={(value) => setRequest({ ...request, ...value })}
+  min={request.openingKm || 0}  // Dynamic minimum
+  required
+/>
+
+// 5. Optional charges (defaults to 0)
+<NumberInput
+  label="Toll Amount"
+  name="tollAmount"
+  value={charges.toll === 0 ? '' : charges.toll}  // Show empty if 0
+  changeHandler={(value) => setCharges({ 
+    ...charges, 
+    toll: value.tollAmount || 0  // Use || 0 pattern
+  })}
+  min={0}
+/>
+```
+
+**Migration from TextInput type="number"**:
+
+```typescript
+// ❌ OLD - DON'T USE
+<TextInput
+  type="number"
+  value={String(formData.age)}
+  changeHandler={(value) => setFormData({ 
+    ...formData, 
+    age: Number(value.age)  // Manual parsing needed
+  })}
+/>
+
+// ✅ NEW - CORRECT
+<NumberInput
+  value={formData.age}
+  changeHandler={(value) => setFormData({ ...formData, ...value })}
+  min={0}  // Built-in validation
+/>
+```
+
+**Empty Field Handling**:
+
+```typescript
+// NumberInput returns 0 for empty field (not empty string)
+const handleChange = (value) => {
+  // Value is already a number (0 if field was cleared)
+  setFormData({ ...formData, ...value })
+}
+
+// Display empty field when value is 0 (optional)
+<NumberInput
+  value={charges.amount === 0 ? '' : charges.amount}
+  changeHandler={(value) => setCharges({ 
+    ...charges, 
+    amount: value.amount || 0 
+  })}
+/>
+```
 
 ### BEM Class Generation
 
@@ -154,7 +454,7 @@ const isEditable = userProfile.isAdmin  // or role-based check
 
 ```typescript
 // ALWAYS use webpack aliases
-import { Button, TextInput, SelectInput } from '@base'   // NOT '../../../base/button'
+import { Button, TextInput, NumberInput, SelectInput } from '@base'   // NOT '../../../base/button'
 import { EntityGrid, PageHeader } from '@components'
 import { bemClass, validatePayload, formatNumber } from '@utils'
 import { useCustomersQuery, useCreateCustomerMutation } from '@api/queries/customer'
@@ -197,11 +497,11 @@ axios.get('/api/customer')
 import React, { useState, useCallback, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { bemClass, validatePayload } from '@utils'
-import { TextInput, Button } from '@base'
+import { TextInput, NumberInput, Button } from '@base'
 
 // 2. Constants outside component
 const blk = 'customer-form'
-const INITIAL_STATE = { name: '', contact: '' }
+const INITIAL_STATE = { name: '', contact: '', noOfSeats: 0 }
 
 // 3. Component
 const CustomerForm = ({ category }) => {
@@ -242,7 +542,14 @@ const CustomerForm = ({ category }) => {
   
   return (
     <div className={bemClass([blk])}>
-      {/* JSX */}
+      <NumberInput
+        label="Number of Seats"
+        name="noOfSeats"
+        value={formData.noOfSeats}
+        changeHandler={(value) => setFormData({ ...formData, ...value })}
+        min={1}
+        required
+      />
     </div>
   )
 }
@@ -259,7 +566,8 @@ import { validatePayload, validateField } from '@utils'
 const validationSchema = (data) => [
   emptyField('name'),
   emptyField('contact'),
-  emailField('email'),  // Optional validation for email format
+  numberFieldGreaterThanZero('noOfSeats'),  // For NumberInput fields
+  emailField('email'),
   customValidator((d) => d.age >= 18, 'age', 'Must be 18 or older')
 ]
 
@@ -1506,6 +1814,7 @@ const categories = await fetchCustomerCategories()
 ❌ **Never** forget disabled field styling (both `disabled` prop + CSS class)
 ❌ **Never** assume user is admin (always check `isAdmin` flag)
 ❌ **Never** allow editing of admin-only fields without permission check
+❌ **Never** use TextInput with type="number" (use NumberInput instead)
 
 ---
 
@@ -1523,7 +1832,7 @@ const categories = await fetchCustomerCategories()
 - **Entity CRUD**: `src/pages/browser-app/customers/category/components/`
 - **Nested Schema**: `src/pages/browser-app/requests/monthly-fixed/components/create/`
 - **Dashboard**: `src/pages/browser-app/dashboard/`
-- **Base Components**: `src/base/button/`, `src/base/text-input/`
+- **Base Components**: `src/base/button/`, `src/base/text-input/`, `src/base/number-input/`
 - **Common Components**: `src/components/entity-grid/`, `src/components/page-header/`
 
 **API Queries**:
@@ -1597,5 +1906,5 @@ npm run lint       # ESLint check
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 3.0 - Multi-Organization Frontend Architecture
+**Last Updated**: December 18, 2025  
+**Version**: 3.2 - Multi-Organization Frontend Architecture with Activity-Based Session Management

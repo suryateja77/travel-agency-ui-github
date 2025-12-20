@@ -30,6 +30,7 @@ interface FormState {
   supplierId: string
   validationErrors: ValidationErrors
   isValidationError: boolean
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -40,6 +41,7 @@ type FormAction =
   | { type: 'UPDATE_POINT_OF_CONTACT_FIELD'; payload: { field: keyof SupplierModel['pointOfContact']; value: any } }
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; supplierId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 // ============================================================================
 // CONSTANTS
@@ -59,6 +61,7 @@ const initialState: FormState = {
   supplierId: '',
   validationErrors: {},
   isValidationError: false,
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -104,6 +107,9 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isValidationError: action.payload.hasError,
       }
 
+    case 'SET_SUBMIT_LOADING':
+      return { ...state, submitButtonLoading: action.payload }
+
     default:
       return state
   }
@@ -140,7 +146,7 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
   const params = useParams()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { supplier, isEditing, supplierId, validationErrors, isValidationError } = state
+  const { supplier, isEditing, supplierId, validationErrors, isValidationError, submitButtonLoading } = state
   const { showToast } = useToast()
 
   // API Hooks
@@ -169,21 +175,24 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
   }, [navigate])
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(supplier)
-    const { isValid, errorMap } = validatePayload(validationSchema, supplier)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+      
+      // Validate form
+      const validationSchema = createValidationSchema(supplier)
+      const { isValid, errorMap } = validatePayload(validationSchema, supplier)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
       const dataToSave = {
         ...supplier,
       }
@@ -195,8 +204,10 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
         await createSupplier.mutateAsync(dataToSave)
         showToast('New supplier created successfully!', 'success')
       }
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       console.error('Unable to create/update supplier', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} supplier. Please try again.`, 'error')
     }
@@ -547,6 +558,7 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
                     category="default"
                     className={bemClass([blk, 'margin-right'])}
                     clickHandler={navigateBack}
+                    disabled={submitButtonLoading}
                   >
                     Cancel
                   </Button>
@@ -554,6 +566,7 @@ const CreateSupplier: FunctionComponent<CreateSupplierProps> = () => {
                     size="medium"
                     category="primary"
                     clickHandler={handleSubmit}
+                    loading={submitButtonLoading}
                   >
                     {isEditing ? 'Update' : 'Submit'}
                   </Button>

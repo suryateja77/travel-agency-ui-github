@@ -1,4 +1,4 @@
-import { emailField, emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField } from '@config/validation'
+import { emailField, emptyField, numberFieldGreaterThanZero, dateTimeGreaterThanField, numberGreaterThanField, contactField, registrationNoField } from '@config/validation'
 import { RegularRequestModel } from '@types'
 import { nameToPath } from '@utils'
 
@@ -43,7 +43,8 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
   if (regularRequestData.customerDetails.customerType === 'new' && regularRequestData.customerDetails.newCustomerDetails) {
     conditionalFields.push(
       emptyField('customerDetails.newCustomerDetails.name'),
-      emptyField('customerDetails.newCustomerDetails.contact')
+      emptyField('customerDetails.newCustomerDetails.contact'),
+      contactField('customerDetails.newCustomerDetails.contact'),
     )
     // Email validation if provided
     if (regularRequestData.customerDetails.newCustomerDetails.email) {
@@ -69,9 +70,11 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
     conditionalFields.push(
       emptyField('vehicleDetails.newVehicleDetails.ownerName'),
       emptyField('vehicleDetails.newVehicleDetails.ownerContact'),
+      contactField('vehicleDetails.newVehicleDetails.ownerContact'),
       emptyField('vehicleDetails.newVehicleDetails.manufacturer'),
       emptyField('vehicleDetails.newVehicleDetails.name'),
-      emptyField('vehicleDetails.newVehicleDetails.registrationNo')
+      emptyField('vehicleDetails.newVehicleDetails.registrationNo'),
+      registrationNoField('vehicleDetails.newVehicleDetails.registrationNo')
     )
     // Email validation if provided
     if (regularRequestData.vehicleDetails.newVehicleDetails.ownerEmail) {
@@ -95,6 +98,7 @@ const createValidationSchema = (regularRequestData: RegularRequestModel) => {
     conditionalFields.push(
       emptyField('staffDetails.newStaffDetails.name'),
       emptyField('staffDetails.newStaffDetails.contact'),
+      contactField('staffDetails.newStaffDetails.contact'),
       emptyField('staffDetails.newStaffDetails.license')
     )
   }

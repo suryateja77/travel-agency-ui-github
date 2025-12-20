@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, Alert } from '@base'
+import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, NumberInput, Alert } from '@base'
 import { AdvanceBookingModel, CustomerModel, INITIAL_ADVANCE_BOOKING } from '@types'
 import { bemClass, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -37,6 +37,7 @@ interface FormState {
   validationErrors: ValidationErrors
   isValidationError: boolean
   customerSelectOptions: SelectOption[]
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -47,6 +48,7 @@ type FormAction =
   | { type: 'SET_EDITING_MODE'; payload: { isEditing: boolean; advanceBookingId: string } }
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_CUSTOMER_OPTIONS'; payload: SelectOption[] }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 // ============================================================================
 // CONSTANTS
@@ -89,6 +91,7 @@ const initialState: FormState = {
   validationErrors: {},
   isValidationError: false,
   customerSelectOptions: [],
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -135,6 +138,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
         customerSelectOptions: action.payload,
       }
 
+    case 'SET_SUBMIT_LOADING':
+      return {
+        ...state,
+        submitButtonLoading: action.payload,
+      }
+
     default:
       return state
   }
@@ -175,7 +184,7 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
   const { showToast } = useToast()
 
   const [state, dispatch] = useReducer(formReducer, initialState)
-  const { advanceBooking, isEditing, advanceBookingId, validationErrors, isValidationError, customerSelectOptions } = state
+  const { advanceBooking, isEditing, advanceBookingId, validationErrors, isValidationError, customerSelectOptions, submitButtonLoading } = state
 
   // API Hooks
   const createAdvanceBooking = useCreateAdvanceBookingMutation()
@@ -236,21 +245,26 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
   )
 
   const handleSubmit = useCallback(async () => {
-    // Validate form
-    const validationSchema = createValidationSchema(advanceBooking)
-    const { isValid, errorMap } = validatePayload(validationSchema, advanceBooking)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      // Set loading state
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+
+      // Validate form
+      const validationSchema = createValidationSchema(advanceBooking)
+      const { isValid, errorMap } = validatePayload(validationSchema, advanceBooking)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
+      // Submit form
       if (isEditing) {
         await updateAdvanceBooking.mutateAsync({ _id: advanceBookingId, ...advanceBooking })
         showToast('Advance booking updated successfully!', 'success')
@@ -258,12 +272,16 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
         await createAdvanceBooking.mutateAsync(advanceBooking)
         showToast('New advance booking created successfully!', 'success')
       }
+
+      // Clear loading state before navigation
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
       console.error('Unable to create/update advance booking', error)
       showToast(`Unable to ${isEditing ? 'update' : 'create'} advance booking. Please try again.`, 'error')
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
     }
-  }, [advanceBooking, isEditing, advanceBookingId, createAdvanceBooking, updateAdvanceBooking])
+  }, [advanceBooking, isEditing, advanceBookingId, createAdvanceBooking, updateAdvanceBooking, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -428,14 +446,14 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
                       col={4}
                       className={bemClass([blk, 'margin-bottom'])}
                     >
-                      <TextInput
+                      <NumberInput
                         label="Number of Seats"
                         name="noOfSeats"
-                        type="number"
                         value={advanceBooking.noOfSeats ?? ''}
                         changeHandler={value => {
-                          handleFieldChange('noOfSeats', value.noOfSeats ? Number(value.noOfSeats) : null)
+                          handleFieldChange('noOfSeats', value.noOfSeats ?? null)
                         }}
+                        min={1}
                         required
                         errorMessage={validationErrors.noOfSeats}
                         invalid={!!validationErrors.noOfSeats}
@@ -597,6 +615,7 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
                     category="default"
                     className={bemClass([blk, 'margin-right'])}
                     clickHandler={navigateBack}
+                    disabled={submitButtonLoading}
                   >
                     Cancel
                   </Button>
@@ -604,6 +623,7 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
                     size="medium"
                     category="primary"
                     clickHandler={handleSubmit}
+                    loading={submitButtonLoading}
                   >
                     {isEditing ? 'Update' : 'Submit'}
                   </Button>

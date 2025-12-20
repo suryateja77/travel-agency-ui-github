@@ -2,7 +2,7 @@ import React, { FunctionComponent, useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
 import { bemClass, nameToPath, formatDateTimeForInput, parseDateTimeFromInput, validatePayload } from '@utils'
-import { Breadcrumb, Button, Column, Panel, Row, SelectInput, Text, TextInput, TextArea, RadioGroup, Alert, ReadOnlyText, CheckBox, Toggle } from '@base'
+import { Breadcrumb, Button, Column, Panel, Row, SelectInput, Text, TextInput, NumberInput, TextArea, RadioGroup, Alert, ReadOnlyText, CheckBox, Toggle } from '@base'
 import { MonthlyFixedRequestModel, INITIAL_MONTHLY_FIXED_REQUEST } from '@types'
 import { ConfiguredInput } from '@base'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
@@ -36,6 +36,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
   const [monthlyFixedRequest, setMonthlyFixedRequest] = useState<MonthlyFixedRequestModel>(INITIAL_MONTHLY_FIXED_REQUEST)
   const [monthlyFixedRequestErrorMap, setMonthlyFixedRequestErrorMap] = useState<Record<string, any>>({})
   const [isValidationError, setIsValidationError] = useState(false)
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
   const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
   const [selectedCustomerHasMonthlyFixed, setSelectedCustomerHasMonthlyFixed] = useState<boolean>(false)
   const [assignmentDisplayDetails, setAssignmentDisplayDetails] = useState<{
@@ -757,7 +758,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       ...monthlyFixedRequest,
                       requestDetails: {
                         ...monthlyFixedRequest.requestDetails,
-                        requestType: value.requestType ? nameToPath(value.requestType.toString()) : '',
+                        requestType: value.requestType ? value.requestType.toString() : '',
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
@@ -889,21 +890,21 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Opening Km"
                   name="openingKm"
-                  type="number"
                   value={monthlyFixedRequest.requestDetails.openingKm ?? ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
                       requestDetails: {
                         ...monthlyFixedRequest.requestDetails,
-                        openingKm: value.openingKm ? Number(value.openingKm) : null,
+                        openingKm: value.openingKm ?? null,
                       },
                     })
                   }}
                   onBlur={() => validateField('requestDetails.openingKm', monthlyFixedRequest)}
+                  min={0}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.openingKm']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.openingKm']}
@@ -913,21 +914,21 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Closing Km"
                   name="closingKm"
-                  type="number"
                   value={monthlyFixedRequest.requestDetails.closingKm ?? ''}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
                       requestDetails: {
                         ...monthlyFixedRequest.requestDetails,
-                        closingKm: value.closingKm ? Number(value.closingKm) : null,
+                        closingKm: value.closingKm ?? null,
                       },
                     })
                   }}
                   onBlur={() => validateField('requestDetails.closingKm', monthlyFixedRequest)}
+                  min={monthlyFixedRequest.requestDetails.openingKm || 0}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.closingKm']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.closingKm']}
@@ -1477,7 +1478,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                             ...monthlyFixedRequest.vehicleDetails,
                             newVehicleDetails: {
                               ...monthlyFixedRequest.vehicleDetails.newVehicleDetails!,
-                              registrationNo: value.registrationNo?.toString() ?? '',
+                              registrationNo: (value.registrationNo?.toString() ?? '').toUpperCase(),
                             },
                           },
                         })
@@ -1740,9 +1741,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="tollAmount"
-                  type="number"
                   placeholder="Toll Amount"
                   value={monthlyFixedRequest.otherCharges.toll.amount === 0 ? '' : monthlyFixedRequest.otherCharges.toll.amount}
                   changeHandler={value => {
@@ -1752,11 +1752,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         toll: {
                           ...monthlyFixedRequest.otherCharges.toll,
-                          amount: value.tollAmount === '' ? 0 : Number(value.tollAmount),
+                          amount: value.tollAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.toll.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.toll.amount']}
                 />
@@ -1791,9 +1792,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="parkingAmount"
-                  type="number"
                   placeholder="Parking Amount"
                   value={monthlyFixedRequest.otherCharges.parking.amount === 0 ? '' : monthlyFixedRequest.otherCharges.parking.amount}
                   changeHandler={value => {
@@ -1803,11 +1803,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         parking: {
                           ...monthlyFixedRequest.otherCharges.parking,
-                          amount: value.parkingAmount === '' ? 0 : Number(value.parkingAmount),
+                          amount: value.parkingAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.parking.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.parking.amount']}
                 />
@@ -1844,9 +1845,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="nightHaltAmount"
-                  type="number"
                   placeholder="Night Halt Amount"
                   value={monthlyFixedRequest.otherCharges.nightHalt.amount === 0 ? '' : monthlyFixedRequest.otherCharges.nightHalt.amount}
                   changeHandler={value => {
@@ -1856,11 +1856,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         nightHalt: {
                           ...monthlyFixedRequest.otherCharges.nightHalt,
-                          amount: value.nightHaltAmount === '' ? 0 : Number(value.nightHaltAmount),
+                          amount: value.nightHaltAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.nightHalt.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.nightHalt.amount']}
                 />
@@ -1920,9 +1921,8 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="driverAllowanceAmount"
-                  type="number"
                   placeholder="Driver Allowance Amount"
                   value={monthlyFixedRequest.otherCharges.driverAllowance.amount === 0 ? '' : monthlyFixedRequest.otherCharges.driverAllowance.amount}
                   changeHandler={value => {
@@ -1932,11 +1932,12 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         ...monthlyFixedRequest.otherCharges,
                         driverAllowance: {
                           ...monthlyFixedRequest.otherCharges.driverAllowance,
-                          amount: value.driverAllowanceAmount === '' ? 0 : Number(value.driverAllowanceAmount),
+                          amount: value.driverAllowanceAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   errorMessage={monthlyFixedRequestErrorMap['otherCharges.driverAllowance.amount']}
                   invalid={!!monthlyFixedRequestErrorMap['otherCharges.driverAllowance.amount']}
                 />
@@ -1977,10 +1978,9 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Advance Amount Paid"
                   name="advanceAmountPaid"
-                  type="number"
                   placeholder="Enter advance amount paid"
                   value={monthlyFixedRequest.paymentDetails.advanceAmountPaid === 0 ? '' : monthlyFixedRequest.paymentDetails.advanceAmountPaid}
                   changeHandler={value => {
@@ -1988,10 +1988,11 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       ...monthlyFixedRequest,
                       paymentDetails: {
                         ...monthlyFixedRequest.paymentDetails,
-                        advanceAmountPaid: value.advanceAmountPaid === '' ? 0 : Number(value.advanceAmountPaid),
+                        advanceAmountPaid: value.advanceAmountPaid || 0,
                       },
                     })
                   }}
+                  min={0}
                   errorMessage={monthlyFixedRequestErrorMap['paymentDetails.advanceAmountPaid']}
                   invalid={!!monthlyFixedRequestErrorMap['paymentDetails.advanceAmountPaid']}
                 />
@@ -2024,6 +2025,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               category="default"
               className={bemClass([blk, 'margin-right'])}
               clickHandler={navigateBack}
+              disabled={submitButtonLoading}
             >
               Cancel
             </Button>
@@ -2032,6 +2034,7 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
               category="primary"
               clickHandler={submitHandler}
               disabled={Object.values(apiErrors).some(error => error !== '')}
+              loading={submitButtonLoading}
             >
               {isEditing ? 'Update' : 'Submit'}
             </Button>

@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, Button, SelectInput, TextArea, Alert } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, NumberInput, Button, SelectInput, TextArea, Alert } from '@base'
 import { ExpenseModel } from '@types'
 import { bemClass, nameToPath, pathToName, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -66,6 +66,7 @@ interface FormState {
   confirmationModal: ConfirmationModal
   apiErrors: ApiErrors
   selectOptions: SelectOptions
+  submitButtonLoading: boolean
 }
 
 // Action types for useReducer
@@ -78,6 +79,7 @@ type FormAction =
   | { type: 'SET_VALIDATION_ERRORS'; payload: { errors: ValidationErrors; hasError: boolean } }
   | { type: 'SET_API_ERROR'; payload: { dataType: keyof ApiErrors; error: string } }
   | { type: 'SET_SELECT_OPTIONS'; payload: { dataType: keyof SelectOptions; options: SelectOption[] } }
+  | { type: 'SET_SUBMIT_LOADING'; payload: boolean }
 
 type ApiDataType = keyof SelectOptions
 
@@ -134,6 +136,7 @@ const initialState: FormState = {
     vehicles: [],
     staff: [],
   },
+  submitButtonLoading: false,
 }
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -183,6 +186,12 @@ function formReducer(state: FormState, action: FormAction): FormState {
       return {
         ...state,
         selectOptions: { ...state.selectOptions, [action.payload.dataType]: action.payload.options },
+      }
+    
+    case 'SET_SUBMIT_LOADING':
+      return {
+        ...state,
+        submitButtonLoading: action.payload,
       }
     
     default:
@@ -258,6 +267,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
     isValidationError,
     apiErrors,
     selectOptions,
+    submitButtonLoading,
   } = state
 
   // API Hooks
@@ -326,28 +336,33 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
 
 
   const handleSubmit = useCallback(async () => {
-    // Check for API errors
-    const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
-    if (hasApiErrors) {
-      console.error('Cannot submit: API errors present', apiErrors)
-      return
-    }
-
-    // Validate form
-    const validationSchema = createValidationSchema(expense)
-    const { isValid, errorMap } = validatePayload(validationSchema, expense)
-
-    dispatch({
-      type: 'SET_VALIDATION_ERRORS',
-      payload: { errors: errorMap, hasError: !isValid },
-    })
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      // Set loading state
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: true })
+
+      // Check for API errors
+      const hasApiErrors = Object.values(apiErrors).some(error => error !== '')
+      if (hasApiErrors) {
+        console.error('Cannot submit: API errors present', apiErrors)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
+      // Validate form
+      const validationSchema = createValidationSchema(expense)
+      const { isValid, errorMap } = validatePayload(validationSchema, expense)
+
+      dispatch({
+        type: 'SET_VALIDATION_ERRORS',
+        payload: { errors: errorMap, hasError: !isValid },
+      })
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
+        return
+      }
+
       if (isEditing) {
         await updateExpense.mutateAsync({ _id: expenseId, ...expense })
         showToast('Expense updated successfully!', 'success')
@@ -355,12 +370,16 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
         await createExpense.mutateAsync({ ...expense, category: nameToPath(category) })
         showToast('New expense created successfully!', 'success')
       }
+
+      // Clear loading state before navigation
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
       navigateBack()
     } catch (error) {
       console.error('Unable to create/update expense', error)
       showToast('Failed to submit expense. Please try again.', 'error')
+      dispatch({ type: 'SET_SUBMIT_LOADING', payload: false })
     }
-  }, [apiErrors, expense, isEditing, expenseId, updateExpense, createExpense, category])
+  }, [apiErrors, expense, isEditing, expenseId, updateExpense, createExpense, category, showToast, navigateBack])
 
   // ============================================================================
   // EFFECTS
@@ -591,14 +610,14 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Expense Amount"
                   name="amount"
-                  type="number"
                   value={expense.amount ?? ''}
                   changeHandler={value => {
-                    handleExpenseFieldChange('amount', value.amount ? Number(value.amount) : '')
+                    handleExpenseFieldChange('amount', value.amount ?? '')
                   }}
+                  min={0.01}
                   required
                   errorMessage={validationErrors['amount']}
                   invalid={!!validationErrors['amount']}
@@ -738,6 +757,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
               category="default"
               className={bemClass([blk, 'margin-right'])}
               clickHandler={navigateBack}
+              disabled={submitButtonLoading}
             >
               Cancel
             </Button>
@@ -745,6 +765,7 @@ const CreateExpense: FunctionComponent<CreateExpenseProps> = ({ category = '' })
               size="medium"
               category="primary"
               clickHandler={handleSubmit}
+              loading={submitButtonLoading}
             >
               {isEditing ? 'Update' : 'Submit'}
             </Button>

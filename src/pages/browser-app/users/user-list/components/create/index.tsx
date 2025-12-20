@@ -25,6 +25,7 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
   const [user, setUser] = useState<UserModel>(INITIAL_USER)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isValidationError, setIsValidationError] = useState(false)
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
 
   // API Hooks
   const createMutation = useCreateUserMutation()
@@ -42,9 +43,7 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
       setUser({
         ...loadedUser,
         role: typeof loadedUser.role === 'object' ? loadedUser.role._id : loadedUser.role,
-        userGroup: typeof loadedUser.userGroup === 'object' && loadedUser.userGroup !== null 
-          ? loadedUser.userGroup._id 
-          : loadedUser.userGroup,
+        userGroup: typeof loadedUser.userGroup === 'object' && loadedUser.userGroup !== null ? loadedUser.userGroup._id : loadedUser.userGroup,
       })
       setValidationErrors({})
       setIsValidationError(false)
@@ -60,11 +59,17 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
   }, [userRolesData])
 
   const userGroupOptions = useMemo(() => {
-    const groups = userGroupsData || []
-    return groups.map((group: UserGroupModel) => ({
-      key: group._id!,
-      value: group.groupName,
-    }))
+    if (!userGroupsData) return []
+    const groups = Array<UserGroupModel>(userGroupsData.data) || []
+    console.log('Fetched User Groups:', groups)
+    const groupsToReturn = groups
+      .filter(group => group && !group.isSystemGroup && group._id && group.groupName)
+      .map(group => ({
+        key: group._id!,
+        value: group.groupName,
+      }))
+    console.log('User Group Options:', groupsToReturn)
+    return groupsToReturn
   }, [userGroupsData])
 
   // Field-level validation to clear errors immediately
@@ -111,18 +116,21 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
   }, [navigate])
 
   const handleSubmit = useCallback(async () => {
-    const validationSchema = createValidationSchema(user, isEditing)
-    const { isValid, errorMap } = validatePayload(validationSchema, user)
-
-    setValidationErrors(errorMap)
-    setIsValidationError(!isValid)
-
-    if (!isValid) {
-      console.error('Validation Error', errorMap)
-      return
-    }
-
     try {
+      setSubmitButtonLoading(true)
+      
+      const validationSchema = createValidationSchema(user, isEditing)
+      const { isValid, errorMap } = validatePayload(validationSchema, user)
+
+      setValidationErrors(errorMap)
+      setIsValidationError(!isValid)
+
+      if (!isValid) {
+        console.error('Validation Error', errorMap)
+        setSubmitButtonLoading(false)
+        return
+      }
+
       if (isEditing) {
         // Only send fields that should be updated (no password)
         const updateData = {
@@ -137,7 +145,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
         }
         await updateMutation.mutateAsync(updateData as UserModel)
         showToast('User updated successfully!', 'success')
-        navigateBack()
       } else {
         // For create, user sets the password
         const createData = {
@@ -152,9 +159,11 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
         }
         await createMutation.mutateAsync(createData as Omit<UserModel, '_id'>)
         showToast('User created successfully!', 'success')
-        navigateBack()
       }
+      setSubmitButtonLoading(false)
+      navigateBack()
     } catch (error: any) {
+      setSubmitButtonLoading(false)
       console.error('Unable to create/update user', error)
       const errorMessage = error?.response?.data?.message || `Unable to ${isEditing ? 'update' : 'create'} user. Please try again.`
       showToast(errorMessage, 'error')
@@ -300,17 +309,14 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                 <SelectInput
                   label="User Role"
                   name="role"
-                  options={isLoadingRoles
-                    ? [{ key: 'loading', value: 'Please wait...' }]
-                    : userRoleOptions.length > 0
-                      ? userRoleOptions
-                      : [{ key: 'no-data', value: 'No roles found' }]
+                  options={
+                    isLoadingRoles ? [{ key: 'loading', value: 'Please wait...' }] : userRoleOptions.length > 0 ? userRoleOptions : [{ key: 'no-data', value: 'No roles found' }]
                   }
                   value={
                     user.role
                       ? typeof user.role === 'string'
-                        ? (userRoleOptions.find((option: any) => option.key === user.role) as any)?.value ?? ''
-                        : (userRoleOptions.find((option: any) => option.key === (user.role as any)._id) as any)?.value ?? ''
+                        ? ((userRoleOptions.find((option: any) => option.key === user.role) as any)?.value ?? '')
+                        : ((userRoleOptions.find((option: any) => option.key === (user.role as any)._id) as any)?.value ?? '')
                       : ''
                   }
                   changeHandler={value => {
@@ -334,24 +340,23 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                 <SelectInput
                   label="User Group"
                   name="userGroup"
-                  options={isLoadingUserGroups
-                    ? [{ key: 'loading', value: 'Please wait...' }]
-                    : userGroupOptions.length > 0
-                      ? [{ key: '', value: 'None' }, ...userGroupOptions]
-                      : [{ key: 'no-data', value: 'No groups found' }]
+                  options={
+                    isLoadingUserGroups
+                      ? [{ key: 'loading', value: 'Please wait...' }]
+                      : userGroupOptions.length > 0
+                        ? [{ key: '', value: 'None' }, ...userGroupOptions]
+                        : [{ key: 'no-data', value: 'No groups found' }]
                   }
                   value={
                     user.userGroup
                       ? typeof user.userGroup === 'string'
-                        ? (userGroupOptions.find((option: any) => option.key === user.userGroup) as any)?.value ?? ''
-                        : (userGroupOptions.find((option: any) => option.key === (user.userGroup as any)._id) as any)?.value ?? ''
+                        ? ((userGroupOptions.find((option: any) => option.key === user.userGroup) as any)?.value ?? '')
+                        : ((userGroupOptions.find((option: any) => option.key === (user.userGroup as any)._id) as any)?.value ?? '')
                       : 'None'
                   }
                   changeHandler={value => {
-                    const selectedOption = value.userGroup === 'None' 
-                      ? null 
-                      : userGroupOptions.find((option: any) => option.value === value.userGroup) as any
-                    
+                    const selectedOption = value.userGroup === 'None' ? null : (userGroupOptions.find((option: any) => option.value === value.userGroup) as any)
+
                     if (selectedOption && ['Please wait...', 'No groups found'].includes(selectedOption.value)) {
                       return
                     }
@@ -367,7 +372,7 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
               >
                 <Toggle
                   className={bemClass([blk, 'toggle'])}
-                  label="User Active Status"
+                  label="Is Active"
                   name="isActive"
                   checked={user.isActive}
                   changeHandler={value => {
@@ -386,6 +391,7 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
             size="medium"
             category="default"
             clickHandler={navigateBack}
+            disabled={submitButtonLoading}
           >
             Cancel
           </Button>
@@ -393,9 +399,9 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
             size="medium"
             category="primary"
             clickHandler={handleSubmit}
-            disabled={createMutation.isPending || updateMutation.isPending}
+            loading={submitButtonLoading}
           >
-            {createMutation.isPending || updateMutation.isPending ? (isEditing ? 'Updating...' : 'Creating...') : isEditing ? 'Update User' : 'Create User'}
+            {isEditing ? 'Update User' : 'Create User'}
           </Button>
         </div>
       </div>

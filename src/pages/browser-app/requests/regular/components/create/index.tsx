@@ -1,4 +1,4 @@
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, RadioGroup, Alert, ReadOnlyText, SelectInput, Toggle, CheckBox, TextArea, Button } from '@base'
+import { Breadcrumb, Text, Panel, Row, Column, TextInput, NumberInput, RadioGroup, Alert, ReadOnlyText, SelectInput, Toggle, CheckBox, TextArea, Button } from '@base'
 import { RegularRequestModel, INITIAL_REGULAR_REQUEST, PackageModel } from '@types'
 import { bemClass, formatDateTimeForInput, parseDateTimeFromInput, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -118,6 +118,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const [regularRequestErrorMap, setRegularRequestErrorMap] = useState<Record<string, any>>({})
   const [isValidationError, setIsValidationError] = useState(false)
   const [validationErrorType, setValidationErrorType] = useState<'calculate' | 'submit' | null>(null)
+  const [submitButtonLoading, setSubmitButtonLoading] = useState(false)
   const [packageOptions, setPackageOptions] = useState<{ key: any; value: any }[]>([])
   const [customerOptions, setCustomerOptions] = useState<{ key: any; value: any }[]>([])
   const [vehicleOptions, setVehicleOptions] = useState<{ key: any; value: any }[]>([])
@@ -945,21 +946,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Opening Km"
                   name="openingKm"
-                  type="number"
                   value={regularRequest.requestDetails.openingKm ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
                       requestDetails: {
                         ...regularRequest.requestDetails,
-                        openingKm: value.openingKm ? Number(value.openingKm) : null,
+                        openingKm: value.openingKm ?? null,
                       },
                     })
                   }}
                   onBlur={() => validateField('requestDetails.openingKm', regularRequest)}
+                  min={0}
                   required
                   errorMessage={regularRequestErrorMap['requestDetails.openingKm']}
                   invalid={!!regularRequestErrorMap['requestDetails.openingKm']}
@@ -969,21 +970,21 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Closing Km"
                   name="closingKm"
-                  type="number"
                   value={regularRequest.requestDetails.closingKm ?? ''}
                   changeHandler={value => {
                     setRegularRequest({
                       ...regularRequest,
                       requestDetails: {
                         ...regularRequest.requestDetails,
-                        closingKm: value.closingKm ? Number(value.closingKm) : null,
+                        closingKm: value.closingKm ?? null,
                       },
                     })
                   }}
                   onBlur={() => validateField('requestDetails.closingKm', regularRequest)}
+                  min={regularRequest.requestDetails.openingKm || 0}
                   required
                   errorMessage={regularRequestErrorMap['requestDetails.closingKm']}
                   invalid={!!regularRequestErrorMap['requestDetails.closingKm']}
@@ -1609,7 +1610,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                             ...regularRequest.vehicleDetails,
                             newVehicleDetails: {
                               ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              registrationNo: value.registrationNo?.toString() ?? '',
+                              registrationNo: (value.registrationNo?.toString() ?? '').toUpperCase(),
                             },
                           },
                         })
@@ -1859,9 +1860,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="tollAmount"
-                  type="number"
                   placeholder="Toll Amount"
                   value={regularRequest.otherCharges.toll.amount === 0 ? '' : regularRequest.otherCharges.toll.amount}
                   changeHandler={value => {
@@ -1871,11 +1871,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         toll: {
                           ...regularRequest.otherCharges.toll,
-                          amount: value.tollAmount === '' ? 0 : Number(value.tollAmount),
+                          amount: value.tollAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   required
                   errorMessage={regularRequestErrorMap['otherCharges.toll.amount']}
                   invalid={regularRequestErrorMap['otherCharges.toll.amount']}
@@ -1911,9 +1912,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="parkingAmount"
-                  type="number"
                   placeholder="Parking Amount"
                   value={regularRequest.otherCharges.parking.amount === 0 ? '' : regularRequest.otherCharges.parking.amount}
                   changeHandler={value => {
@@ -1923,11 +1923,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         parking: {
                           ...regularRequest.otherCharges.parking,
-                          amount: value.parkingAmount === '' ? 0 : Number(value.parkingAmount),
+                          amount: value.parkingAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   required
                   errorMessage={regularRequestErrorMap['otherCharges.parking.amount']}
                   invalid={regularRequestErrorMap['otherCharges.parking.amount']}
@@ -1965,9 +1966,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="nightHaltAmount"
-                  type="number"
                   placeholder="Night Halt Amount"
                   value={regularRequest.otherCharges.nightHalt.amount === 0 ? '' : regularRequest.otherCharges.nightHalt.amount}
                   changeHandler={value => {
@@ -1977,11 +1977,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         nightHalt: {
                           ...regularRequest.otherCharges.nightHalt,
-                          amount: value.nightHaltAmount === '' ? 0 : Number(value.nightHaltAmount),
+                          amount: value.nightHaltAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   required
                   errorMessage={regularRequestErrorMap['otherCharges.nightHalt.amount']}
                   invalid={regularRequestErrorMap['otherCharges.nightHalt.amount']}
@@ -2042,9 +2043,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     }}
                   />
                 </div>
-                <TextInput
+                <NumberInput
                   name="driverAllowanceAmount"
-                  type="number"
                   placeholder="Driver Allowance Amount"
                   value={regularRequest.otherCharges.driverAllowance.amount === 0 ? '' : regularRequest.otherCharges.driverAllowance.amount}
                   changeHandler={value => {
@@ -2054,11 +2054,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                         ...regularRequest.otherCharges,
                         driverAllowance: {
                           ...regularRequest.otherCharges.driverAllowance,
-                          amount: value.driverAllowanceAmount === '' ? 0 : Number(value.driverAllowanceAmount),
+                          amount: value.driverAllowanceAmount || 0,
                         },
                       },
                     })
                   }}
+                  min={0}
                   required
                   errorMessage={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
                   invalid={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
@@ -2132,10 +2133,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <NumberInput
                   label="Amount Paid"
                   name="amountPaid"
-                  type="number"
                   placeholder="Enter amount paid"
                   value={regularRequest.paymentDetails.amountPaid === 0 ? '' : regularRequest.paymentDetails.amountPaid}
                   changeHandler={value => {
@@ -2143,11 +2143,12 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                       ...regularRequest,
                       paymentDetails: {
                         ...regularRequest.paymentDetails,
-                        amountPaid: value.amountPaid === '' ? 0 : Number(value.amountPaid),
+                        amountPaid: value.amountPaid || 0,
                       },
                     })
                   }}
                   onBlur={() => validateField('paymentDetails.amountPaid', regularRequest)}
+                  min={0}
                   errorMessage={regularRequestErrorMap['paymentDetails.amountPaid']}
                   invalid={!!regularRequestErrorMap['paymentDetails.amountPaid']}
                 />
@@ -2308,6 +2309,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               category="default"
               className={bemClass([blk, 'margin-right'])}
               clickHandler={navigateBack}
+              disabled={submitButtonLoading}
             >
               Cancel
             </Button>
@@ -2315,9 +2317,9 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
               size="medium"
               category="primary"
               clickHandler={submitHandler}
-              disabled={createRegularRequestMutation.isPending || updateRegularRequestMutation.isPending}
+              loading={submitButtonLoading}
             >
-              {createRegularRequestMutation.isPending || updateRegularRequestMutation.isPending ? 'Submitting...' : (isEditing ? 'Update' : 'Submit')}
+              {isEditing ? 'Update' : 'Submit'}
             </Button>
           </div>
         </div>

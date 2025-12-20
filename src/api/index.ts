@@ -38,8 +38,8 @@ API.interceptors.response.use(
       // Don't retry for specific error codes
       if (errorCode === 'NO_TOKEN' || errorCode === 'USER_NOT_FOUND' || originalRequest._retry) {
         // Clear session and redirect to login
-        removeStorageItem('session', 'isLoggedIn')
-        removeStorageItem('session', 'sessionExpiry')
+        removeStorageItem('local', 'isLoggedIn')
+        removeStorageItem('local', 'sessionExpiry')
         window.location.replace('/')
         return Promise.reject(error)
       }
@@ -71,8 +71,8 @@ API.interceptors.response.use(
           // Refresh failed, logout user
           isRefreshing = false
           processQueue(refreshError)
-          removeStorageItem('session', 'isLoggedIn')
-          removeStorageItem('session', 'sessionExpiry')
+          removeStorageItem('local', 'isLoggedIn')
+          removeStorageItem('local', 'sessionExpiry')
           window.location.replace('/')
           return Promise.reject(refreshError)
         }
@@ -85,8 +85,8 @@ API.interceptors.response.use(
       
       if (errorCode === 'SUBSCRIPTION_INACTIVE') {
         // Clear session and redirect to login with error message
-        removeStorageItem('session', 'isLoggedIn')
-        removeStorageItem('session', 'sessionExpiry')
+        removeStorageItem('local', 'isLoggedIn')
+        removeStorageItem('local', 'sessionExpiry')
         window.location.replace('/')
         return Promise.reject(error)
       }

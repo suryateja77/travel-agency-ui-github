@@ -62,6 +62,62 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
         },
       },
       {
+        path: '/suppliers',
+        configurable: false,
+        name: 'Suppliers',
+        image: {
+          selected: SupplierSelected,
+          unselected: Supplier,
+        },
+      },
+      {
+        path: '/customers',
+        configurable: true,
+        configurationVariable: 'Customer category',
+        name: 'Customers',
+        image: {
+          selected: CustomerIconSelected,
+          unselected: CustomerIcon,
+        },
+        subRoutes: [
+        ],
+      },
+      {
+        path: '/vehicles',
+        configurable: true,
+        configurationVariable: 'Vehicle category',
+        name: 'Vehicles',
+        image: {
+          selected: VehiclesIconSelected,
+          unselected: VehiclesIcon,
+        },
+        subRoutes: [
+        ],
+      },
+      {
+        path: '/packages',
+        configurable: true,
+        configurationVariable: 'Package category',
+        name: 'Packages',
+        image: {
+          selected: PackagesIconSelected,
+          unselected: PackagesIcon,
+        },
+        subRoutes: [],
+      },
+      {
+        path: '/staff',
+        configurable: true,
+        configurationVariable: 'Staff category',
+        name: 'Staff',
+        image: {
+          selected: StaffIconSelected,
+          unselected: StaffIcon,
+        },
+        subRoutes: [
+        ],
+      },
+      {
         path: '/requests',
         configurable: false,
         name: 'Requests',
@@ -78,53 +134,6 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
             path: '/monthly-fixed',
             name: 'Monthly Fixed',
           },
-        ],
-      },
-      {
-        path: '/packages',
-        configurable: true,
-        configurationVariable: 'Package category',
-        name: 'Packages',
-        image: {
-          selected: PackagesIconSelected,
-          unselected: PackagesIcon,
-        },
-        subRoutes: [],
-      },
-      {
-        path: '/vehicles',
-        configurable: true,
-        configurationVariable: 'Vehicle category',
-        name: 'Vehicles',
-        image: {
-          selected: VehiclesIconSelected,
-          unselected: VehiclesIcon,
-        },
-        subRoutes: [
-        ],
-      },
-      {
-        path: '/staff',
-        configurable: true,
-        configurationVariable: 'Staff category',
-        name: 'Staff',
-        image: {
-          selected: StaffIconSelected,
-          unselected: StaffIcon,
-        },
-        subRoutes: [
-        ],
-      },
-      {
-        path: '/customers',
-        configurable: true,
-        configurationVariable: 'Customer category',
-        name: 'Customers',
-        image: {
-          selected: CustomerIconSelected,
-          unselected: CustomerIcon,
-        },
-        subRoutes: [
         ],
       },
       {
@@ -197,15 +206,6 @@ const NAVIGATION_DATA: Array<NavigationItem> = [
         image: {
           selected: AdvancePaymentSelected,
           unselected: AdvancePayment,
-        },
-      },
-      {
-        path: '/suppliers',
-        configurable: false,
-        name: 'Suppliers',
-        image: {
-          selected: SupplierSelected,
-          unselected: Supplier,
         },
       },
       {

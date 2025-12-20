@@ -1,4 +1,4 @@
-import { REGEX_CONTACT, REGEX_EMAIL, REGEX_EMPTY, REGEX_NUMBER, REGEX_NUMBER_GREATER_THAN_ZERO, REGEX_PIN_CODE } from './constant'
+import { REGEX_CONTACT, REGEX_EMAIL, REGEX_EMPTY, REGEX_NUMBER, REGEX_NUMBER_GREATER_THAN_ZERO, REGEX_PIN_CODE, REGEX_REGISTRATION_NO } from './constant'
 
 const emptyField = (path: any) => ({
   path,
@@ -42,6 +42,13 @@ const pinCodeField = (path: any) => ({
   emptyCheck: true,
 })
 
+const registrationNoField = (path: any) => ({
+  path,
+  pattern: REGEX_REGISTRATION_NO,
+  message: 'Only uppercase letters and numbers allowed',
+  emptyCheck: true,
+})
+
 const dateTimeGreaterThanField = (path: any, compareToPath: any, label: string) => ({
   path,
   pattern: REGEX_EMPTY, // We'll use custom validation instead of regex
@@ -79,4 +86,4 @@ const getNestedValue = (obj: any, path: string): any => {
   return path.split('.').reduce((current, key) => current?.[key], obj)
 }
 
-export { emptyField, contactField, emailField, numberField, numberFieldGreaterThanZero, pinCodeField, dateTimeGreaterThanField, numberGreaterThanField }
+export { emptyField, contactField, emailField, numberField, numberFieldGreaterThanZero, pinCodeField, registrationNoField, dateTimeGreaterThanField, numberGreaterThanField }
