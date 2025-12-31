@@ -1,0 +1,207 @@
+@import '~/src/sass/style';
+
+.datetime-input {
+  position: relative;
+  
+  &--disabled {
+    opacity: 0.5;
+  }
+
+  &__input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__input {
+    width: 100%;
+    background-color: $white;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 10px;
+    padding-right: 50px; // Space for calendar and validation icons
+    font-size: 14px;
+    transition: border-color ease-in-out 0.2s;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    height: 40px;
+    
+    &--rounded {
+      border-radius: 20px;
+    }
+    
+    &--disabled {
+      color: $gray;
+      cursor: not-allowed;
+    }
+    
+    &--validity {
+      border: 1px solid $gray-light;
+    }
+    
+    &--valid {
+      border: 1px solid $success;
+      padding-right: 70px; // More space for both icons
+    }
+    
+    &--invalid {
+      border: 1px solid $error;
+      padding-right: 70px; // More space for both icons
+    }
+    
+    &--small {
+      height: 30px;
+    }
+    
+    &--large {
+      height: 50px;
+    }
+    
+    &:focus {
+      border-color: $primary;
+      outline: 0;
+    }
+    
+    &::placeholder {
+      color: $gray;
+    }
+  }
+
+  &__calendar-icon {
+    position: absolute;
+    right: $space-default;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: $gray-dark;
+    z-index: 2;
+    padding: 2px;
+    
+    &:hover {
+      color: $primary;
+    }
+  }
+
+  &__icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    
+    &--valid {
+      color: $success;
+    }
+    
+    &--invalid {
+      color: $error;
+    }
+  }
+
+  &__label-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  &__label {
+    display: block;
+    font-size: 14px;
+    color: $gray-darker;
+    font-weight: 500;
+  }
+
+  &__star {
+    color: $error;
+    margin-left: 2px;
+  }
+
+  &__calendar-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: $space-small;
+    padding: $space-small;
+    border-top: 1px solid $gray-light;
+    background-color: $white;
+  }
+
+  &__calendar-button {
+    min-width: 70px;
+  }
+
+  // Custom styles for react-datepicker
+  &__calendar {
+    border: 1px solid $gray-light;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    
+    .react-datepicker__header {
+      background-color: $primary;
+      border-bottom: 1px solid $gray-light;
+      
+      .react-datepicker__current-month {
+        color: $white;
+      }
+      
+      .react-datepicker__day-name {
+        color: $white;
+      }
+    }
+    
+    .react-datepicker__navigation {
+      &--previous {
+        border-right-color: $white;
+      }
+      
+      &--next {
+        border-left-color: $white;
+      }
+    }
+    
+    .react-datepicker__day {
+      &:hover {
+        background-color: $primary-light;
+      }
+      
+      &--selected {
+        background-color: $primary;
+        color: $white;
+      }
+      
+      &--today {
+        background-color: $gray-light;
+        color: $gray-darker;
+      }
+    }
+    
+    .react-datepicker__time-container {
+      border-left: 1px solid $gray-light;
+      
+      .react-datepicker__time .react-datepicker__time-box {
+        .react-datepicker__time-list-item {
+          &:hover {
+            background-color: $primary-light;
+          }
+          
+          &--selected {
+            background-color: $primary;
+            color: $white;
+          }
+        }
+      }
+    }
+  }
+
+  &__popper {
+    z-index: 1000;
+  }
+}
+
+// Override react-datepicker default styles
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container {
+  width: 100%;
+}

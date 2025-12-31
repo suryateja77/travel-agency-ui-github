@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, NumberInput, Alert } from '@base'
+import { Button, Column, Panel, RadioGroup, Row, SelectInput, TextArea, TextInput, NumberInput, DateTimeInput, Alert } from '@base'
 import { AdvanceBookingModel, CustomerModel, INITIAL_ADVANCE_BOOKING } from '@types'
 import { bemClass, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -152,11 +152,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
-
-const formatDateTimeForInput = (date: Date | null): string => {
-  if (!date) return ''
-  return new Date(date).toISOString().slice(0, 16)
-}
 
 const extractIdFromResponse = (field: any): string => {
   if (typeof field === 'string') return field
@@ -429,13 +424,13 @@ const CreateAdvanceBooking: FunctionComponent<CreateAdvanceBookingProps> = () =>
                       col={4}
                       className={bemClass([blk, 'margin-bottom'])}
                     >
-                      <TextInput
+                      <DateTimeInput
                         label="Pickup Date and Time"
                         name="pickUpDateTime"
                         type="datetime-local"
-                        value={formatDateTimeForInput(advanceBooking.pickUpDateTime)}
+                        value={advanceBooking.pickUpDateTime}
                         changeHandler={value => {
-                          handleFieldChange('pickUpDateTime', value.pickUpDateTime ? new Date(value.pickUpDateTime) : null)
+                          handleFieldChange('pickUpDateTime', value.pickUpDateTime)
                         }}
                         required
                         errorMessage={validationErrors.pickUpDateTime}

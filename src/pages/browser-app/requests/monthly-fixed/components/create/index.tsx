@@ -1,8 +1,8 @@
 import React, { FunctionComponent, useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
-import { bemClass, nameToPath, formatDateTimeForInput, parseDateTimeFromInput, validatePayload } from '@utils'
-import { Breadcrumb, Button, Column, Panel, Row, SelectInput, Text, TextInput, NumberInput, TextArea, RadioGroup, Alert, ReadOnlyText, CheckBox, Toggle } from '@base'
+import { bemClass, nameToPath, validatePayload } from '@utils'
+import { Breadcrumb, Button, Column, Panel, Row, SelectInput, Text, TextInput, NumberInput, DateTimeInput, TextArea, RadioGroup, Alert, ReadOnlyText, CheckBox, Toggle } from '@base'
 import { MonthlyFixedRequestModel, INITIAL_MONTHLY_FIXED_REQUEST } from '@types'
 import { ConfiguredInput } from '@base'
 import { CONFIGURED_INPUT_TYPES } from '@config/constant'
@@ -72,31 +72,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
       return `${hours} hour${hours !== 1 ? 's' : ''}`
     } else {
       return `${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`
-    }
-  }
-
-  // Field-level validation to clear errors immediately
-  const validateField = (fieldPath: string, updatedData: MonthlyFixedRequestModel) => {
-    const validationSchema = createValidationSchema(updatedData)
-    const { errorMap } = validatePayload(validationSchema, updatedData)
-    
-    setMonthlyFixedRequestErrorMap(prev => {
-      const newErrors = { ...prev }
-      if (!errorMap[fieldPath]) {
-        delete newErrors[fieldPath]
-      } else {
-        newErrors[fieldPath] = errorMap[fieldPath]
-      }
-      return newErrors
-    })
-    
-    // Clear validation error alert if no errors remain
-    const hasErrors = Object.keys({ ...monthlyFixedRequestErrorMap, [fieldPath]: errorMap[fieldPath] })
-      .filter(key => key !== fieldPath)
-      .some(key => monthlyFixedRequestErrorMap[key])
-    
-    if (!hasErrors && !errorMap[fieldPath]) {
-      setIsValidationError(false)
     }
   }
 
@@ -683,7 +658,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('customerDetails.customerCategory', updatedData), 0)
                   }}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['customerDetails.customerCategory']}
@@ -726,7 +700,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('customerDetails.customer', updatedData), 0)
                   }}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['customerDetails.customer']}
@@ -762,7 +735,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('requestDetails.requestType', updatedData), 0)
                   }}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.requestType']}
@@ -786,7 +758,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.pickUpLocation', monthlyFixedRequest)}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.pickUpLocation']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.pickUpLocation']}
@@ -809,7 +780,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.dropOffLocation', monthlyFixedRequest)}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.dropOffLocation']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.dropOffLocation']}
@@ -821,25 +791,20 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <DateTimeInput
                   label="Pickup Date and Time"
                   name="pickUpDateTime"
                   type="datetime-local"
-                  value={formatDateTimeForInput(
-                    monthlyFixedRequest.requestDetails.pickUpDateTime
-                      ? new Date(monthlyFixedRequest.requestDetails.pickUpDateTime)
-                      : null
-                  )}
+                  value={monthlyFixedRequest.requestDetails.pickUpDateTime}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
                       requestDetails: {
                         ...monthlyFixedRequest.requestDetails,
-                        pickUpDateTime: parseDateTimeFromInput(value.pickUpDateTime?.toString() || ''),
+                        pickUpDateTime: value.pickUpDateTime,
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.pickUpDateTime', monthlyFixedRequest)}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.pickUpDateTime']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.pickUpDateTime']}
@@ -849,26 +814,23 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                 col={4}
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <TextInput
+                <DateTimeInput
                   label="Drop Date and Time"
                   name="dropDateTime"
                   type="datetime-local"
-                  value={formatDateTimeForInput(
-                    monthlyFixedRequest.requestDetails.dropDateTime
-                      ? new Date(monthlyFixedRequest.requestDetails.dropDateTime)
-                      : null
-                  )}
+                  value={monthlyFixedRequest.requestDetails.dropDateTime}
                   changeHandler={value => {
                     setMonthlyFixedRequest({
                       ...monthlyFixedRequest,
                       requestDetails: {
                         ...monthlyFixedRequest.requestDetails,
-                        dropDateTime: parseDateTimeFromInput(value.dropDateTime?.toString() || ''),
+                        dropDateTime: value.dropDateTime,
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.dropDateTime', monthlyFixedRequest)}
                   required
+                  disabled={!monthlyFixedRequest.requestDetails.pickUpDateTime}
+                  min={monthlyFixedRequest.requestDetails.pickUpDateTime || undefined}
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.dropDateTime']}
                   invalid={!!monthlyFixedRequestErrorMap['requestDetails.dropDateTime']}
                 />
@@ -903,7 +865,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.openingKm', monthlyFixedRequest)}
                   min={0}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.openingKm']}
@@ -927,7 +888,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     })
                   }}
-                  onBlur={() => validateField('requestDetails.closingKm', monthlyFixedRequest)}
                   min={monthlyFixedRequest.requestDetails.openingKm || 0}
                   required
                   errorMessage={monthlyFixedRequestErrorMap['requestDetails.closingKm']}
@@ -968,7 +928,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('requestDetails.ac', updatedData), 0)
                   }}
                   direction="horizontal"
                 />
@@ -1090,7 +1049,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('vehicleDetails.vehicleType', updatedData), 0)
                   }}
                   showPlaceholder={false}
                   required
@@ -1124,7 +1082,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                         }
                         setMonthlyFixedRequest(updatedData)
                         setSupplierPackageOptions([])
-                        setTimeout(() => validateField('vehicleDetails.vehicleCategory', updatedData), 0)
                       }}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicleCategory']}
@@ -1168,7 +1125,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                             },
                           }
                           setMonthlyFixedRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.vehicle', updatedData), 0)
                         }}
                         required
                         errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
@@ -1222,7 +1178,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                             },
                           }
                           setMonthlyFixedRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.supplierDetails.supplier', updatedData), 0)
                         }}
                         required
                         errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
@@ -1267,7 +1222,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                             },
                           }
                           setMonthlyFixedRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.vehicle', updatedData), 0)
                         }}
                         required
                         errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.vehicle']}
@@ -1316,7 +1270,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                             },
                           }
                           setMonthlyFixedRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.supplierDetails.package', updatedData), 0)
                         }}
                         required
                         errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.supplierDetails.package']}
@@ -1351,7 +1304,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerName', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
@@ -1377,7 +1329,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerContact', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
@@ -1404,7 +1355,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerEmail', monthlyFixedRequest)}
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
                     />
@@ -1431,7 +1381,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.manufacturer', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
@@ -1457,7 +1406,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.name', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
@@ -1483,7 +1431,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.registrationNo', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
                       invalid={!!monthlyFixedRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
@@ -1533,7 +1480,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                       },
                     }
                     setMonthlyFixedRequest(updatedData)
-                    setTimeout(() => validateField('staffDetails.staffType', updatedData), 0)
                   }}
                   showPlaceholder={false}
                   required
@@ -1565,7 +1511,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         }
                         setMonthlyFixedRequest(updatedData)
-                        setTimeout(() => validateField('staffDetails.staffCategory', updatedData), 0)
                       }}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['staffDetails.staffCategory']}
@@ -1608,7 +1553,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         }
                         setMonthlyFixedRequest(updatedData)
-                        setTimeout(() => validateField('staffDetails.staff', updatedData), 0)
                       }}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['staffDetails.staff']}
@@ -1642,7 +1586,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('staffDetails.newStaffDetails.name', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.name']}
                       invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.name']}
@@ -1668,7 +1611,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('staffDetails.newStaffDetails.contact', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.contact']}
                       invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.contact']}
@@ -1694,7 +1636,6 @@ const CreateMonthlyFixedRequest: FunctionComponent<CreateMonthlyFixedRequestProp
                           },
                         })
                       }}
-                      onBlur={() => validateField('staffDetails.newStaffDetails.license', monthlyFixedRequest)}
                       required
                       errorMessage={monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.license']}
                       invalid={!!monthlyFixedRequestErrorMap['staffDetails.newStaffDetails.license']}

@@ -1,6 +1,24 @@
-import { Breadcrumb, Text, Panel, Row, Column, TextInput, NumberInput, RadioGroup, Alert, ReadOnlyText, SelectInput, Toggle, CheckBox, TextArea, Button } from '@base'
+import {
+  Breadcrumb,
+  Text,
+  Panel,
+  Row,
+  Column,
+  TextInput,
+  NumberInput,
+  DateTimeInput,
+  RadioGroup,
+  Alert,
+  ReadOnlyText,
+  SelectInput,
+  Toggle,
+  CheckBox,
+  TextArea,
+  Button,
+  Modal,
+} from '@base'
 import { RegularRequestModel, INITIAL_REGULAR_REQUEST, PackageModel } from '@types'
-import { bemClass, formatDateTimeForInput, parseDateTimeFromInput, nameToPath, validatePayload } from '@utils'
+import { bemClass, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
 import Loader from '@components/loader'
 import React, { FunctionComponent, useState, useEffect, useMemo } from 'react'
@@ -110,7 +128,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const { showToast } = useToast()
   const createRegularRequestMutation = useCreateRegularRequestMutation()
   const updateRegularRequestMutation = useUpdateRegularRequestMutation()
-  
+
   // Fetch regular request data when in edit mode
   const { data: regularRequestData, isLoading: isLoadingRequest, isError: regularRequestIsError, error: regularRequestError } = useRegularRequestByIdQuery(id || '')
 
@@ -134,6 +152,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     supplierPackages: '',
     staff: '',
   })
+  const [showCalculationModal, setShowCalculationModal] = useState(false)
 
   // Category path for package API query
   const packageCategoryPath = useMemo(() => {
@@ -165,49 +184,35 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
   // Category path for staff API query
   const staffCategoryPath = useMemo(() => {
-    return regularRequest.staffDetails.staffType === 'existing' && regularRequest.staffDetails.staffCategory
-      ? nameToPath(regularRequest.staffDetails.staffCategory)
-      : ''
+    return regularRequest.staffDetails.staffType === 'existing' && regularRequest.staffDetails.staffCategory ? nameToPath(regularRequest.staffDetails.staffCategory) : ''
   }, [regularRequest.staffDetails.staffType, regularRequest.staffDetails.staffCategory])
 
   // API query for staff
   const { data: staff, error: staffError, isLoading: staffLoading, isError: staffIsError } = useStaffByCategory(staffCategoryPath)
 
   // Check if supplier vehicle
-  const isSupplierVehicle = regularRequest.vehicleDetails.vehicleType === 'existing' && 
-    regularRequest.vehicleDetails.vehicleCategory && 
+  const isSupplierVehicle =
+    regularRequest.vehicleDetails.vehicleType === 'existing' &&
+    regularRequest.vehicleDetails.vehicleCategory &&
     nameToPath(regularRequest.vehicleDetails.vehicleCategory) === 'supplier'
 
   // API query for suppliers (only when supplier vehicle)
   const { data: suppliers, error: suppliersError, isLoading: suppliersLoading, isError: suppliersIsError } = useSuppliersQuery(!!isSupplierVehicle)
 
   // API query for supplier vehicles (only when supplier is selected)
-  const supplierVehicleFilter = isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier
-    ? { supplier: regularRequest.vehicleDetails.supplierDetails.supplier }
-    : null
+  const supplierVehicleFilter =
+    isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier ? { supplier: regularRequest.vehicleDetails.supplierDetails.supplier } : null
   const { data: supplierVehicles, error: supplierVehiclesError, isLoading: supplierVehiclesLoading, isError: supplierVehiclesIsError } = useVehicleByCategory('supplier')
 
   // API query for supplier packages (only when supplier is selected)
-  const supplierPackageFilter = isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier
-    ? { supplier: regularRequest.vehicleDetails.supplierDetails.supplier }
-    : null
-  const { data: supplierPackages, error: supplierPackagesError, isLoading: supplierPackagesLoading, isError: supplierPackagesIsError } = usePackageByCategoryWithFilter('supplier', supplierPackageFilter)
-
-  // Helper function to format minutes to duration string
-  const formatMinutesToDuration = (totalMinutes: number | null): string => {
-    if (!totalMinutes || totalMinutes <= 0) return ''
-
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = Math.floor(totalMinutes % 60)
-
-    if (hours === 0) {
-      return `${minutes} minute${minutes !== 1 ? 's' : ''}`
-    } else if (minutes === 0) {
-      return `${hours} hour${hours !== 1 ? 's' : ''}`
-    } else {
-      return `${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}`
-    }
-  }
+  const supplierPackageFilter =
+    isSupplierVehicle && regularRequest.vehicleDetails.supplierDetails.supplier ? { supplier: regularRequest.vehicleDetails.supplierDetails.supplier } : null
+  const {
+    data: supplierPackages,
+    error: supplierPackagesError,
+    isLoading: supplierPackagesLoading,
+    isError: supplierPackagesIsError,
+  } = usePackageByCategoryWithFilter('supplier', supplierPackageFilter)
 
   // Calculate other charges that are expenses (not chargeable to customer)
   const calculateOtherChargesExpenses = () => {
@@ -232,8 +237,8 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   // Calculate total amount from package details
   const calculatePackageTotal = (packageDetail: PackageModel, totalKm: number = 0, totalHr: number = 0) => {
     const { baseAmount, minimumKm, extraKmPerKmRate, minimumHr, extraHrPerHrRate } = packageDetail
-    const extraKm = (totalKm - Number(minimumKm)) < 0 ? 0 : totalKm - Number(minimumKm)
-    const extraHr = (totalHr - Number(minimumHr)) < 0 ? 0 : totalHr - Number(minimumHr)
+    const extraKm = totalKm - Number(minimumKm) < 0 ? 0 : totalKm - Number(minimumKm)
+    const extraHr = totalHr - Number(minimumHr) < 0 ? 0 : totalHr - Number(minimumHr)
     const extraKmBilling = extraKm * Number(extraKmPerKmRate)
     const extraHrBilling = extraHr * Number(extraHrPerHrRate)
     return Number(baseAmount) + extraKmBilling + extraHrBilling
@@ -244,17 +249,15 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     const { requestDetails, packageDetails, vehicleDetails } = regularRequest
 
     // Calculate total distance and time
-    const totalKm = requestDetails.closingKm && requestDetails.openingKm 
-      ? requestDetails.closingKm - requestDetails.openingKm 
-      : 0
-    const totalHr = requestDetails.pickUpDateTime && requestDetails.dropDateTime 
-      ? (new Date(requestDetails.dropDateTime).getTime() - new Date(requestDetails.pickUpDateTime).getTime()) / (1000 * 60)
-      : 0
+    const totalKm = requestDetails.closingKm && requestDetails.openingKm ? requestDetails.closingKm - requestDetails.openingKm : 0
+    const totalHr =
+      requestDetails.pickUpDateTime && requestDetails.dropDateTime
+        ? (new Date(requestDetails.dropDateTime).getTime() - new Date(requestDetails.pickUpDateTime).getTime()) / (1000 * 60 * 60)
+        : 0
 
+    console.log('Total Hr:', totalHr)
     // Find customer package details from packages query data
-    const customerPackageId = typeof packageDetails.package === 'string' 
-      ? packageDetails.package 
-      : (packageDetails.package as any)?._id
+    const customerPackageId = typeof packageDetails.package === 'string' ? packageDetails.package : (packageDetails.package as any)?._id
     const customerPackage = packages?.data?.find((p: PackageModel) => p._id === customerPackageId)
 
     if (!customerPackage) {
@@ -270,26 +273,22 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
 
     // Check if supplier vehicle (existing vehicle with supplier category)
     if (
-      vehicleDetails.vehicleType === 'existing' && 
-      vehicleDetails.vehicleCategory && 
+      vehicleDetails.vehicleType === 'existing' &&
+      vehicleDetails.vehicleCategory &&
       nameToPath(vehicleDetails.vehicleCategory) === 'supplier' &&
       vehicleDetails.supplierDetails.package
     ) {
-      const supplierPackageId = typeof vehicleDetails.supplierDetails.package === 'string'
-        ? vehicleDetails.supplierDetails.package
-        : (vehicleDetails.supplierDetails.package as any)?._id
+      const supplierPackageId =
+        typeof vehicleDetails.supplierDetails.package === 'string' ? vehicleDetails.supplierDetails.package : (vehicleDetails.supplierDetails.package as any)?._id
       const supplierPackage = supplierPackages?.data?.find((p: PackageModel) => p._id === supplierPackageId)
-      
+
       if (supplierPackage) {
         supplierVehicleExpense = calculatePackageTotal(supplierPackage, totalKm, totalHr)
       }
     }
 
     // Check if new vehicle with provider package
-    if (
-      vehicleDetails.vehicleType === 'new' && 
-      vehicleDetails.newVehicleDetails?.package
-    ) {
+    if (vehicleDetails.vehicleType === 'new' && vehicleDetails.newVehicleDetails?.package) {
       // For new vehicles, we would need to query provider packages
       // This would require additional API query setup similar to supplier packages
       console.log('New vehicle provider package calculation - to be implemented if needed')
@@ -302,14 +301,14 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     // Calculate profit: customer total - supplier expense - other charges expense
     const profit = customerTotal - supplierVehicleExpense - otherChargesExpense
 
-    console.log('Profit Calculation:', { 
-      customerTotal, 
-      supplierVehicleExpense, 
-      otherChargesExpense, 
-      profit, 
+    console.log('Profit Calculation:', {
+      customerTotal,
+      supplierVehicleExpense,
+      otherChargesExpense,
+      profit,
       otherChargesForCustomer,
       totalKm,
-      totalHr 
+      totalHr,
     })
 
     // Update state with calculated values
@@ -331,42 +330,138 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   const calculateProfit = () => {
     const validationSchema = calculateTotalValidationSchema(regularRequest)
     const { isValid, errorMap } = validatePayload(validationSchema, regularRequest)
-    
+
     setRegularRequestErrorMap(prev => ({ ...prev, ...errorMap }))
     setIsValidationError(!isValid)
     setValidationErrorType(!isValid ? 'calculate' : null)
-    
+
     if (!isValid) {
       console.log('Calculation validation failed:', errorMap)
       return
     }
-    
+
     performCalculation()
   }
 
-  // Field-level validation to clear errors immediately
-  const validateField = (fieldPath: string, updatedData: RegularRequestModel) => {
-    const validationSchema = createValidationSchema(updatedData)
-    const { errorMap } = validatePayload(validationSchema, updatedData)
-    
-    setRegularRequestErrorMap(prev => {
-      const newErrors = { ...prev }
-      if (!errorMap[fieldPath]) {
-        delete newErrors[fieldPath]
-      } else {
-        newErrors[fieldPath] = errorMap[fieldPath]
+  // View calculation breakdown
+  const viewCalculationBreakdown = () => {
+    calculateProfit()
+    setShowCalculationModal(true)
+  }
+
+  // Get calculation breakdown data
+  const getCalculationBreakdown = () => {
+    const { requestDetails, packageDetails, vehicleDetails, otherCharges } = regularRequest
+
+    // Calculate total distance and time
+    const totalKm = requestDetails.closingKm && requestDetails.openingKm ? requestDetails.closingKm - requestDetails.openingKm : 0
+    const totalHr =
+      requestDetails.pickUpDateTime && requestDetails.dropDateTime
+        ? (new Date(requestDetails.dropDateTime).getTime() - new Date(requestDetails.pickUpDateTime).getTime()) / (1000 * 60 * 60)
+        : 0
+
+    // Find customer package
+    const customerPackageId = typeof packageDetails.package === 'string' ? packageDetails.package : (packageDetails.package as any)?._id
+    const customerPackage = packages?.data?.find((p: PackageModel) => p._id === customerPackageId)
+
+    // Calculate customer package breakdown
+    let customerPackageBreakdown = null
+    if (customerPackage) {
+      const extraKm = totalKm - Number(customerPackage.minimumKm) < 0 ? 0 : totalKm - Number(customerPackage.minimumKm)
+      const extraHr = totalHr - Number(customerPackage.minimumHr) < 0 ? 0 : totalHr - Number(customerPackage.minimumHr)
+      const extraKmBilling = extraKm * Number(customerPackage.extraKmPerKmRate)
+      const extraHrBilling = extraHr * Number(customerPackage.extraHrPerHrRate)
+
+      customerPackageBreakdown = {
+        baseAmount: Number(customerPackage.baseAmount),
+        minimumKm: Number(customerPackage.minimumKm),
+        minimumHr: Number(customerPackage.minimumHr),
+        totalKm,
+        totalHr,
+        extraKm,
+        extraHr,
+        extraKmPerKmRate: Number(customerPackage.extraKmPerKmRate),
+        extraHrPerHrRate: Number(customerPackage.extraHrPerHrRate),
+        extraKmBilling,
+        extraHrBilling,
+        total: Number(customerPackage.baseAmount) + extraKmBilling + extraHrBilling,
       }
-      return newErrors
-    })
-    
-    // Clear validation error alert if no errors remain
-    const hasErrors = Object.keys({ ...regularRequestErrorMap, [fieldPath]: errorMap[fieldPath] })
-      .filter(key => key !== fieldPath)
-      .some(key => regularRequestErrorMap[key])
-    
-    if (!hasErrors && !errorMap[fieldPath]) {
-      setIsValidationError(false)
-      setValidationErrorType(null)
+    }
+
+    // Calculate supplier vehicle expense breakdown
+    let supplierExpenseBreakdown = null
+    const isSupplierVehicle =
+      vehicleDetails.vehicleType === 'existing' &&
+      vehicleDetails.vehicleCategory &&
+      nameToPath(vehicleDetails.vehicleCategory) === 'supplier' &&
+      vehicleDetails.supplierDetails.package
+
+    if (isSupplierVehicle) {
+      const supplierPackageId =
+        typeof vehicleDetails.supplierDetails.package === 'string' ? vehicleDetails.supplierDetails.package : (vehicleDetails.supplierDetails.package as any)?._id
+      const supplierPackage = supplierPackages?.data?.find((p: PackageModel) => p._id === supplierPackageId)
+
+      if (supplierPackage) {
+        const extraKm = totalKm - Number(supplierPackage.minimumKm) < 0 ? 0 : totalKm - Number(supplierPackage.minimumKm)
+        const extraHr = totalHr - Number(supplierPackage.minimumHr) < 0 ? 0 : totalHr - Number(supplierPackage.minimumHr)
+        const extraKmExpense = extraKm * Number(supplierPackage.extraKmPerKmRate)
+        const extraHrExpense = extraHr * Number(supplierPackage.extraHrPerHrRate)
+
+        supplierExpenseBreakdown = {
+          baseAmount: Number(supplierPackage.baseAmount),
+          minimumKm: Number(supplierPackage.minimumKm),
+          minimumHr: Number(supplierPackage.minimumHr),
+          totalKm,
+          totalHr,
+          extraKm,
+          extraHr,
+          extraKmPerKmRate: Number(supplierPackage.extraKmPerKmRate),
+          extraHrPerHrRate: Number(supplierPackage.extraHrPerHrRate),
+          extraKmExpense,
+          extraHrExpense,
+          total: Number(supplierPackage.baseAmount) + extraKmExpense + extraHrExpense,
+        }
+      }
+    }
+
+    // Calculate other charges breakdown
+    const otherChargesBreakdown = {
+      toll: {
+        amount: Number(otherCharges.toll.amount),
+        isChargeableToCustomer: otherCharges.toll.isChargeableToCustomer,
+        expense: otherCharges.toll.isChargeableToCustomer ? 0 : Number(otherCharges.toll.amount),
+        customerCharge: otherCharges.toll.isChargeableToCustomer ? Number(otherCharges.toll.amount) : 0,
+      },
+      parking: {
+        amount: Number(otherCharges.parking.amount),
+        isChargeableToCustomer: otherCharges.parking.isChargeableToCustomer,
+        expense: otherCharges.parking.isChargeableToCustomer ? 0 : Number(otherCharges.parking.amount),
+        customerCharge: otherCharges.parking.isChargeableToCustomer ? Number(otherCharges.parking.amount) : 0,
+      },
+      nightHalt: {
+        amount: Number(otherCharges.nightHalt.amount),
+        isChargeableToCustomer: otherCharges.nightHalt.isChargeableToCustomer,
+        expense: otherCharges.nightHalt.isChargeableToCustomer ? 0 : Number(otherCharges.nightHalt.amount),
+        customerCharge: otherCharges.nightHalt.isChargeableToCustomer ? Number(otherCharges.nightHalt.amount) : 0,
+      },
+      driverAllowance: {
+        amount: Number(otherCharges.driverAllowance.amount),
+        isChargeableToCustomer: otherCharges.driverAllowance.isChargeableToCustomer,
+        expense: otherCharges.driverAllowance.isChargeableToCustomer ? 0 : Number(otherCharges.driverAllowance.amount),
+        customerCharge: otherCharges.driverAllowance.isChargeableToCustomer ? Number(otherCharges.driverAllowance.amount) : 0,
+      },
+      totalExpense: calculateOtherChargesExpenses(),
+      totalCustomerCharge: calculateOtherChargesForCustomer(),
+    }
+
+    return {
+      customerPackageBreakdown,
+      supplierExpenseBreakdown,
+      otherChargesBreakdown,
+      requestTotal: regularRequest.requestTotal,
+      requestExpense: regularRequest.requestExpense,
+      requestProfit: regularRequest.requestProfit,
+      customerBill: regularRequest.customerBill,
     }
   }
 
@@ -374,7 +469,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   useEffect(() => {
     const { openingKm, closingKm } = regularRequest.requestDetails
     const totalKm = closingKm && openingKm ? closingKm - openingKm : 0
-    
+
     setRegularRequest(prev => ({
       ...prev,
       requestDetails: {
@@ -387,10 +482,7 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
   // Auto-calculate totalHr when pickUpDateTime or dropDateTime changes
   useEffect(() => {
     const { pickUpDateTime, dropDateTime } = regularRequest.requestDetails
-    const totalHr =
-      pickUpDateTime && dropDateTime
-        ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60)
-        : 0
+    const totalHr = pickUpDateTime && dropDateTime ? (new Date(dropDateTime).getTime() - new Date(pickUpDateTime).getTime()) / (1000 * 60 * 60) : 0
 
     setRegularRequest(prev => ({
       ...prev,
@@ -480,14 +572,15 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     } else if (supplierVehicles?.data?.length > 0) {
       // Filter vehicles by selected supplier
       const filtered = supplierVehicles.data.filter(
-        (vehicle: any) => vehicle.supplier?._id === regularRequest.vehicleDetails.supplierDetails.supplier || vehicle.supplier === regularRequest.vehicleDetails.supplierDetails.supplier
+        (vehicle: any) =>
+          vehicle.supplier?._id === regularRequest.vehicleDetails.supplierDetails.supplier || vehicle.supplier === regularRequest.vehicleDetails.supplierDetails.supplier,
       )
-      
+
       const options = filtered.map((vehicle: { _id: any; name: any }) => ({
         key: vehicle._id,
         value: vehicle.name,
       }))
-      
+
       setSupplierVehicleOptions(options)
       setVehicleOptions(options)
       setApiErrors(prev => ({
@@ -638,11 +731,11 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
     setIsValidationError(!isValid)
     setValidationErrorType(!isValid ? 'submit' : null)
     setRegularRequestErrorMap(errorMap)
-    
+
     if (isValid) {
       setIsValidationError(false)
       setValidationErrorType(null)
-      
+
       try {
         if (isEditing) {
           await updateRegularRequestMutation.mutateAsync({ _id: id, ...regularRequest })
@@ -694,623 +787,55 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
         ) : (
           <>
             {isValidationError && (
-          <Alert
-            type="error"
-            message={
-              validationErrorType === 'calculate'
-                ? 'Please fill in all required fields to calculate profit (pickup/drop times, opening/closing km, and package details).'
-                : 'Please review and correct the errors indicated below before submitting.'
-            }
-            className={bemClass([blk, 'margin-bottom'])}
-          />
-        )}
-        {(apiErrors.packages || apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.supplierPackages || apiErrors.staff) && (
-          <Alert
-            type="error"
-            message={`Some data could not be loaded: ${[apiErrors.packages, apiErrors.customers, apiErrors.vehicles, apiErrors.suppliers, apiErrors.supplierPackages, apiErrors.staff].filter(Boolean).join(', ')}`}
-            className={bemClass([blk, 'margin-bottom'])}
-          />
-        )}
-
-        <div className={bemClass([blk, 'content'])}>
-          {/* Package Details Panel */}
-          <Panel
-            title="Package Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
+              <Alert
+                type="error"
+                message={
+                  validationErrorType === 'calculate'
+                    ? 'Please fill in all required fields to calculate profit (pickup/drop times, opening/closing km, and package details).'
+                    : 'Please review and correct the errors indicated below before submitting.'
+                }
                 className={bemClass([blk, 'margin-bottom'])}
-              >
-                <ConfiguredInput
-                  label="Package Category"
-                  name="packageCategory"
-                  configToUse="Package category"
-                  type={CONFIGURED_INPUT_TYPES.SELECT}
-                  value={regularRequest.packageDetails.packageCategory}
-                  changeHandler={value => {
-                    const updatedData = {
-                      ...regularRequest,
-                      packageDetails: {
-                        ...regularRequest.packageDetails,
-                        packageCategory: value.packageCategory?.toString() ?? '',
-                        package: '', // Reset package when category changes
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('packageDetails.packageCategory', updatedData), 0)
-                  }}
-                  required
-                  errorMessage={regularRequestErrorMap['packageDetails.packageCategory']}
-                  invalid={!!regularRequestErrorMap['packageDetails.packageCategory']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Package"
-                  name="package"
-                  options={
-                    packagesLoading
-                      ? [{ key: 'loading', value: 'Please wait...' }]
-                      : packagesIsError
-                        ? [{ key: 'error', value: 'Unable to load options' }]
-                        : packageOptions.length > 0
-                          ? packageOptions
-                          : [{ key: 'no-data', value: 'No packages found' }]
-                  }
-                  value={
-                    regularRequest.packageDetails.package
-                      ? typeof regularRequest.packageDetails.package === 'string'
-                        ? (packageOptions.find((option: any) => option.key === regularRequest.packageDetails.package) as any)?.value ?? ''
-                        : (packageOptions.find((option: any) => option.key === (regularRequest.packageDetails.package as any)._id) as any)?.value ?? ''
-                      : ''
-                  }
-                  changeHandler={value => {
-                    const selectedOption = packageOptions.find((option: any) => option.value === value.package) as any
-                    if (!selectedOption || ['Please wait...', 'Unable to load options', 'No packages found'].includes(selectedOption.value)) {
-                      return
-                    }
-                    const updatedData = {
-                      ...regularRequest,
-                      packageDetails: {
-                        ...regularRequest.packageDetails,
-                        package: selectedOption.key,
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('packageDetails.package', updatedData), 0)
-                  }}
-                  required
-                  errorMessage={regularRequestErrorMap['packageDetails.package']}
-                  invalid={!!regularRequestErrorMap['packageDetails.package']}
-                  disabled={!regularRequest.packageDetails.packageCategory}
-                />
-              </Column>
-            </Row>
-          </Panel>
-
-          {/* Request Details Panel */}
-          <Panel
-            title="Request Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <ConfiguredInput
-                  label="Request Type"
-                  name="requestType"
-                  configToUse="Request type"
-                  type={CONFIGURED_INPUT_TYPES.SELECT}
-                  value={regularRequest.requestDetails.requestType}
-                  changeHandler={value => {
-                    const updatedData = {
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        requestType: value.requestType?.toString() ?? '',
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('requestDetails.requestType', updatedData), 0)
-                  }}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.requestType']}
-                  invalid={!!regularRequestErrorMap['requestDetails.requestType']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Pickup Location"
-                  name="pickUpLocation"
-                  value={regularRequest.requestDetails.pickUpLocation}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        pickUpLocation: value.pickUpLocation?.toString() ?? '',
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.pickUpLocation', regularRequest)}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.pickUpLocation']}
-                  invalid={!!regularRequestErrorMap['requestDetails.pickUpLocation']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Drop Location"
-                  name="dropOffLocation"
-                  value={regularRequest.requestDetails.dropOffLocation}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        dropOffLocation: value.dropOffLocation?.toString() ?? '',
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.dropOffLocation', regularRequest)}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.dropOffLocation']}
-                  invalid={!!regularRequestErrorMap['requestDetails.dropOffLocation']}
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Pickup Date and Time"
-                  name="pickUpDateTime"
-                  type="datetime-local"
-                  value={formatDateTimeForInput(
-                    regularRequest.requestDetails.pickUpDateTime
-                      ? new Date(regularRequest.requestDetails.pickUpDateTime)
-                      : null
-                  )}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        pickUpDateTime: parseDateTimeFromInput(value.pickUpDateTime?.toString() || ''),
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.pickUpDateTime', regularRequest)}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.pickUpDateTime']}
-                  invalid={!!regularRequestErrorMap['requestDetails.pickUpDateTime']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <TextInput
-                  label="Drop Date and Time"
-                  name="dropDateTime"
-                  type="datetime-local"
-                  value={formatDateTimeForInput(
-                    regularRequest.requestDetails.dropDateTime
-                      ? new Date(regularRequest.requestDetails.dropDateTime)
-                      : null
-                  )}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        dropDateTime: parseDateTimeFromInput(value.dropDateTime?.toString() || ''),
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.dropDateTime', regularRequest)}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.dropDateTime']}
-                  invalid={!!regularRequestErrorMap['requestDetails.dropDateTime']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'read-only'])}
-              >
-                <ReadOnlyText
-                  label="Duration"
-                  value={regularRequest.requestDetails.totalHr ? formatMinutesToDuration(regularRequest.requestDetails.totalHr) : '-'}
-                  color="success"
-                  size="jumbo"
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <NumberInput
-                  label="Opening Km"
-                  name="openingKm"
-                  value={regularRequest.requestDetails.openingKm ?? ''}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        openingKm: value.openingKm ?? null,
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.openingKm', regularRequest)}
-                  min={0}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.openingKm']}
-                  invalid={!!regularRequestErrorMap['requestDetails.openingKm']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <NumberInput
-                  label="Closing Km"
-                  name="closingKm"
-                  value={regularRequest.requestDetails.closingKm ?? ''}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        closingKm: value.closingKm ?? null,
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('requestDetails.closingKm', regularRequest)}
-                  min={regularRequest.requestDetails.openingKm || 0}
-                  required
-                  errorMessage={regularRequestErrorMap['requestDetails.closingKm']}
-                  invalid={!!regularRequestErrorMap['requestDetails.closingKm']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'read-only'])}
-              >
-                <ReadOnlyText
-                  label="Total Distance"
-                  value={regularRequest.requestDetails.totalKm ? `${regularRequest.requestDetails.totalKm} km` : '-'}
-                  color="success"
-                  size="jumbo"
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <RadioGroup
-                  question="AC Required"
-                  name="ac"
-                  options={[
-                    { key: 'ac-yes', value: 'Yes' },
-                    { key: 'ac-no', value: 'No' },
-                  ]}
-                  value={regularRequest.requestDetails.ac ? 'Yes' : 'No'}
-                  changeHandler={value => {
-                    const updatedData = {
-                      ...regularRequest,
-                      requestDetails: {
-                        ...regularRequest.requestDetails,
-                        ac: value.ac === 'Yes',
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('requestDetails.ac', updatedData), 0)
-                  }}
-                  direction="horizontal"
-                />
-              </Column>
-            </Row>
-          </Panel>
-
-          {/* Customer Details Panel */}
-          <Panel
-            title="Customer Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Customer Type"
-                  name="customerType"
-                  options={[
-                    { key: 'existing', value: 'Existing' },
-                    { key: 'new', value: 'New' },
-                  ]}
-                  value={regularRequest.customerDetails.customerType === 'existing' ? 'Existing' : 'New'}
-                  changeHandler={value => {
-                    const selectedType = value.customerType === 'Existing' ? 'existing' : 'new'
-                    const updatedData = {
-                      ...regularRequest,
-                      customerDetails: {
-                        ...regularRequest.customerDetails,
-                        customerType: selectedType as 'existing' | 'new',
-                        customerCategory: selectedType === 'new' ? null : regularRequest.customerDetails.customerCategory,
-                        customer: selectedType === 'new' ? null : regularRequest.customerDetails.customer,
-                        newCustomerDetails: selectedType === 'existing' ? null : { name: '', contact: '', email: '' },
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('customerDetails.customerType', updatedData), 0)
-                  }}
-                  showPlaceholder={false}
-                  required
-                  errorMessage={regularRequestErrorMap['customerDetails.customerType']}
-                  invalid={!!regularRequestErrorMap['customerDetails.customerType']}
-                />
-              </Column>
-            </Row>
-            {regularRequest.customerDetails.customerType === 'existing' ? (
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <ConfiguredInput
-                    label="Customer Category"
-                    name="customerCategory"
-                    configToUse="Customer category"
-                    type={CONFIGURED_INPUT_TYPES.SELECT}
-                    value={regularRequest.customerDetails.customerCategory || ''}
-                    changeHandler={value => {
-                      const updatedData = {
-                        ...regularRequest,
-                        customerDetails: {
-                          ...regularRequest.customerDetails,
-                          customerCategory: value.customerCategory?.toString() ?? '',
-                          customer: null,
-                        },
-                      }
-                      setRegularRequest(updatedData)
-                      setTimeout(() => validateField('customerDetails.customerCategory', updatedData), 0)
-                    }}
-                    required
-                    errorMessage={regularRequestErrorMap['customerDetails.customerCategory']}
-                    invalid={!!regularRequestErrorMap['customerDetails.customerCategory']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <SelectInput
-                    label="Customer"
-                    name="customer"
-                    options={
-                      customersLoading
-                        ? [{ key: 'loading', value: 'Please wait...' }]
-                        : customersIsError
-                          ? [{ key: 'error', value: 'Unable to load options' }]
-                          : customerOptions.length > 0
-                            ? customerOptions
-                            : [{ key: 'no-data', value: 'No customers found' }]
-                    }
-                    value={
-                      regularRequest.customerDetails.customer
-                        ? typeof regularRequest.customerDetails.customer === 'string'
-                          ? (customerOptions.find((option: any) => option.key === regularRequest.customerDetails.customer) as any)?.value ?? ''
-                          : (customerOptions.find((option: any) => option.key === (regularRequest.customerDetails.customer as any)._id) as any)?.value ?? ''
-                        : ''
-                    }
-                    changeHandler={value => {
-                      const selectedOption = customerOptions.find((option: any) => option.value === value.customer) as any
-                      if (!selectedOption || ['Please wait...', 'Unable to load options', 'No customers found'].includes(value.customer as string)) {
-                        return
-                      }
-                      const updatedData = {
-                        ...regularRequest,
-                        customerDetails: {
-                          ...regularRequest.customerDetails,
-                          customer: selectedOption.key,
-                        },
-                      }
-                      setRegularRequest(updatedData)
-                      setTimeout(() => validateField('customerDetails.customer', updatedData), 0)
-                    }}
-                    required
-                    errorMessage={regularRequestErrorMap['customerDetails.customer']}
-                    invalid={!!regularRequestErrorMap['customerDetails.customer']}
-                    disabled={!regularRequest.customerDetails.customerCategory}
-                  />
-                </Column>
-              </Row>
-            ) : (
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="Customer Name"
-                    name="customerName"
-                    value={regularRequest.customerDetails.newCustomerDetails?.name || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        customerDetails: {
-                          ...regularRequest.customerDetails,
-                          newCustomerDetails: {
-                            ...regularRequest.customerDetails.newCustomerDetails!,
-                            name: value.customerName?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('customerDetails.newCustomerDetails.name', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.name']}
-                    invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.name']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="Customer Contact"
-                    name="customerContact"
-                    value={regularRequest.customerDetails.newCustomerDetails?.contact || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        customerDetails: {
-                          ...regularRequest.customerDetails,
-                          newCustomerDetails: {
-                            ...regularRequest.customerDetails.newCustomerDetails!,
-                            contact: value.customerContact?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('customerDetails.newCustomerDetails.contact', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.contact']}
-                    invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.contact']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="Customer Email"
-                    name="customerEmail"
-                    type="email"
-                    value={regularRequest.customerDetails.newCustomerDetails?.email || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        customerDetails: {
-                          ...regularRequest.customerDetails,
-                          newCustomerDetails: {
-                            ...regularRequest.customerDetails.newCustomerDetails!,
-                            email: value.customerEmail?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('customerDetails.newCustomerDetails.email', regularRequest)}
-                    errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.email']}
-                    invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.email']}
-                  />
-                </Column>
-              </Row>
+              />
             )}
-          </Panel>
+            {(apiErrors.packages || apiErrors.customers || apiErrors.vehicles || apiErrors.suppliers || apiErrors.supplierPackages || apiErrors.staff) && (
+              <Alert
+                type="error"
+                message={`Some data could not be loaded: ${[apiErrors.packages, apiErrors.customers, apiErrors.vehicles, apiErrors.suppliers, apiErrors.supplierPackages, apiErrors.staff].filter(Boolean).join(', ')}`}
+                className={bemClass([blk, 'margin-bottom'])}
+              />
+            )}
 
-          {/* Vehicle Details Panel - Start adding state management and validation from here */}
-          <Panel
-            title="Vehicle Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
+            <div className={bemClass([blk, 'content'])}>
+              {/* Package Details Panel */}
+              <Panel
+                title="Package Details"
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <SelectInput
-                  label="Vehicle Type"
-                  name="vehicleType"
-                  options={[
-                    { key: 'existing', value: 'Existing' },
-                    { key: 'new', value: 'New' },
-                  ]}
-                  value={regularRequest.vehicleDetails.vehicleType === 'existing' ? 'Existing' : 'New'}
-                  changeHandler={value => {
-                    const selectedType = value.vehicleType === 'Existing' ? 'existing' : 'new'
-                    const updatedData = {
-                      ...regularRequest,
-                      vehicleDetails: {
-                        ...regularRequest.vehicleDetails,
-                        vehicleType: selectedType as 'existing' | 'new',
-                        vehicleCategory: selectedType === 'new' ? null : regularRequest.vehicleDetails.vehicleCategory,
-                        vehicle: selectedType === 'new' ? null : regularRequest.vehicleDetails.vehicle,
-                        supplierDetails: selectedType === 'new' ? { supplier: null, package: null } : regularRequest.vehicleDetails.supplierDetails,
-                        newVehicleDetails:
-                          selectedType === 'existing'
-                            ? null
-                            : {
-                                ownerName: '',
-                                ownerContact: '',
-                                ownerEmail: '',
-                                manufacturer: '',
-                                name: '',
-                                registrationNo: '',
-                              },
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('vehicleDetails.vehicleType', updatedData), 0)
-                  }}
-                  showPlaceholder={false}
-                  required
-                  errorMessage={regularRequestErrorMap['vehicleDetails.vehicleType']}
-                  invalid={!!regularRequestErrorMap['vehicleDetails.vehicleType']}
-                />
-              </Column>
-            </Row>
-            {regularRequest.vehicleDetails.vehicleType === 'existing' ? (
-              <>
                 <Row>
                   <Column
                     col={4}
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <ConfiguredInput
-                      label="Vehicle Category"
-                      name="vehicleCategory"
-                      configToUse="Vehicle category"
+                      label="Package Category"
+                      name="packageCategory"
+                      configToUse="Package category"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={regularRequest.vehicleDetails.vehicleCategory || ''}
+                      value={regularRequest.packageDetails.packageCategory}
                       changeHandler={value => {
                         const updatedData = {
                           ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            vehicleCategory: value.vehicleCategory?.toString() ?? '',
-                            vehicle: null,
-                            supplierDetails: { supplier: null, package: null },
+                          packageDetails: {
+                            ...regularRequest.packageDetails,
+                            packageCategory: value.packageCategory?.toString() ?? '',
+                            package: '', // Reset package when category changes
                           },
                         }
                         setRegularRequest(updatedData)
-                        setSupplierPackageOptions([]) // Clear supplier package options
-                        setTimeout(() => validateField('vehicleDetails.vehicleCategory', updatedData), 0)
                       }}
                       required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.vehicleCategory']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.vehicleCategory']}
+                      errorMessage={regularRequestErrorMap['packageDetails.packageCategory']}
+                      invalid={!!regularRequestErrorMap['packageDetails.packageCategory']}
                     />
                   </Column>
                   <Column
@@ -1318,1014 +843,2110 @@ const CreateRegularRequest: FunctionComponent<CreateRegularRequestProps> = () =>
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <SelectInput
-                      label="Vehicle"
-                      name="vehicle"
+                      label="Package"
+                      name="package"
                       options={
-                        vehiclesLoading || (isSupplierVehicle && supplierVehiclesLoading)
+                        packagesLoading
                           ? [{ key: 'loading', value: 'Please wait...' }]
-                          : vehiclesIsError || (isSupplierVehicle && supplierVehiclesIsError)
+                          : packagesIsError
                             ? [{ key: 'error', value: 'Unable to load options' }]
-                            : vehicleOptions.length > 0
-                              ? vehicleOptions
-                              : [{ key: 'no-data', value: 'No vehicles found' }]
+                            : packageOptions.length > 0
+                              ? packageOptions
+                              : [{ key: 'no-data', value: 'No packages found' }]
                       }
                       value={
-                        regularRequest.vehicleDetails.vehicle
-                          ? typeof regularRequest.vehicleDetails.vehicle === 'string'
-                            ? (vehicleOptions.find((option: any) => option.key === regularRequest.vehicleDetails.vehicle) as any)?.value ?? ''
-                            : (vehicleOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.vehicle as any)._id) as any)?.value ?? ''
+                        regularRequest.packageDetails.package
+                          ? typeof regularRequest.packageDetails.package === 'string'
+                            ? ((packageOptions.find((option: any) => option.key === regularRequest.packageDetails.package) as any)?.value ?? '')
+                            : ((packageOptions.find((option: any) => option.key === (regularRequest.packageDetails.package as any)._id) as any)?.value ?? '')
                           : ''
                       }
                       changeHandler={value => {
-                        const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
-                        if (!selectedOption || ['Please wait...', 'Unable to load options', 'No vehicles found'].includes(value.vehicle as string)) {
+                        const selectedOption = packageOptions.find((option: any) => option.value === value.package) as any
+                        if (!selectedOption || ['Please wait...', 'Unable to load options', 'No packages found'].includes(selectedOption.value)) {
                           return
                         }
                         const updatedData = {
                           ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            vehicle: selectedOption.key,
+                          packageDetails: {
+                            ...regularRequest.packageDetails,
+                            package: selectedOption.key,
                           },
                         }
                         setRegularRequest(updatedData)
-                        setTimeout(() => validateField('vehicleDetails.vehicle', updatedData), 0)
                       }}
                       required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.vehicle']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.vehicle']}
-                      disabled={!regularRequest.vehicleDetails.vehicleCategory || (isSupplierVehicle && !regularRequest.vehicleDetails.supplierDetails.supplier) || false}
+                      errorMessage={regularRequestErrorMap['packageDetails.package']}
+                      invalid={!!regularRequestErrorMap['packageDetails.package']}
+                      disabled={!regularRequest.packageDetails.packageCategory}
                     />
                   </Column>
                 </Row>
-                {isSupplierVehicle && (
-                  <Row>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <SelectInput
-                        label="Supplier"
-                        name="supplier"
-                        options={
-                          !isSupplierVehicle
-                            ? [{ key: 'empty', value: 'Select vehicle category first' }]
-                            : suppliersLoading
-                              ? [{ key: 'loading', value: 'Please wait...' }]
-                              : suppliersIsError
-                                ? [{ key: 'error', value: 'Unable to load options' }]
-                                : supplierOptions.length > 0
-                                  ? supplierOptions
-                                  : [{ key: 'no-data', value: 'No suppliers found' }]
-                        }
-                        value={
-                          regularRequest.vehicleDetails.supplierDetails.supplier
-                            ? typeof regularRequest.vehicleDetails.supplierDetails.supplier === 'string'
-                              ? (supplierOptions.find((option: any) => option.key === regularRequest.vehicleDetails.supplierDetails.supplier) as any)?.value ?? ''
-                              : (supplierOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.supplierDetails.supplier as any)._id) as any)?.value ?? ''
-                            : ''
-                        }
-                        changeHandler={value => {
-                          const selectedOption = supplierOptions.find((option: any) => option.value === value.supplier) as any
-                          if (!selectedOption || ['Select vehicle category first', 'Please wait...', 'Unable to load options', 'No suppliers found'].includes(value.supplier as string)) {
-                            return
-                          }
-                          const updatedData = {
-                            ...regularRequest,
-                            vehicleDetails: {
-                              ...regularRequest.vehicleDetails,
-                              supplierDetails: {
-                                supplier: selectedOption.key,
-                                package: null, // Reset package when supplier changes
-                              },
-                            },
-                          }
-                          setRegularRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.supplierDetails.supplier', updatedData), 0)
-                        }}
-                        required
-                        errorMessage={regularRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
-                        invalid={!!regularRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
-                      />
-                    </Column>
-                    <Column
-                      col={4}
-                      className={bemClass([blk, 'margin-bottom'])}
-                    >
-                      <SelectInput
-                        label="Supplier Package"
-                        name="supplierPackage"
-                        options={
-                          !regularRequest.vehicleDetails.supplierDetails.supplier
-                            ? [{ key: 'empty', value: 'Select supplier first' }]
-                            : supplierPackagesLoading
-                              ? [{ key: 'loading', value: 'Please wait...' }]
-                              : apiErrors.supplierPackages
-                                ? [{ key: 'error', value: 'Unable to load options' }]
-                                : supplierPackageOptions.length > 0
-                                  ? supplierPackageOptions
-                                  : [{ key: 'no-data', value: 'No packages found' }]
-                        }
-                        value={
-                          regularRequest.vehicleDetails.supplierDetails.package
-                            ? typeof regularRequest.vehicleDetails.supplierDetails.package === 'string'
-                              ? (supplierPackageOptions.find((option: any) => option.key === regularRequest.vehicleDetails.supplierDetails.package) as any)?.value ?? ''
-                              : (supplierPackageOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.supplierDetails.package as any)._id) as any)?.value ?? ''
-                            : ''
-                        }
-                        changeHandler={value => {
-                          const selectedOption = supplierPackageOptions.find((option: any) => option.value === value.supplierPackage) as any
-                          if (!selectedOption || ['Select supplier first', 'Please wait...', 'Unable to load options', 'No packages found'].includes(value.supplierPackage as string)) {
-                            return
-                          }
-                          const updatedData = {
-                            ...regularRequest,
-                            vehicleDetails: {
-                              ...regularRequest.vehicleDetails,
-                              supplierDetails: {
-                                ...regularRequest.vehicleDetails.supplierDetails,
-                                package: selectedOption.key,
-                              },
-                            },
-                          }
-                          setRegularRequest(updatedData)
-                          setTimeout(() => validateField('vehicleDetails.supplierDetails.package', updatedData), 0)
-                        }}
-                        required
-                        errorMessage={regularRequestErrorMap['vehicleDetails.supplierDetails.package']}
-                        invalid={!!regularRequestErrorMap['vehicleDetails.supplierDetails.package']}
-                        disabled={!regularRequest.vehicleDetails.supplierDetails.supplier}
-                      />
-                    </Column>
-                  </Row>
-                )}
-              </>
-            ) : (
-              <>
+              </Panel>
+
+              {/* Request Details Panel */}
+              <Panel
+                title="Request Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
                 <Row>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Owner Name"
-                      name="ownerName"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.ownerName || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              ownerName: value.ownerName?.toString() ?? '',
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerName', regularRequest)}
-                      required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Owner Contact"
-                      name="ownerContact"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.ownerContact || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              ownerContact: value.ownerContact?.toString() ?? '',
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerContact', regularRequest)}
-                      required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Owner Email"
-                      name="ownerEmail"
-                      type="email"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.ownerEmail || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              ownerEmail: value.ownerEmail?.toString() ?? '',
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.ownerEmail', regularRequest)}
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
-                    />
-                  </Column>
-                </Row>
-                <Row>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Manufacturer"
-                      name="manufacturer"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.manufacturer || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              manufacturer: value.manufacturer?.toString() ?? '',
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.manufacturer', regularRequest)}
-                      required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Vehicle Name"
-                      name="vehicleName"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.name || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              name: value.vehicleName?.toString() ?? '',
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.name', regularRequest)}
-                      required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
-                    />
-                  </Column>
-                  <Column
-                    col={4}
-                    className={bemClass([blk, 'margin-bottom'])}
-                  >
-                    <TextInput
-                      label="Registration No"
-                      name="registrationNo"
-                      value={regularRequest.vehicleDetails.newVehicleDetails?.registrationNo || ''}
-                      changeHandler={value => {
-                        setRegularRequest({
-                          ...regularRequest,
-                          vehicleDetails: {
-                            ...regularRequest.vehicleDetails,
-                            newVehicleDetails: {
-                              ...regularRequest.vehicleDetails.newVehicleDetails!,
-                              registrationNo: (value.registrationNo?.toString() ?? '').toUpperCase(),
-                            },
-                          },
-                        })
-                      }}
-                      onBlur={() => validateField('vehicleDetails.newVehicleDetails.registrationNo', regularRequest)}
-                      required
-                      errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
-                      invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
-                    />
-                  </Column>
-                </Row>
-              </>
-            )}
-          </Panel>
-
-          {/* Staff Details Panel */}
-          <Panel
-            title="Staff Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Staff Type"
-                  name="staffType"
-                  options={[
-                    { key: 'existing', value: 'Existing' },
-                    { key: 'new', value: 'New' },
-                  ]}
-                  value={regularRequest.staffDetails.staffType === 'existing' ? 'Existing' : 'New'}
-                  changeHandler={value => {
-                    const selectedType = value.staffType === 'Existing' ? 'existing' : 'new'
-                    const updatedData = {
-                      ...regularRequest,
-                      staffDetails: {
-                        ...regularRequest.staffDetails,
-                        staffType: selectedType as 'existing' | 'new',
-                        staffCategory: selectedType === 'new' ? null : regularRequest.staffDetails.staffCategory,
-                        staff: selectedType === 'new' ? null : regularRequest.staffDetails.staff,
-                        newStaffDetails: selectedType === 'existing' ? null : { name: '', contact: '', license: '' },
-                      },
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('staffDetails.staffType', updatedData), 0)
-                  }}
-                  showPlaceholder={false}
-                  required
-                  errorMessage={regularRequestErrorMap['staffDetails.staffType']}
-                  invalid={!!regularRequestErrorMap['staffDetails.staffType']}
-                />
-              </Column>
-            </Row>
-            {regularRequest.staffDetails.staffType === 'existing' ? (
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <ConfiguredInput
-                    label="Staff Category"
-                    name="staffCategory"
-                    configToUse="Staff category"
-                    type={CONFIGURED_INPUT_TYPES.SELECT}
-                    value={regularRequest.staffDetails.staffCategory || ''}
-                    changeHandler={value => {
-                      const updatedData = {
-                        ...regularRequest,
-                        staffDetails: {
-                          ...regularRequest.staffDetails,
-                          staffCategory: value.staffCategory?.toString() ?? '',
-                          staff: null,
-                        },
-                      }
-                      setRegularRequest(updatedData)
-                      setTimeout(() => validateField('staffDetails.staffCategory', updatedData), 0)
-                    }}
-                    required
-                    errorMessage={regularRequestErrorMap['staffDetails.staffCategory']}
-                    invalid={!!regularRequestErrorMap['staffDetails.staffCategory']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <SelectInput
-                    label="Staff"
-                    name="staff"
-                    options={
-                      staffLoading
-                        ? [{ key: 'loading', value: 'Please wait...' }]
-                        : staffIsError
-                          ? [{ key: 'error', value: 'Unable to load options' }]
-                          : staffOptions.length > 0
-                            ? staffOptions
-                            : [{ key: 'no-data', value: 'No staff found' }]
-                    }
-                    value={
-                      regularRequest.staffDetails.staff
-                        ? typeof regularRequest.staffDetails.staff === 'string'
-                          ? (staffOptions.find((option: any) => option.key === regularRequest.staffDetails.staff) as any)?.value ?? ''
-                          : (staffOptions.find((option: any) => option.key === (regularRequest.staffDetails.staff as any)._id) as any)?.value ?? ''
-                        : ''
-                    }
-                    changeHandler={value => {
-                      const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
-                      if (!selectedOption || ['Please wait...', 'Unable to load options', 'No staff found'].includes(value.staff as string)) {
-                        return
-                      }
-                      const updatedData = {
-                        ...regularRequest,
-                        staffDetails: {
-                          ...regularRequest.staffDetails,
-                          staff: selectedOption.key,
-                        },
-                      }
-                      setRegularRequest(updatedData)
-                      setTimeout(() => validateField('staffDetails.staff', updatedData), 0)
-                    }}
-                    required
-                    errorMessage={regularRequestErrorMap['staffDetails.staff']}
-                    invalid={!!regularRequestErrorMap['staffDetails.staff']}
-                    disabled={!regularRequest.staffDetails.staffCategory}
-                  />
-                </Column>
-              </Row>
-            ) : (
-              <Row>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="Staff Name"
-                    name="staffName"
-                    value={regularRequest.staffDetails.newStaffDetails?.name || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        staffDetails: {
-                          ...regularRequest.staffDetails,
-                          newStaffDetails: {
-                            ...regularRequest.staffDetails.newStaffDetails!,
-                            name: value.staffName?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('staffDetails.newStaffDetails.name', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.name']}
-                    invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.name']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="Staff Contact"
-                    name="staffContact"
-                    value={regularRequest.staffDetails.newStaffDetails?.contact || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        staffDetails: {
-                          ...regularRequest.staffDetails,
-                          newStaffDetails: {
-                            ...regularRequest.staffDetails.newStaffDetails!,
-                            contact: value.staffContact?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('staffDetails.newStaffDetails.contact', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.contact']}
-                    invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.contact']}
-                  />
-                </Column>
-                <Column
-                  col={4}
-                  className={bemClass([blk, 'margin-bottom'])}
-                >
-                  <TextInput
-                    label="License Number"
-                    name="staffLicense"
-                    value={regularRequest.staffDetails.newStaffDetails?.license || ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        staffDetails: {
-                          ...regularRequest.staffDetails,
-                          newStaffDetails: {
-                            ...regularRequest.staffDetails.newStaffDetails!,
-                            license: value.staffLicense?.toString() ?? '',
-                          },
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('staffDetails.newStaffDetails.license', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.license']}
-                    invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.license']}
-                  />
-                </Column>
-              </Row>
-            )}
-          </Panel>
-
-          {/* Other Charges Panel */}
-          <Panel
-            title="Other Charges"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <div className={bemClass([blk, 'custom-label'])}>
-                  <Text
-                    tag="p"
-                    typography="s"
-                    color="gray-darker"
-                  >
-                    Toll
-                  </Text>
-                  <CheckBox
-                    id="tollChargeableToCustomer"
-                    label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.toll.isChargeableToCustomer}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        otherCharges: {
-                          ...regularRequest.otherCharges,
-                          toll: {
-                            ...regularRequest.otherCharges.toll,
-                            isChargeableToCustomer: value.tollChargeableToCustomer ?? false,
-                          },
-                        },
-                      })
-                    }}
-                  />
-                </div>
-                <NumberInput
-                  name="tollAmount"
-                  placeholder="Toll Amount"
-                  value={regularRequest.otherCharges.toll.amount === 0 ? '' : regularRequest.otherCharges.toll.amount}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        toll: {
-                          ...regularRequest.otherCharges.toll,
-                          amount: value.tollAmount || 0,
-                        },
-                      },
-                    })
-                  }}
-                  min={0}
-                  required
-                  errorMessage={regularRequestErrorMap['otherCharges.toll.amount']}
-                  invalid={regularRequestErrorMap['otherCharges.toll.amount']}
-                />
-              </Column>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <div className={bemClass([blk, 'custom-label'])}>
-                  <Text
-                    tag="p"
-                    typography="s"
-                    color="gray-darker"
-                  >
-                    Parking
-                  </Text>
-                  <CheckBox
-                    id="parkingChargeableToCustomer"
-                    label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.parking.isChargeableToCustomer}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        otherCharges: {
-                          ...regularRequest.otherCharges,
-                          parking: {
-                            ...regularRequest.otherCharges.parking,
-                            isChargeableToCustomer: value.parkingChargeableToCustomer ?? false,
-                          },
-                        },
-                      })
-                    }}
-                  />
-                </div>
-                <NumberInput
-                  name="parkingAmount"
-                  placeholder="Parking Amount"
-                  value={regularRequest.otherCharges.parking.amount === 0 ? '' : regularRequest.otherCharges.parking.amount}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        parking: {
-                          ...regularRequest.otherCharges.parking,
-                          amount: value.parkingAmount || 0,
-                        },
-                      },
-                    })
-                  }}
-                  min={0}
-                  required
-                  errorMessage={regularRequestErrorMap['otherCharges.parking.amount']}
-                  invalid={regularRequestErrorMap['otherCharges.parking.amount']}
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <div className={bemClass([blk, 'custom-label'])}>
-                  <Text
-                    tag="p"
-                    typography="s"
-                    color="gray-darker"
-                  >
-                    Night Halt
-                  </Text>
-                  <CheckBox
-                    id="nightHaltChargeableToCustomer"
-                    label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.nightHalt.isChargeableToCustomer}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        otherCharges: {
-                          ...regularRequest.otherCharges,
-                          nightHalt: {
-                            ...regularRequest.otherCharges.nightHalt,
-                            isChargeableToCustomer: value.nightHaltChargeableToCustomer ?? false,
-                          },
-                        },
-                      })
-                    }}
-                  />
-                </div>
-                <NumberInput
-                  name="nightHaltAmount"
-                  placeholder="Night Halt Amount"
-                  value={regularRequest.otherCharges.nightHalt.amount === 0 ? '' : regularRequest.otherCharges.nightHalt.amount}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        nightHalt: {
-                          ...regularRequest.otherCharges.nightHalt,
-                          amount: value.nightHaltAmount || 0,
-                        },
-                      },
-                    })
-                  }}
-                  min={0}
-                  required
-                  errorMessage={regularRequestErrorMap['otherCharges.nightHalt.amount']}
-                  invalid={regularRequestErrorMap['otherCharges.nightHalt.amount']}
-                />
-              </Column>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <Toggle
-                  className={bemClass([blk, 'toggle'])}
-                  label="Include Night Halt in driver salary?"
-                  name="nightHaltPayableWithSalary"
-                  checked={regularRequest.otherCharges.nightHalt.isPayableWithSalary}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        nightHalt: {
-                          ...regularRequest.otherCharges.nightHalt,
-                          isPayableWithSalary: !!value.nightHaltPayableWithSalary,
-                        },
-                      },
-                    })
-                  }}
-                />
-              </Column>
-            </Row>
-            <Row>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <div className={bemClass([blk, 'custom-label'])}>
-                  <Text
-                    tag="p"
-                    typography="s"
-                    color="gray-darker"
-                  >
-                    Driver Allowance
-                  </Text>
-                  <CheckBox
-                    id="driverAllowanceChargeableToCustomer"
-                    label="Chargeable to customer"
-                    checked={regularRequest.otherCharges.driverAllowance.isChargeableToCustomer}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        otherCharges: {
-                          ...regularRequest.otherCharges,
-                          driverAllowance: {
-                            ...regularRequest.otherCharges.driverAllowance,
-                            isChargeableToCustomer: value.driverAllowanceChargeableToCustomer ?? false,
-                          },
-                        },
-                      })
-                    }}
-                  />
-                </div>
-                <NumberInput
-                  name="driverAllowanceAmount"
-                  placeholder="Driver Allowance Amount"
-                  value={regularRequest.otherCharges.driverAllowance.amount === 0 ? '' : regularRequest.otherCharges.driverAllowance.amount}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        driverAllowance: {
-                          ...regularRequest.otherCharges.driverAllowance,
-                          amount: value.driverAllowanceAmount || 0,
-                        },
-                      },
-                    })
-                  }}
-                  min={0}
-                  required
-                  errorMessage={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
-                  invalid={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
-                />
-              </Column>
-              <Column
-                col={5}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <Toggle
-                  className={bemClass([blk, 'toggle'])}
-                  label="Include Driver Allowance in driver salary?"
-                  name="driverAllowancePayableWithSalary"
-                  checked={regularRequest.otherCharges.driverAllowance.isPayableWithSalary}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      otherCharges: {
-                        ...regularRequest.otherCharges,
-                        driverAllowance: {
-                          ...regularRequest.otherCharges.driverAllowance,
-                          isPayableWithSalary: !!value.driverAllowancePayableWithSalary,
-                        },
-                      },
-                    })
-                  }}
-                />
-              </Column>
-            </Row>
-          </Panel>
-
-          {/* Status and Payment Details Panel */}
-          <Panel
-            title="Status and Payment Details"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <SelectInput
-                  label="Status"
-                  name="status"
-                  options={[
-                    { key: 'ONGOING', value: 'Ongoing' },
-                    { key: 'PAYMENT_PENDING', value: 'Payment Pending' },
-                    { key: 'CLOSED', value: 'Closed' },
-                  ]}
-                  value={regularRequest.status === 'ONGOING' ? 'Ongoing' : regularRequest.status === 'PAYMENT_PENDING' ? 'Payment Pending' : 'Closed'}
-                  changeHandler={value => {
-                    const statusMap: Record<string, 'ONGOING' | 'PAYMENT_PENDING' | 'CLOSED'> = {
-                      'Ongoing': 'ONGOING',
-                      'Payment Pending': 'PAYMENT_PENDING',
-                      'Closed': 'CLOSED',
-                    }
-                    const updatedData = {
-                      ...regularRequest,
-                      status: statusMap[value.status] || 'ONGOING',
-                    }
-                    setRegularRequest(updatedData)
-                    setTimeout(() => validateField('status', updatedData), 0)
-                  }}
-                  showPlaceholder={false}
-                  required
-                  errorMessage={regularRequestErrorMap['status']}
-                  invalid={!!regularRequestErrorMap['status']}
-                />
-              </Column>
-              <Column
-                col={4}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <NumberInput
-                  label="Amount Paid"
-                  name="amountPaid"
-                  placeholder="Enter amount paid"
-                  value={regularRequest.paymentDetails.amountPaid === 0 ? '' : regularRequest.paymentDetails.amountPaid}
-                  changeHandler={value => {
-                    setRegularRequest({
-                      ...regularRequest,
-                      paymentDetails: {
-                        ...regularRequest.paymentDetails,
-                        amountPaid: value.amountPaid || 0,
-                      },
-                    })
-                  }}
-                  onBlur={() => validateField('paymentDetails.amountPaid', regularRequest)}
-                  min={0}
-                  errorMessage={regularRequestErrorMap['paymentDetails.amountPaid']}
-                  invalid={!!regularRequestErrorMap['paymentDetails.amountPaid']}
-                />
-              </Column>
-              {regularRequest.status === 'CLOSED' && (
-                <>
                   <Column
                     col={4}
                     className={bemClass([blk, 'margin-bottom'])}
                   >
                     <ConfiguredInput
-                      label="Payment Method"
-                      name="paymentMethod"
-                      configToUse="Payment method"
+                      label="Request Type"
+                      name="requestType"
+                      configToUse="Request type"
                       type={CONFIGURED_INPUT_TYPES.SELECT}
-                      value={regularRequest.paymentDetails.paymentMethod || ''}
+                      value={regularRequest.requestDetails.requestType}
                       changeHandler={value => {
                         const updatedData = {
                           ...regularRequest,
-                          paymentDetails: {
-                            ...regularRequest.paymentDetails,
-                            paymentMethod: typeof value.paymentMethod === 'string' ? value.paymentMethod : null,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            requestType: value.requestType?.toString() ?? '',
                           },
                         }
                         setRegularRequest(updatedData)
-                        setTimeout(() => validateField('paymentDetails.paymentMethod', updatedData), 0)
                       }}
                       required
-                      errorMessage={regularRequestErrorMap['paymentDetails.paymentMethod']}
-                      invalid={!!regularRequestErrorMap['paymentDetails.paymentMethod']}
+                      errorMessage={regularRequestErrorMap['requestDetails.requestType']}
+                      invalid={!!regularRequestErrorMap['requestDetails.requestType']}
                     />
                   </Column>
-                </>
-              )}
-            </Row>
-            {regularRequest.status === 'CLOSED' && (
-              <Row>
-                <Column
-                  col={4}
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Pickup Location"
+                      name="pickUpLocation"
+                      value={regularRequest.requestDetails.pickUpLocation}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            pickUpLocation: value.pickUpLocation?.toString() ?? '',
+                          },
+                        })
+                      }}
+                      required
+                      errorMessage={regularRequestErrorMap['requestDetails.pickUpLocation']}
+                      invalid={!!regularRequestErrorMap['requestDetails.pickUpLocation']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <TextInput
+                      label="Drop Location"
+                      name="dropOffLocation"
+                      value={regularRequest.requestDetails.dropOffLocation}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            dropOffLocation: value.dropOffLocation?.toString() ?? '',
+                          },
+                        })
+                      }}
+                      required
+                      errorMessage={regularRequestErrorMap['requestDetails.dropOffLocation']}
+                      invalid={!!regularRequestErrorMap['requestDetails.dropOffLocation']}
+                    />
+                  </Column>
+                </Row>
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <DateTimeInput
+                      label="Pickup Date and Time"
+                      name="pickUpDateTime"
+                      type="datetime-local"
+                      value={regularRequest.requestDetails.pickUpDateTime}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            pickUpDateTime: value.pickUpDateTime,
+                          },
+                        })
+                      }}
+                      required
+                      errorMessage={regularRequestErrorMap['requestDetails.pickUpDateTime']}
+                      invalid={!!regularRequestErrorMap['requestDetails.pickUpDateTime']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <DateTimeInput
+                      label="Drop Date and Time"
+                      name="dropDateTime"
+                      type="datetime-local"
+                      value={regularRequest.requestDetails.dropDateTime}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            dropDateTime: value.dropDateTime,
+                          },
+                        })
+                      }}
+                      required
+                      disabled={!regularRequest.requestDetails.pickUpDateTime}
+                      min={regularRequest.requestDetails.pickUpDateTime || undefined}
+                      errorMessage={regularRequestErrorMap['requestDetails.dropDateTime']}
+                      invalid={!!regularRequestErrorMap['requestDetails.dropDateTime']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'read-only'])}
+                  >
+                    <ReadOnlyText
+                      label="Duration"
+                      value={regularRequest.requestDetails.totalHr ? regularRequest.requestDetails.totalHr + ' Hours' : '-'}
+                      color="success"
+                      size="jumbo"
+                    />
+                  </Column>
+                </Row>
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <NumberInput
+                      label="Opening Km"
+                      name="openingKm"
+                      value={regularRequest.requestDetails.openingKm ?? ''}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            openingKm: value.openingKm ?? null,
+                          },
+                        })
+                      }}
+                      min={0}
+                      required
+                      errorMessage={regularRequestErrorMap['requestDetails.openingKm']}
+                      invalid={!!regularRequestErrorMap['requestDetails.openingKm']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <NumberInput
+                      label="Closing Km"
+                      name="closingKm"
+                      value={regularRequest.requestDetails.closingKm ?? ''}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            closingKm: value.closingKm ?? null,
+                          },
+                        })
+                      }}
+                      min={regularRequest.requestDetails.openingKm || 0}
+                      required
+                      errorMessage={regularRequestErrorMap['requestDetails.closingKm']}
+                      invalid={!!regularRequestErrorMap['requestDetails.closingKm']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'read-only'])}
+                  >
+                    <ReadOnlyText
+                      label="Total Distance"
+                      value={regularRequest.requestDetails.totalKm ? `${regularRequest.requestDetails.totalKm} km` : '-'}
+                      color="success"
+                      size="jumbo"
+                    />
+                  </Column>
+                </Row>
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <RadioGroup
+                      question="AC Required"
+                      name="ac"
+                      options={[
+                        { key: 'ac-yes', value: 'Yes' },
+                        { key: 'ac-no', value: 'No' },
+                      ]}
+                      value={regularRequest.requestDetails.ac ? 'Yes' : 'No'}
+                      changeHandler={value => {
+                        const updatedData = {
+                          ...regularRequest,
+                          requestDetails: {
+                            ...regularRequest.requestDetails,
+                            ac: value.ac === 'Yes',
+                          },
+                        }
+                        setRegularRequest(updatedData)
+                      }}
+                      direction="horizontal"
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+
+              {/* Customer Details Panel */}
+              <Panel
+                title="Customer Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Customer Type"
+                      name="customerType"
+                      options={[
+                        { key: 'existing', value: 'Existing' },
+                        { key: 'new', value: 'New' },
+                      ]}
+                      value={regularRequest.customerDetails.customerType === 'existing' ? 'Existing' : 'New'}
+                      changeHandler={value => {
+                        const selectedType = value.customerType === 'Existing' ? 'existing' : 'new'
+                        const updatedData = {
+                          ...regularRequest,
+                          customerDetails: {
+                            ...regularRequest.customerDetails,
+                            customerType: selectedType as 'existing' | 'new',
+                            customerCategory: selectedType === 'new' ? null : regularRequest.customerDetails.customerCategory,
+                            customer: selectedType === 'new' ? null : regularRequest.customerDetails.customer,
+                            newCustomerDetails: selectedType === 'existing' ? null : { name: '', contact: '', email: '' },
+                          },
+                        }
+                        setRegularRequest(updatedData)
+                      }}
+                      showPlaceholder={false}
+                      required
+                      errorMessage={regularRequestErrorMap['customerDetails.customerType']}
+                      invalid={!!regularRequestErrorMap['customerDetails.customerType']}
+                    />
+                  </Column>
+                </Row>
+                {regularRequest.customerDetails.customerType === 'existing' ? (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <ConfiguredInput
+                        label="Customer Category"
+                        name="customerCategory"
+                        configToUse="Customer category"
+                        type={CONFIGURED_INPUT_TYPES.SELECT}
+                        value={regularRequest.customerDetails.customerCategory || ''}
+                        changeHandler={value => {
+                          const updatedData = {
+                            ...regularRequest,
+                            customerDetails: {
+                              ...regularRequest.customerDetails,
+                              customerCategory: value.customerCategory?.toString() ?? '',
+                              customer: null,
+                            },
+                          }
+                          setRegularRequest(updatedData)
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['customerDetails.customerCategory']}
+                        invalid={!!regularRequestErrorMap['customerDetails.customerCategory']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Customer"
+                        name="customer"
+                        options={
+                          customersLoading
+                            ? [{ key: 'loading', value: 'Please wait...' }]
+                            : customersIsError
+                              ? [{ key: 'error', value: 'Unable to load options' }]
+                              : customerOptions.length > 0
+                                ? customerOptions
+                                : [{ key: 'no-data', value: 'No customers found' }]
+                        }
+                        value={
+                          regularRequest.customerDetails.customer
+                            ? typeof regularRequest.customerDetails.customer === 'string'
+                              ? ((customerOptions.find((option: any) => option.key === regularRequest.customerDetails.customer) as any)?.value ?? '')
+                              : ((customerOptions.find((option: any) => option.key === (regularRequest.customerDetails.customer as any)._id) as any)?.value ?? '')
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = customerOptions.find((option: any) => option.value === value.customer) as any
+                          if (!selectedOption || ['Please wait...', 'Unable to load options', 'No customers found'].includes(value.customer as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...regularRequest,
+                            customerDetails: {
+                              ...regularRequest.customerDetails,
+                              customer: selectedOption.key,
+                            },
+                          }
+                          setRegularRequest(updatedData)
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['customerDetails.customer']}
+                        invalid={!!regularRequestErrorMap['customerDetails.customer']}
+                        disabled={!regularRequest.customerDetails.customerCategory}
+                      />
+                    </Column>
+                  </Row>
+                ) : (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Customer Name"
+                        name="customerName"
+                        value={regularRequest.customerDetails.newCustomerDetails?.name || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            customerDetails: {
+                              ...regularRequest.customerDetails,
+                              newCustomerDetails: {
+                                ...regularRequest.customerDetails.newCustomerDetails!,
+                                name: value.customerName?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.name']}
+                        invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.name']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Customer Contact"
+                        name="customerContact"
+                        value={regularRequest.customerDetails.newCustomerDetails?.contact || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            customerDetails: {
+                              ...regularRequest.customerDetails,
+                              newCustomerDetails: {
+                                ...regularRequest.customerDetails.newCustomerDetails!,
+                                contact: value.customerContact?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.contact']}
+                        invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.contact']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Customer Email"
+                        name="customerEmail"
+                        type="email"
+                        value={regularRequest.customerDetails.newCustomerDetails?.email || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            customerDetails: {
+                              ...regularRequest.customerDetails,
+                              newCustomerDetails: {
+                                ...regularRequest.customerDetails.newCustomerDetails!,
+                                email: value.customerEmail?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        errorMessage={regularRequestErrorMap['customerDetails.newCustomerDetails.email']}
+                        invalid={!!regularRequestErrorMap['customerDetails.newCustomerDetails.email']}
+                      />
+                    </Column>
+                  </Row>
+                )}
+              </Panel>
+
+              {/* Vehicle Details Panel - Start adding state management and validation from here */}
+              <Panel
+                title="Vehicle Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Vehicle Type"
+                      name="vehicleType"
+                      options={[
+                        { key: 'existing', value: 'Existing' },
+                        { key: 'new', value: 'New' },
+                      ]}
+                      value={regularRequest.vehicleDetails.vehicleType === 'existing' ? 'Existing' : 'New'}
+                      changeHandler={value => {
+                        const selectedType = value.vehicleType === 'Existing' ? 'existing' : 'new'
+                        const updatedData = {
+                          ...regularRequest,
+                          vehicleDetails: {
+                            ...regularRequest.vehicleDetails,
+                            vehicleType: selectedType as 'existing' | 'new',
+                            vehicleCategory: selectedType === 'new' ? null : regularRequest.vehicleDetails.vehicleCategory,
+                            vehicle: selectedType === 'new' ? null : regularRequest.vehicleDetails.vehicle,
+                            supplierDetails: selectedType === 'new' ? { supplier: null, package: null } : regularRequest.vehicleDetails.supplierDetails,
+                            newVehicleDetails:
+                              selectedType === 'existing'
+                                ? null
+                                : {
+                                    ownerName: '',
+                                    ownerContact: '',
+                                    ownerEmail: '',
+                                    manufacturer: '',
+                                    name: '',
+                                    registrationNo: '',
+                                  },
+                          },
+                        }
+                        setRegularRequest(updatedData)
+                      }}
+                      showPlaceholder={false}
+                      required
+                      errorMessage={regularRequestErrorMap['vehicleDetails.vehicleType']}
+                      invalid={!!regularRequestErrorMap['vehicleDetails.vehicleType']}
+                    />
+                  </Column>
+                </Row>
+                {regularRequest.vehicleDetails.vehicleType === 'existing' ? (
+                  <>
+                    <Row>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <ConfiguredInput
+                          label="Vehicle Category"
+                          name="vehicleCategory"
+                          configToUse="Vehicle category"
+                          type={CONFIGURED_INPUT_TYPES.SELECT}
+                          value={regularRequest.vehicleDetails.vehicleCategory || ''}
+                          changeHandler={value => {
+                            const updatedData = {
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                vehicleCategory: value.vehicleCategory?.toString() ?? '',
+                                vehicle: null,
+                                supplierDetails: { supplier: null, package: null },
+                              },
+                            }
+                            setRegularRequest(updatedData)
+                            setSupplierPackageOptions([]) // Clear supplier package options
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.vehicleCategory']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.vehicleCategory']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <SelectInput
+                          label="Vehicle"
+                          name="vehicle"
+                          options={
+                            vehiclesLoading || (isSupplierVehicle && supplierVehiclesLoading)
+                              ? [{ key: 'loading', value: 'Please wait...' }]
+                              : vehiclesIsError || (isSupplierVehicle && supplierVehiclesIsError)
+                                ? [{ key: 'error', value: 'Unable to load options' }]
+                                : vehicleOptions.length > 0
+                                  ? vehicleOptions
+                                  : [{ key: 'no-data', value: 'No vehicles found' }]
+                          }
+                          value={
+                            regularRequest.vehicleDetails.vehicle
+                              ? typeof regularRequest.vehicleDetails.vehicle === 'string'
+                                ? ((vehicleOptions.find((option: any) => option.key === regularRequest.vehicleDetails.vehicle) as any)?.value ?? '')
+                                : ((vehicleOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.vehicle as any)._id) as any)?.value ?? '')
+                              : ''
+                          }
+                          changeHandler={value => {
+                            const selectedOption = vehicleOptions.find((option: any) => option.value === value.vehicle) as any
+                            if (!selectedOption || ['Please wait...', 'Unable to load options', 'No vehicles found'].includes(value.vehicle as string)) {
+                              return
+                            }
+                            const updatedData = {
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                vehicle: selectedOption.key,
+                              },
+                            }
+                            setRegularRequest(updatedData)
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.vehicle']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.vehicle']}
+                          disabled={!regularRequest.vehicleDetails.vehicleCategory || (isSupplierVehicle && !regularRequest.vehicleDetails.supplierDetails.supplier) || false}
+                        />
+                      </Column>
+                    </Row>
+                    {isSupplierVehicle && (
+                      <Row>
+                        <Column
+                          col={4}
+                          className={bemClass([blk, 'margin-bottom'])}
+                        >
+                          <SelectInput
+                            label="Supplier"
+                            name="supplier"
+                            options={
+                              !isSupplierVehicle
+                                ? [{ key: 'empty', value: 'Select vehicle category first' }]
+                                : suppliersLoading
+                                  ? [{ key: 'loading', value: 'Please wait...' }]
+                                  : suppliersIsError
+                                    ? [{ key: 'error', value: 'Unable to load options' }]
+                                    : supplierOptions.length > 0
+                                      ? supplierOptions
+                                      : [{ key: 'no-data', value: 'No suppliers found' }]
+                            }
+                            value={
+                              regularRequest.vehicleDetails.supplierDetails.supplier
+                                ? typeof regularRequest.vehicleDetails.supplierDetails.supplier === 'string'
+                                  ? ((supplierOptions.find((option: any) => option.key === regularRequest.vehicleDetails.supplierDetails.supplier) as any)?.value ?? '')
+                                  : ((supplierOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.supplierDetails.supplier as any)._id) as any)?.value ??
+                                    '')
+                                : ''
+                            }
+                            changeHandler={value => {
+                              const selectedOption = supplierOptions.find((option: any) => option.value === value.supplier) as any
+                              if (
+                                !selectedOption ||
+                                ['Select vehicle category first', 'Please wait...', 'Unable to load options', 'No suppliers found'].includes(value.supplier as string)
+                              ) {
+                                return
+                              }
+                              const updatedData = {
+                                ...regularRequest,
+                                vehicleDetails: {
+                                  ...regularRequest.vehicleDetails,
+                                  supplierDetails: {
+                                    supplier: selectedOption.key,
+                                    package: null, // Reset package when supplier changes
+                                  },
+                                },
+                              }
+                              setRegularRequest(updatedData)
+                            }}
+                            required
+                            errorMessage={regularRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
+                            invalid={!!regularRequestErrorMap['vehicleDetails.supplierDetails.supplier']}
+                          />
+                        </Column>
+                        <Column
+                          col={4}
+                          className={bemClass([blk, 'margin-bottom'])}
+                        >
+                          <SelectInput
+                            label="Supplier Package"
+                            name="supplierPackage"
+                            options={
+                              !regularRequest.vehicleDetails.supplierDetails.supplier
+                                ? [{ key: 'empty', value: 'Select supplier first' }]
+                                : supplierPackagesLoading
+                                  ? [{ key: 'loading', value: 'Please wait...' }]
+                                  : apiErrors.supplierPackages
+                                    ? [{ key: 'error', value: 'Unable to load options' }]
+                                    : supplierPackageOptions.length > 0
+                                      ? supplierPackageOptions
+                                      : [{ key: 'no-data', value: 'No packages found' }]
+                            }
+                            value={
+                              regularRequest.vehicleDetails.supplierDetails.package
+                                ? typeof regularRequest.vehicleDetails.supplierDetails.package === 'string'
+                                  ? ((supplierPackageOptions.find((option: any) => option.key === regularRequest.vehicleDetails.supplierDetails.package) as any)?.value ?? '')
+                                  : ((supplierPackageOptions.find((option: any) => option.key === (regularRequest.vehicleDetails.supplierDetails.package as any)._id) as any)
+                                      ?.value ?? '')
+                                : ''
+                            }
+                            changeHandler={value => {
+                              const selectedOption = supplierPackageOptions.find((option: any) => option.value === value.supplierPackage) as any
+                              if (
+                                !selectedOption ||
+                                ['Select supplier first', 'Please wait...', 'Unable to load options', 'No packages found'].includes(value.supplierPackage as string)
+                              ) {
+                                return
+                              }
+                              const updatedData = {
+                                ...regularRequest,
+                                vehicleDetails: {
+                                  ...regularRequest.vehicleDetails,
+                                  supplierDetails: {
+                                    ...regularRequest.vehicleDetails.supplierDetails,
+                                    package: selectedOption.key,
+                                  },
+                                },
+                              }
+                              setRegularRequest(updatedData)
+                            }}
+                            required
+                            errorMessage={regularRequestErrorMap['vehicleDetails.supplierDetails.package']}
+                            invalid={!!regularRequestErrorMap['vehicleDetails.supplierDetails.package']}
+                            disabled={!regularRequest.vehicleDetails.supplierDetails.supplier}
+                          />
+                        </Column>
+                      </Row>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Row>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Owner Name"
+                          name="ownerName"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.ownerName || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  ownerName: value.ownerName?.toString() ?? '',
+                                },
+                              },
+                            })
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerName']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Owner Contact"
+                          name="ownerContact"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.ownerContact || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  ownerContact: value.ownerContact?.toString() ?? '',
+                                },
+                              },
+                            })
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerContact']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Owner Email"
+                          name="ownerEmail"
+                          type="email"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.ownerEmail || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  ownerEmail: value.ownerEmail?.toString() ?? '',
+                                },
+                              },
+                            })
+                          }}
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.ownerEmail']}
+                        />
+                      </Column>
+                    </Row>
+                    <Row>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Manufacturer"
+                          name="manufacturer"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.manufacturer || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  manufacturer: value.manufacturer?.toString() ?? '',
+                                },
+                              },
+                            })
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.manufacturer']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Vehicle Name"
+                          name="vehicleName"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.name || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  name: value.vehicleName?.toString() ?? '',
+                                },
+                              },
+                            })
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.name']}
+                        />
+                      </Column>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <TextInput
+                          label="Registration No"
+                          name="registrationNo"
+                          value={regularRequest.vehicleDetails.newVehicleDetails?.registrationNo || ''}
+                          changeHandler={value => {
+                            setRegularRequest({
+                              ...regularRequest,
+                              vehicleDetails: {
+                                ...regularRequest.vehicleDetails,
+                                newVehicleDetails: {
+                                  ...regularRequest.vehicleDetails.newVehicleDetails!,
+                                  registrationNo: (value.registrationNo?.toString() ?? '').toUpperCase(),
+                                },
+                              },
+                            })
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
+                          invalid={!!regularRequestErrorMap['vehicleDetails.newVehicleDetails.registrationNo']}
+                        />
+                      </Column>
+                    </Row>
+                  </>
+                )}
+              </Panel>
+
+              {/* Staff Details Panel */}
+              <Panel
+                title="Staff Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Staff Type"
+                      name="staffType"
+                      options={[
+                        { key: 'existing', value: 'Existing' },
+                        { key: 'new', value: 'New' },
+                      ]}
+                      value={regularRequest.staffDetails.staffType === 'existing' ? 'Existing' : 'New'}
+                      changeHandler={value => {
+                        const selectedType = value.staffType === 'Existing' ? 'existing' : 'new'
+                        const updatedData = {
+                          ...regularRequest,
+                          staffDetails: {
+                            ...regularRequest.staffDetails,
+                            staffType: selectedType as 'existing' | 'new',
+                            staffCategory: selectedType === 'new' ? null : regularRequest.staffDetails.staffCategory,
+                            staff: selectedType === 'new' ? null : regularRequest.staffDetails.staff,
+                            newStaffDetails: selectedType === 'existing' ? null : { name: '', contact: '', license: '' },
+                          },
+                        }
+                        setRegularRequest(updatedData)
+                      }}
+                      showPlaceholder={false}
+                      required
+                      errorMessage={regularRequestErrorMap['staffDetails.staffType']}
+                      invalid={!!regularRequestErrorMap['staffDetails.staffType']}
+                    />
+                  </Column>
+                </Row>
+                {regularRequest.staffDetails.staffType === 'existing' ? (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <ConfiguredInput
+                        label="Staff Category"
+                        name="staffCategory"
+                        configToUse="Staff category"
+                        type={CONFIGURED_INPUT_TYPES.SELECT}
+                        value={regularRequest.staffDetails.staffCategory || ''}
+                        changeHandler={value => {
+                          const updatedData = {
+                            ...regularRequest,
+                            staffDetails: {
+                              ...regularRequest.staffDetails,
+                              staffCategory: value.staffCategory?.toString() ?? '',
+                              staff: null,
+                            },
+                          }
+                          setRegularRequest(updatedData)
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['staffDetails.staffCategory']}
+                        invalid={!!regularRequestErrorMap['staffDetails.staffCategory']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <SelectInput
+                        label="Staff"
+                        name="staff"
+                        options={
+                          staffLoading
+                            ? [{ key: 'loading', value: 'Please wait...' }]
+                            : staffIsError
+                              ? [{ key: 'error', value: 'Unable to load options' }]
+                              : staffOptions.length > 0
+                                ? staffOptions
+                                : [{ key: 'no-data', value: 'No staff found' }]
+                        }
+                        value={
+                          regularRequest.staffDetails.staff
+                            ? typeof regularRequest.staffDetails.staff === 'string'
+                              ? ((staffOptions.find((option: any) => option.key === regularRequest.staffDetails.staff) as any)?.value ?? '')
+                              : ((staffOptions.find((option: any) => option.key === (regularRequest.staffDetails.staff as any)._id) as any)?.value ?? '')
+                            : ''
+                        }
+                        changeHandler={value => {
+                          const selectedOption = staffOptions.find((option: any) => option.value === value.staff) as any
+                          if (!selectedOption || ['Please wait...', 'Unable to load options', 'No staff found'].includes(value.staff as string)) {
+                            return
+                          }
+                          const updatedData = {
+                            ...regularRequest,
+                            staffDetails: {
+                              ...regularRequest.staffDetails,
+                              staff: selectedOption.key,
+                            },
+                          }
+                          setRegularRequest(updatedData)
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['staffDetails.staff']}
+                        invalid={!!regularRequestErrorMap['staffDetails.staff']}
+                        disabled={!regularRequest.staffDetails.staffCategory}
+                      />
+                    </Column>
+                  </Row>
+                ) : (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Staff Name"
+                        name="staffName"
+                        value={regularRequest.staffDetails.newStaffDetails?.name || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            staffDetails: {
+                              ...regularRequest.staffDetails,
+                              newStaffDetails: {
+                                ...regularRequest.staffDetails.newStaffDetails!,
+                                name: value.staffName?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.name']}
+                        invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.name']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="Staff Contact"
+                        name="staffContact"
+                        value={regularRequest.staffDetails.newStaffDetails?.contact || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            staffDetails: {
+                              ...regularRequest.staffDetails,
+                              newStaffDetails: {
+                                ...regularRequest.staffDetails.newStaffDetails!,
+                                contact: value.staffContact?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.contact']}
+                        invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.contact']}
+                      />
+                    </Column>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <TextInput
+                        label="License Number"
+                        name="staffLicense"
+                        value={regularRequest.staffDetails.newStaffDetails?.license || ''}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            staffDetails: {
+                              ...regularRequest.staffDetails,
+                              newStaffDetails: {
+                                ...regularRequest.staffDetails.newStaffDetails!,
+                                license: value.staffLicense?.toString() ?? '',
+                              },
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['staffDetails.newStaffDetails.license']}
+                        invalid={!!regularRequestErrorMap['staffDetails.newStaffDetails.license']}
+                      />
+                    </Column>
+                  </Row>
+                )}
+              </Panel>
+
+              {/* Other Charges Panel */}
+              <Panel
+                title="Other Charges"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <div className={bemClass([blk, 'custom-label'])}>
+                      <Text
+                        tag="p"
+                        typography="s"
+                        color="gray-darker"
+                      >
+                        Toll
+                      </Text>
+                      <CheckBox
+                        id="tollChargeableToCustomer"
+                        label="Chargeable to customer"
+                        checked={regularRequest.otherCharges.toll.isChargeableToCustomer}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            otherCharges: {
+                              ...regularRequest.otherCharges,
+                              toll: {
+                                ...regularRequest.otherCharges.toll,
+                                isChargeableToCustomer: value.tollChargeableToCustomer ?? false,
+                              },
+                            },
+                          })
+                        }}
+                      />
+                    </div>
+                    <NumberInput
+                      name="tollAmount"
+                      placeholder="Toll Amount"
+                      value={regularRequest.otherCharges.toll.amount === 0 ? '' : regularRequest.otherCharges.toll.amount}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            toll: {
+                              ...regularRequest.otherCharges.toll,
+                              amount: value.tollAmount || 0,
+                            },
+                          },
+                        })
+                      }}
+                      min={0}
+                      required
+                      errorMessage={regularRequestErrorMap['otherCharges.toll.amount']}
+                      invalid={regularRequestErrorMap['otherCharges.toll.amount']}
+                    />
+                  </Column>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <div className={bemClass([blk, 'custom-label'])}>
+                      <Text
+                        tag="p"
+                        typography="s"
+                        color="gray-darker"
+                      >
+                        Parking
+                      </Text>
+                      <CheckBox
+                        id="parkingChargeableToCustomer"
+                        label="Chargeable to customer"
+                        checked={regularRequest.otherCharges.parking.isChargeableToCustomer}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            otherCharges: {
+                              ...regularRequest.otherCharges,
+                              parking: {
+                                ...regularRequest.otherCharges.parking,
+                                isChargeableToCustomer: value.parkingChargeableToCustomer ?? false,
+                              },
+                            },
+                          })
+                        }}
+                      />
+                    </div>
+                    <NumberInput
+                      name="parkingAmount"
+                      placeholder="Parking Amount"
+                      value={regularRequest.otherCharges.parking.amount === 0 ? '' : regularRequest.otherCharges.parking.amount}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            parking: {
+                              ...regularRequest.otherCharges.parking,
+                              amount: value.parkingAmount || 0,
+                            },
+                          },
+                        })
+                      }}
+                      min={0}
+                      required
+                      errorMessage={regularRequestErrorMap['otherCharges.parking.amount']}
+                      invalid={regularRequestErrorMap['otherCharges.parking.amount']}
+                    />
+                  </Column>
+                </Row>
+                <Row>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <div className={bemClass([blk, 'custom-label'])}>
+                      <Text
+                        tag="p"
+                        typography="s"
+                        color="gray-darker"
+                      >
+                        Night Halt
+                      </Text>
+                      <CheckBox
+                        id="nightHaltChargeableToCustomer"
+                        label="Chargeable to customer"
+                        checked={regularRequest.otherCharges.nightHalt.isChargeableToCustomer}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            otherCharges: {
+                              ...regularRequest.otherCharges,
+                              nightHalt: {
+                                ...regularRequest.otherCharges.nightHalt,
+                                isChargeableToCustomer: value.nightHaltChargeableToCustomer ?? false,
+                              },
+                            },
+                          })
+                        }}
+                      />
+                    </div>
+                    <NumberInput
+                      name="nightHaltAmount"
+                      placeholder="Night Halt Amount"
+                      value={regularRequest.otherCharges.nightHalt.amount === 0 ? '' : regularRequest.otherCharges.nightHalt.amount}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            nightHalt: {
+                              ...regularRequest.otherCharges.nightHalt,
+                              amount: value.nightHaltAmount || 0,
+                            },
+                          },
+                        })
+                      }}
+                      min={0}
+                      required
+                      errorMessage={regularRequestErrorMap['otherCharges.nightHalt.amount']}
+                      invalid={regularRequestErrorMap['otherCharges.nightHalt.amount']}
+                    />
+                  </Column>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <Toggle
+                      className={bemClass([blk, 'toggle'])}
+                      label="Include Night Halt in driver salary?"
+                      name="nightHaltPayableWithSalary"
+                      checked={regularRequest.otherCharges.nightHalt.isPayableWithSalary}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            nightHalt: {
+                              ...regularRequest.otherCharges.nightHalt,
+                              isPayableWithSalary: !!value.nightHaltPayableWithSalary,
+                            },
+                          },
+                        })
+                      }}
+                    />
+                  </Column>
+                </Row>
+                <Row>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <div className={bemClass([blk, 'custom-label'])}>
+                      <Text
+                        tag="p"
+                        typography="s"
+                        color="gray-darker"
+                      >
+                        Driver Allowance
+                      </Text>
+                      <CheckBox
+                        id="driverAllowanceChargeableToCustomer"
+                        label="Chargeable to customer"
+                        checked={regularRequest.otherCharges.driverAllowance.isChargeableToCustomer}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            otherCharges: {
+                              ...regularRequest.otherCharges,
+                              driverAllowance: {
+                                ...regularRequest.otherCharges.driverAllowance,
+                                isChargeableToCustomer: value.driverAllowanceChargeableToCustomer ?? false,
+                              },
+                            },
+                          })
+                        }}
+                      />
+                    </div>
+                    <NumberInput
+                      name="driverAllowanceAmount"
+                      placeholder="Driver Allowance Amount"
+                      value={regularRequest.otherCharges.driverAllowance.amount === 0 ? '' : regularRequest.otherCharges.driverAllowance.amount}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            driverAllowance: {
+                              ...regularRequest.otherCharges.driverAllowance,
+                              amount: value.driverAllowanceAmount || 0,
+                            },
+                          },
+                        })
+                      }}
+                      min={0}
+                      required
+                      errorMessage={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
+                      invalid={regularRequestErrorMap['otherCharges.driverAllowance.amount']}
+                    />
+                  </Column>
+                  <Column
+                    col={5}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <Toggle
+                      className={bemClass([blk, 'toggle'])}
+                      label="Include Driver Allowance in driver salary?"
+                      name="driverAllowancePayableWithSalary"
+                      checked={regularRequest.otherCharges.driverAllowance.isPayableWithSalary}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          otherCharges: {
+                            ...regularRequest.otherCharges,
+                            driverAllowance: {
+                              ...regularRequest.otherCharges.driverAllowance,
+                              isPayableWithSalary: !!value.driverAllowancePayableWithSalary,
+                            },
+                          },
+                        })
+                      }}
+                    />
+                  </Column>
+                </Row>
+              </Panel>
+
+              {/* Status and Payment Details Panel */}
+              <Panel
+                title="Status and Payment Details"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <Row>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <SelectInput
+                      label="Status"
+                      name="status"
+                      options={[
+                        { key: 'ONGOING', value: 'Ongoing' },
+                        { key: 'PAYMENT_PENDING', value: 'Payment Pending' },
+                        { key: 'CLOSED', value: 'Closed' },
+                      ]}
+                      value={regularRequest.status === 'ONGOING' ? 'Ongoing' : regularRequest.status === 'PAYMENT_PENDING' ? 'Payment Pending' : 'Closed'}
+                      changeHandler={value => {
+                        const statusMap: Record<string, 'ONGOING' | 'PAYMENT_PENDING' | 'CLOSED'> = {
+                          Ongoing: 'ONGOING',
+                          'Payment Pending': 'PAYMENT_PENDING',
+                          Closed: 'CLOSED',
+                        }
+                        const updatedData = {
+                          ...regularRequest,
+                          status: statusMap[value.status] || 'ONGOING',
+                        }
+                        setRegularRequest(updatedData)
+                      }}
+                      showPlaceholder={false}
+                      required
+                      errorMessage={regularRequestErrorMap['status']}
+                      invalid={!!regularRequestErrorMap['status']}
+                    />
+                  </Column>
+                  <Column
+                    col={4}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <NumberInput
+                      label="Amount Paid"
+                      name="amountPaid"
+                      placeholder="Enter amount paid"
+                      value={regularRequest.paymentDetails.amountPaid === 0 ? '' : regularRequest.paymentDetails.amountPaid}
+                      changeHandler={value => {
+                        setRegularRequest({
+                          ...regularRequest,
+                          paymentDetails: {
+                            ...regularRequest.paymentDetails,
+                            amountPaid: value.amountPaid || 0,
+                          },
+                        })
+                      }}
+                      min={0}
+                      errorMessage={regularRequestErrorMap['paymentDetails.amountPaid']}
+                      invalid={!!regularRequestErrorMap['paymentDetails.amountPaid']}
+                    />
+                  </Column>
+                  {regularRequest.status === 'CLOSED' && (
+                    <>
+                      <Column
+                        col={4}
+                        className={bemClass([blk, 'margin-bottom'])}
+                      >
+                        <ConfiguredInput
+                          label="Payment Method"
+                          name="paymentMethod"
+                          configToUse="Payment method"
+                          type={CONFIGURED_INPUT_TYPES.SELECT}
+                          value={regularRequest.paymentDetails.paymentMethod || ''}
+                          changeHandler={value => {
+                            const updatedData = {
+                              ...regularRequest,
+                              paymentDetails: {
+                                ...regularRequest.paymentDetails,
+                                paymentMethod: typeof value.paymentMethod === 'string' ? value.paymentMethod : null,
+                              },
+                            }
+                            setRegularRequest(updatedData)
+                          }}
+                          required
+                          errorMessage={regularRequestErrorMap['paymentDetails.paymentMethod']}
+                          invalid={!!regularRequestErrorMap['paymentDetails.paymentMethod']}
+                        />
+                      </Column>
+                    </>
+                  )}
+                </Row>
+                {regularRequest.status === 'CLOSED' && (
+                  <Row>
+                    <Column
+                      col={4}
+                      className={bemClass([blk, 'margin-bottom'])}
+                    >
+                      <DateTimeInput
+                        label="Payment Date"
+                        name="paymentDate"
+                        type="date"
+                        value={regularRequest.paymentDetails.paymentDate}
+                        changeHandler={value => {
+                          setRegularRequest({
+                            ...regularRequest,
+                            paymentDetails: {
+                              ...regularRequest.paymentDetails,
+                              paymentDate: value.paymentDate,
+                            },
+                          })
+                        }}
+                        required
+                        errorMessage={regularRequestErrorMap['paymentDetails.paymentDate']}
+                        invalid={!!regularRequestErrorMap['paymentDetails.paymentDate']}
+                      />
+                    </Column>
+                  </Row>
+                )}
+              </Panel>
+
+              {/* Comments Panel */}
+              <Panel
+                title="Comments"
+                className={bemClass([blk, 'margin-bottom'])}
+              >
+                <TextArea
                   className={bemClass([blk, 'margin-bottom'])}
+                  name="comment"
+                  value={regularRequest.comment}
+                  changeHandler={value => {
+                    setRegularRequest({
+                      ...regularRequest,
+                      comment: value.comment?.toString() ?? '',
+                    })
+                  }}
+                  placeholder="Enter any additional comments or notes here..."
+                />
+              </Panel>
+
+              <div className={bemClass([blk, 'request-calculation'])}>
+                <Text
+                  tag="p"
+                  typography="s"
+                  color="gray-darker"
                 >
-                  <TextInput
-                    label="Payment Date"
-                    name="paymentDate"
-                    type="date"
-                    value={regularRequest.paymentDetails.paymentDate ? formatDateTimeForInput(new Date(regularRequest.paymentDetails.paymentDate)).split('T')[0] : ''}
-                    changeHandler={value => {
-                      setRegularRequest({
-                        ...regularRequest,
-                        paymentDetails: {
-                          ...regularRequest.paymentDetails,
-                          paymentDate: value.paymentDate ? new Date(value.paymentDate) : null,
-                        },
-                      })
-                    }}
-                    onBlur={() => validateField('paymentDetails.paymentDate', regularRequest)}
-                    required
-                    errorMessage={regularRequestErrorMap['paymentDetails.paymentDate']}
-                    invalid={!!regularRequestErrorMap['paymentDetails.paymentDate']}
-                  />
-                </Column>
-              </Row>
-            )}
-          </Panel>
+                  Request Calculation
+                </Text>
+                <div className={bemClass([blk, 'action-items'])}>
+                  <Button
+                    size="medium"
+                    category="primary"
+                    clickHandler={calculateProfit}
+                  >
+                    Calculate
+                  </Button>
+                  <Button
+                    size="medium"
+                    category="primary"
+                    clickHandler={viewCalculationBreakdown}
+                    className={bemClass([blk, 'view-button'])}
+                  >
+                    View Breakdown
+                  </Button>
+                </div>
+              </div>
 
-          {/* Comments Panel */}
-          <Panel
-            title="Comments"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <TextArea
-              className={bemClass([blk, 'margin-bottom'])}
-              name="comment"
-              value={regularRequest.comment}
-              changeHandler={value => {
-                setRegularRequest({
-                  ...regularRequest,
-                  comment: value.comment?.toString() ?? '',
-                })
-              }}
-              placeholder="Enter any additional comments or notes here..."
-            />
-          </Panel>
-
-          <div className={bemClass([blk, 'request-calculation'])}>
-            <Text
-              tag="p"
-              typography="s"
-              color="gray-darker"
-            >
-              Request Calculation
-            </Text>
-            <Button
-              size="medium"
-              category="primary"
-              clickHandler={calculateProfit}
-            >
-              Calculate
-            </Button>
-          </div>
-
-          {/* Calculation Results Panel */}
-          <Panel
-            title="Calculation Results"
-            className={bemClass([blk, 'margin-bottom'])}
-          >
-            <Row>
-              <Column
-                col={3}
+              {/* Calculation Results Panel */}
+              <Panel
+                title="Calculation Results"
                 className={bemClass([blk, 'margin-bottom'])}
               >
-                <ReadOnlyText
-                  label="Request Total"
-                  value={`₹${regularRequest.requestTotal.toLocaleString()}`}
-                  color="success"
-                  size="jumbo"
-                />
-              </Column>
-              <Column
-                col={3}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <ReadOnlyText
-                  label="Request Expense"
-                  value={`₹${regularRequest.requestExpense.toLocaleString()}`}
-                  color="warning"
-                  size="jumbo"
-                />
-              </Column>
-              <Column
-                col={3}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <ReadOnlyText
-                  label="Request Profit"
-                  value={`₹${regularRequest.requestProfit.toLocaleString()}`}
-                  color={regularRequest.requestProfit >= 0 ? "success" : "error"}
-                  size="jumbo"
-                />
-              </Column>
-              <Column
-                col={3}
-                className={bemClass([blk, 'margin-bottom'])}
-              >
-                <ReadOnlyText
-                  label="Customer Bill"
-                  value={`₹${regularRequest.customerBill.toLocaleString()}`}
-                  color="primary"
-                  size="jumbo"
-                />
-              </Column>
-            </Row>
-          </Panel>
+                <Row>
+                  <Column
+                    col={3}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <ReadOnlyText
+                      label="Request Total"
+                      value={`₹${regularRequest.requestTotal.toLocaleString()}`}
+                      color="primary"
+                      size="jumbo"
+                    />
+                  </Column>
+                  <Column
+                    col={3}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <ReadOnlyText
+                      label="Request Expense"
+                      value={`₹${regularRequest.requestExpense.toLocaleString()}`}
+                      color="error"
+                      size="jumbo"
+                    />
+                  </Column>
+                  <Column
+                    col={3}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <ReadOnlyText
+                      label="Request Profit"
+                      value={`₹${regularRequest.requestProfit.toLocaleString()}`}
+                      color={regularRequest.requestProfit >= 0 ? 'success' : 'error'}
+                      size="jumbo"
+                    />
+                  </Column>
+                  <Column
+                    col={3}
+                    className={bemClass([blk, 'margin-bottom'])}
+                  >
+                    <ReadOnlyText
+                      label="Customer Bill"
+                      value={`₹${regularRequest.customerBill.toLocaleString()}`}
+                      color="primary"
+                      size="jumbo"
+                    />
+                  </Column>
+                </Row>
+              </Panel>
 
-          <div className={bemClass([blk, 'action-items'])}>
-            <Button
-              size="medium"
-              category="default"
-              className={bemClass([blk, 'margin-right'])}
-              clickHandler={navigateBack}
-              disabled={submitButtonLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="medium"
-              category="primary"
-              clickHandler={submitHandler}
-              loading={submitButtonLoading}
-            >
-              {isEditing ? 'Update' : 'Submit'}
-            </Button>
-          </div>
-        </div>
+              <div className={bemClass([blk, 'action-items'])}>
+                <Button
+                  size="medium"
+                  category="default"
+                  className={bemClass([blk, 'margin-right'])}
+                  clickHandler={navigateBack}
+                  disabled={submitButtonLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="medium"
+                  category="primary"
+                  clickHandler={submitHandler}
+                  loading={submitButtonLoading}
+                >
+                  {isEditing ? 'Update' : 'Submit'}
+                </Button>
+              </div>
+            </div>
           </>
         )}
       </div>
+
+      {/* Calculation Breakdown Modal */}
+      <Modal
+        show={showCalculationModal}
+        closeHandler={() => setShowCalculationModal(false)}
+        title="Calculation Breakdown"
+        size="large"
+      >
+        {(() => {
+          const breakdown = getCalculationBreakdown()
+          const { customerPackageBreakdown, supplierExpenseBreakdown, otherChargesBreakdown } = breakdown
+
+          return (
+            <div className={bemClass([blk, 'calculation-modal'])}>
+              <div className={bemClass([blk, 'modal-body'])}>
+                {/* Request Total Breakdown */}
+                <div className={bemClass([blk, 'breakdown-section'])}>
+                <Text
+                  typography="m"
+                  color="primary"
+                  tag={'p'}
+                  className={bemClass([blk, 'section-title'])}
+                >
+                  1. Request Total (Customer Package Billing)
+                </Text>
+                {customerPackageBreakdown ? (
+                  <div className={bemClass([blk, 'breakdown-content'])}>
+                    <div className={bemClass([blk, 'breakdown-row'])}>
+                      <Text
+                        typography="s"
+                        color="gray-darker"
+                      >
+                        Base Amount
+                      </Text>
+                      <Text
+                        typography="s"
+                        color="gray-darker"
+                      >{`₹${customerPackageBreakdown.baseAmount.toFixed(2)}`}</Text>
+                    </div>
+                    <div className={bemClass([blk, 'breakdown-divider'])} />
+
+                    <div className={bemClass([blk, 'breakdown-subsection'])}>
+                      <Text
+                        typography="s"
+                        color="gray-dark"
+                      >
+                        Distance Calculation:
+                      </Text>
+                      <div className={bemClass([blk, 'breakdown-detail'])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Total KM: ${customerPackageBreakdown.totalKm.toFixed(2)} km`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Minimum KM: ${customerPackageBreakdown.minimumKm} km`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Extra KM: ${customerPackageBreakdown.extraKm.toFixed(2)} km`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Rate: ₹${customerPackageBreakdown.extraKmPerKmRate}/km`}</Text>
+                      </div>
+                      <div className={bemClass([blk, 'breakdown-row', ['highlight']])}>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >
+                          Extra KM Billing
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >{`₹${customerPackageBreakdown.extraKmBilling.toFixed(2)}`}</Text>
+                      </div>
+                    </div>
+
+                    <div className={bemClass([blk, 'breakdown-subsection'])}>
+                      <Text
+                        typography="s"
+                        color="gray-dark"
+                      >
+                        Duration Calculation:
+                      </Text>
+                      <div className={bemClass([blk, 'breakdown-detail'])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Total Hours: ${customerPackageBreakdown.totalHr.toFixed(2)} hrs`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Minimum Hours: ${customerPackageBreakdown.minimumHr} hrs`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Extra Hours: ${customerPackageBreakdown.extraHr.toFixed(2)} hrs`}</Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`Rate: ₹${customerPackageBreakdown.extraHrPerHrRate}/hr`}</Text>
+                      </div>
+                      <div className={bemClass([blk, 'breakdown-row', ['highlight']])}>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >
+                          Extra Hour Billing
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >{`₹${customerPackageBreakdown.extraHrBilling.toFixed(2)}`}</Text>
+                      </div>
+                    </div>
+
+                    <div className={bemClass([blk, 'breakdown-divider'])} />
+                    <div className={bemClass([blk, 'breakdown-row', ['total']])}>
+                      <Text
+                        typography="m"
+                        color="primary"
+                      >
+                        Request Total
+                      </Text>
+                      <Text
+                        typography="m"
+                        color="primary"
+                      >{`₹${breakdown.requestTotal.toFixed(2)}`}</Text>
+                    </div>
+                  </div>
+                ) : (
+                  <Alert
+                    type="info"
+                    message="Customer package not selected"
+                  />
+                )}
+              </div>
+
+              {/* Request Expense Breakdown */}
+              <div className={bemClass([blk, 'breakdown-section'])}>
+                <Text
+                  typography="m"
+                  color="error"
+                  tag={'p'}
+                  className={bemClass([blk, 'section-title'])}
+                >
+                  2. Request Expense
+                </Text>
+                <div className={bemClass([blk, 'breakdown-content'])}>
+                  {/* Supplier Vehicle Expense */}
+                  {supplierExpenseBreakdown ? (
+                    <>
+                      <Text
+                        typography="s"
+                        color="gray-darker"
+                        className={bemClass([blk, 'subsection-header'])}
+                      >
+                        Supplier Vehicle Expense
+                      </Text>
+                      <div className={bemClass([blk, 'breakdown-row'])}>
+                        <Text
+                          typography="s"
+                          color="gray-darker"
+                        >
+                          Base Amount
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray-darker"
+                        >{`₹${supplierExpenseBreakdown.baseAmount.toFixed(2)}`}</Text>
+                      </div>
+
+                      <div className={bemClass([blk, 'breakdown-subsection'])}>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >
+                          Distance:
+                        </Text>
+                        <div className={bemClass([blk, 'breakdown-detail'])}>
+                          <Text
+                            typography="s"
+                            color="gray"
+                          >{`Extra KM: ${supplierExpenseBreakdown.extraKm.toFixed(2)} km × ₹${supplierExpenseBreakdown.extraKmPerKmRate}`}</Text>
+                        </div>
+                        <div className={bemClass([blk, 'breakdown-row', ['highlight']])}>
+                          <Text
+                            typography="s"
+                            color="gray-dark"
+                          >
+                            Extra KM Expense
+                          </Text>
+                          <Text
+                            typography="s"
+                            color="gray-dark"
+                          >{`₹${supplierExpenseBreakdown.extraKmExpense.toFixed(2)}`}</Text>
+                        </div>
+                      </div>
+
+                      <div className={bemClass([blk, 'breakdown-subsection'])}>
+                        <Text
+                          typography="s"
+                          color="gray-dark"
+                        >
+                          Duration:
+                        </Text>
+                        <div className={bemClass([blk, 'breakdown-detail'])}>
+                          <Text
+                            typography="s"
+                            color="gray"
+                          >{`Extra Hours: ${supplierExpenseBreakdown.extraHr.toFixed(2)} hrs × ₹${supplierExpenseBreakdown.extraHrPerHrRate}`}</Text>
+                        </div>
+                        <div className={bemClass([blk, 'breakdown-row', ['highlight']])}>
+                          <Text
+                            typography="s"
+                            color="gray-dark"
+                          >
+                            Extra Hour Expense
+                          </Text>
+                          <Text
+                            typography="s"
+                            color="gray-dark"
+                          >{`₹${supplierExpenseBreakdown.extraHrExpense.toFixed(2)}`}</Text>
+                        </div>
+                      </div>
+
+                      <div className={bemClass([blk, 'breakdown-row', ['subtotal']])}>
+                        <Text
+                          typography="s"
+                          color="gray-darker"
+                        >
+                          Supplier Vehicle Total
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray-darker"
+                        >{`₹${supplierExpenseBreakdown.total.toFixed(2)}`}</Text>
+                      </div>
+                      <div className={bemClass([blk, 'breakdown-divider'])} />
+                    </>
+                  ) : (
+                    <>
+                      <Text
+                        typography="s"
+                        color="gray"
+                      >
+                        No supplier vehicle expense
+                      </Text>
+                      <div className={bemClass([blk, 'breakdown-divider'])} />
+                    </>
+                  )}
+
+                  {/* Other Charges Expense */}
+                  <Text
+                    typography="s"
+                    color="gray-darker"
+                    className={bemClass([blk, 'subsection-header'])}
+                  >
+                    Other Charges (Expenses)
+                  </Text>
+                  <div className={bemClass([blk, 'breakdown-detail'])}>
+                    {otherChargesBreakdown.toll.expense > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Toll
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.toll.expense.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.parking.expense > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Parking
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.parking.expense.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.nightHalt.expense > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Night Halt
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.nightHalt.expense.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.driverAllowance.expense > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Driver Allowance
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.driverAllowance.expense.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.totalExpense === 0 && (
+                      <Text
+                        typography="s"
+                        color="gray"
+                      >
+                        No expenses
+                      </Text>
+                    )}
+                  </div>
+                  <div className={bemClass([blk, 'breakdown-row', ['subtotal']])}>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >
+                      Other Charges Total
+                    </Text>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >{`₹${otherChargesBreakdown.totalExpense.toFixed(2)}`}</Text>
+                  </div>
+
+                  <div className={bemClass([blk, 'breakdown-divider'])} />
+                  <div className={bemClass([blk, 'breakdown-row', ['total']])}>
+                    <Text
+                      typography="m"
+                      color="error"
+                    >
+                      Total Request Expense
+                    </Text>
+                    <Text
+                      typography="m"
+                      color="error"
+                    >{`₹${breakdown.requestExpense.toFixed(2)}`}</Text>
+                  </div>
+                </div>
+              </div>
+
+              {/* Request Profit Breakdown */}
+              <div className={bemClass([blk, 'breakdown-section'])}>
+                <Text
+                  typography="m"
+                  color="success"
+                  tag={'p'}
+                  className={bemClass([blk, 'section-title'])}
+                >
+                  3. Request Profit
+                </Text>
+                <div className={bemClass([blk, 'breakdown-content'])}>
+                  <div className={bemClass([blk, 'breakdown-row'])}>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >
+                      Request Total
+                    </Text>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >{`₹${breakdown.requestTotal.toFixed(2)}`}</Text>
+                  </div>
+                  <div className={bemClass([blk, 'breakdown-row'])}>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >
+                      Request Expense
+                    </Text>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >{`- ₹${breakdown.requestExpense.toFixed(2)}`}</Text>
+                  </div>
+                  <div className={bemClass([blk, 'breakdown-divider'])} />
+                  <div className={bemClass([blk, 'breakdown-row', ['total']])}>
+                    <Text
+                      typography="m"
+                      color="success"
+                    >
+                      Request Profit
+                    </Text>
+                    <Text
+                      typography="m"
+                      color="success"
+                    >{`₹${breakdown.requestProfit.toFixed(2)}`}</Text>
+                  </div>
+                  <Alert
+                    type={breakdown.requestProfit >= 0 ? 'success' : 'error'}
+                    message={breakdown.requestProfit >= 0 ? 'Profitable request' : 'Loss-making request'}
+                  />
+                </div>
+              </div>
+
+              {/* Customer Bill Breakdown */}
+              <div className={bemClass([blk, 'breakdown-section'])}>
+                <Text
+                  typography="m"
+                  color="primary"
+                  tag={'p'}
+                  className={bemClass([blk, 'section-title'])}
+                >
+                  4. Customer Bill
+                </Text>
+                <div className={bemClass([blk, 'breakdown-content'])}>
+                  <div className={bemClass([blk, 'breakdown-row'])}>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >
+                      Request Total (Package)
+                    </Text>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >{`₹${breakdown.requestTotal.toFixed(2)}`}</Text>
+                  </div>
+                  <div className={bemClass([blk, 'breakdown-divider'])} />
+
+                  <Text
+                    typography="s"
+                    color="gray-darker"
+                    className={bemClass([blk, 'subsection-header'])}
+                  >
+                    Additional Charges
+                  </Text>
+                  <div className={bemClass([blk, 'breakdown-detail'])}>
+                    {otherChargesBreakdown.toll.customerCharge > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Toll
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.toll.customerCharge.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.parking.customerCharge > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Parking
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.parking.customerCharge.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.nightHalt.customerCharge > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Night Halt
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.nightHalt.customerCharge.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.driverAllowance.customerCharge > 0 && (
+                      <div className={bemClass([blk, 'breakdown-row', ['small']])}>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >
+                          Driver Allowance
+                        </Text>
+                        <Text
+                          typography="s"
+                          color="gray"
+                        >{`₹${otherChargesBreakdown.driverAllowance.customerCharge.toFixed(2)}`}</Text>
+                      </div>
+                    )}
+                    {otherChargesBreakdown.totalCustomerCharge === 0 && (
+                      <Text
+                        typography="s"
+                        color="gray"
+                      >
+                        No additional charges
+                      </Text>
+                    )}
+                  </div>
+                  <div className={bemClass([blk, 'breakdown-row', ['subtotal']])}>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >
+                      Additional Charges Total
+                    </Text>
+                    <Text
+                      typography="s"
+                      color="gray-darker"
+                    >{`₹${otherChargesBreakdown.totalCustomerCharge.toFixed(2)}`}</Text>
+                  </div>
+
+                  <div className={bemClass([blk, 'breakdown-divider'])} />
+                  <div className={bemClass([blk, 'breakdown-row', ['total']])}>
+                    <Text
+                      typography="m"
+                      color="primary"
+                    >
+                      Final Customer Bill
+                    </Text>
+                    <Text
+                      typography="m"
+                      color="primary"
+                    >{`₹${breakdown.customerBill.toFixed(2)}`}</Text>
+                  </div>
+                </div>
+              </div>
+              </div>
+              <div className={bemClass([blk, 'modal-footer'])}>
+                <Button
+                  size="medium"
+                  category="default"
+                  clickHandler={() => setShowCalculationModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
     </>
   )
 }

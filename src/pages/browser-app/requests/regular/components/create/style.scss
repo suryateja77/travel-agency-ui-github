@@ -53,6 +53,90 @@
     background-color: $white;
     align-items: center;
   }
+  &__view-button {
+    margin-left: $space-small;
+  }
+  &__calculation-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: 70vh;
+    overflow: hidden;
+  }
+  &__modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: $space-default;
+  }
+  &__modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-default;
+    border-top: 1px solid $gray-light;
+    background-color: $white;
+    flex-shrink: 0;
+  }
+  &__breakdown-section {
+    margin-bottom: $space-large;
+    padding: $space-default;
+    background-color: $gray-lighter;
+    border-radius: 8px;
+  }
+  &__section-title {
+    margin-bottom: $space-default;
+    font-weight: 600;
+  }
+  &__breakdown-content {
+    background-color: $white;
+    padding: $space-default;
+    border-radius: 6px;
+  }
+  &__breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $space-small 0;
+    &--highlight {
+      background-color: $gray-lightest;
+      padding: $space-small;
+      border-radius: 4px;
+      margin-top: $space-small;
+    }
+    &--subtotal {
+      padding-top: $space-default;
+      border-top: 1px solid $gray-light;
+    }
+    &--total {
+      padding-top: $space-default;
+      border-top: 2px solid $primary;
+      font-weight: 600;
+    }
+    &--small {
+      padding: $space-small 0;
+    }
+  }
+  &__breakdown-divider {
+    height: 1px;
+    background-color: $gray-light;
+    margin: $space-default 0;
+  }
+  &__breakdown-subsection {
+    margin: $space-default 0;
+    padding: $space-small;
+    background-color: $gray-lightest;
+    border-radius: 4px;
+  }
+  &__subsection-header {
+    margin-top: $space-default;
+    margin-bottom: $space-small;
+    font-weight: 600;
+  }
+  &__breakdown-detail {
+    padding-left: $space-default;
+    margin: $space-small 0;
+    display: flex;
+    flex-direction: column;
+    gap: $space-small;
+  }
 }
 
 @include large-up {

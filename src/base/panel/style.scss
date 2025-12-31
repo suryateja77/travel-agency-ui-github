@@ -6,7 +6,7 @@
   padding-left: 15px;
   padding-right: 15px;
   margin-bottom: 15px;
-  overflow: hidden;
+  // overflow: hidden; Commenting this out to allow the datePicker to be visible
   
   &__header {
     border-bottom: 1px solid $gray-light;

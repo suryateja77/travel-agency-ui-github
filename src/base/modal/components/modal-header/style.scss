@@ -8,8 +8,14 @@
   padding: $space-small $space-default;
   flex-shrink: 0;
   &__close-button {
-    font-size: 24;
+    font-size: 32px;
+    line-height: 1;
     cursor: pointer;
     color: $gray;
+    font-weight: 300;
+    transition: color 0.2s ease;
+    &:hover {
+      color: $gray-darker;
+    }
   }
 }

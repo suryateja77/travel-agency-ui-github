@@ -72,34 +72,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
     return groupsToReturn
   }, [userGroupsData])
 
-  // Field-level validation to clear errors immediately
-  const validateField = useCallback(
-    (fieldPath: keyof UserModel, updatedData: UserModel) => {
-      const validationSchema = createValidationSchema(updatedData, isEditing)
-      const { errorMap } = validatePayload(validationSchema, updatedData)
-
-      setValidationErrors(prev => {
-        const newErrors = { ...prev }
-        if (!errorMap[fieldPath]) {
-          delete newErrors[fieldPath]
-        } else {
-          newErrors[fieldPath] = errorMap[fieldPath]
-        }
-        return newErrors
-      })
-
-      // Clear validation error alert if no errors remain
-      const hasErrors = Object.keys({ ...validationErrors, [fieldPath]: errorMap[fieldPath] })
-        .filter(key => key !== fieldPath)
-        .some(key => validationErrors[key as keyof UserModel])
-
-      if (!hasErrors && !errorMap[fieldPath]) {
-        setIsValidationError(false)
-      }
-    },
-    [validationErrors],
-  )
-
   const handleInputChange = useCallback(
     (field: keyof UserModel) => (value: any) => {
       const updatedUser = {
@@ -228,7 +200,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                   name="name"
                   value={user.name}
                   changeHandler={handleInputChange('name')}
-                  onBlur={() => validateField('name', user)}
                   required
                   autoComplete="off"
                   errorMessage={validationErrors.name}
@@ -244,7 +215,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                   name="contactNumber"
                   value={user.contactNumber}
                   changeHandler={handleInputChange('contactNumber')}
-                  onBlur={() => validateField('contactNumber', user)}
                   required
                   autoComplete="off"
                   errorMessage={validationErrors.contactNumber}
@@ -261,7 +231,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                   type="email"
                   value={user.email}
                   changeHandler={handleInputChange('email')}
-                  onBlur={() => validateField('email', user)}
                   required
                   autoComplete="off"
                   errorMessage={validationErrors.email}
@@ -279,7 +248,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                     type="password"
                     value={user.password || ''}
                     changeHandler={handleInputChange('password')}
-                    onBlur={() => validateField('password', user)}
                     required
                     autoComplete="new-password"
                     errorMessage={validationErrors.password}
@@ -296,7 +264,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                   name="designation"
                   value={user.designation || ''}
                   changeHandler={handleInputChange('designation')}
-                  onBlur={() => validateField('designation', user)}
                   autoComplete="off"
                 />
               </Column>
@@ -326,7 +293,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                     }
                     const updatedUser = { ...user, role: selectedOption.key }
                     setUser(updatedUser)
-                    setTimeout(() => validateField('role', updatedUser), 0)
                   }}
                   required
                   errorMessage={validationErrors.role}
@@ -362,7 +328,6 @@ const CreateUser: FunctionComponent<CreateUserProps> = () => {
                     }
                     const updatedUser = { ...user, userGroup: selectedOption ? selectedOption.key : null }
                     setUser(updatedUser)
-                    setTimeout(() => validateField('userGroup', updatedUser), 0)
                   }}
                 />
               </Column>

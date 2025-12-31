@@ -101,34 +101,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
     []
   )
 
-  const validateField = useCallback(
-    (field: keyof PackageModel, nextData: PackageModel) => {
-      const validationSchema = createValidationSchema(nextData, category)
-      const { errorMap } = validatePayload(validationSchema, nextData)
-      
-      // Only update the error for the specific field being validated
-      setValidationErrors(prev => {
-        const updated = { ...prev }
-        if (errorMap[field]) {
-          updated[field] = errorMap[field]
-        } else {
-          delete updated[field]
-        }
-        return updated
-      })
-      
-      // Clear validation error banner if no errors remain (but never set it during field validation)
-      const hasErrors = Object.keys({ ...validationErrors, [field]: errorMap[field] })
-        .filter(key => key !== field)
-        .some(key => validationErrors[key])
-      
-      if (!hasErrors && !errorMap[field]) {
-        setIsValidationError(false)
-      }
-    },
-    [category, validationErrors]
-  )
-
   const handleSupplierChange = useCallback(
     (value: { supplier?: string }) => {
       const supplierValue = value.supplier?.toString() || ''
@@ -324,7 +296,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                       options={supplierSelectOptions}
                       value={selectedSupplierValue}
                       changeHandler={handleSupplierChange}
-                      onBlur={() => validateField('supplier', packageData)}
                       required={category === 'supplier'}
                       errorMessage={validationErrors.supplier}
                       invalid={!!validationErrors.supplier}
@@ -345,7 +316,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('packageCode', value.packageCode?.toString() ?? '')
                     }}
-                    onBlur={() => validateField('packageCode', packageData)}
                     required
                     errorMessage={validationErrors['packageCode']}
                     invalid={!!validationErrors['packageCode']}
@@ -362,7 +332,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('minimumKm', value.minimumKm ?? '')
                     }}
-                    onBlur={() => validateField('minimumKm', packageData)}
                     min={0.01}
                     required
                     errorMessage={validationErrors['minimumKm']}
@@ -380,7 +349,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('minimumHr', value.minimumHr ?? '')
                     }}
-                    onBlur={() => validateField('minimumHr', packageData)}
                     min={0.01}
                     required
                     errorMessage={validationErrors['minimumHr']}
@@ -400,7 +368,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('baseAmount', value.baseAmount ?? '')
                     }}
-                    onBlur={() => validateField('baseAmount', packageData)}
                     min={0.01}
                     required
                     errorMessage={validationErrors['baseAmount']}
@@ -418,7 +385,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('extraKmPerKmRate', value.extraKmPerKmRate ?? '')
                     }}
-                    onBlur={() => validateField('extraKmPerKmRate', packageData)}
                     min={0.01}
                     required
                     errorMessage={validationErrors['extraKmPerKmRate']}
@@ -436,7 +402,6 @@ const CreatePackage: FunctionComponent<CreatePackageProps> = ({ category = '' })
                     changeHandler={value => {
                       handlePackageFieldChange('extraHrPerHrRate', value.extraHrPerHrRate ?? '')
                     }}
-                    onBlur={() => validateField('extraHrPerHrRate', packageData)}
                     min={0.01}
                     required
                     errorMessage={validationErrors['extraHrPerHrRate']}

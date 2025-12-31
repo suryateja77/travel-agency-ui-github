@@ -64,18 +64,6 @@ const TextInput = (props: TextInputProps) => {
     changeHandler({ [name]: value })
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // For datetime-local inputs, prevent all keyboard input except tab navigation
-    if (type === 'datetime-local') {
-      // Allow tab, shift+tab, and other navigation keys
-      if (e.key === 'Tab' || e.key === 'Shift' || e.key === 'Enter' || e.key === 'Escape') {
-        return
-      }
-      // Prevent all other key inputs
-      e.preventDefault()
-    }
-  }
-
   const eltClass = bemClass([blk, {}, className])
 
   const textFieldClass = bemClass([
@@ -120,7 +108,6 @@ const TextInput = (props: TextInputProps) => {
         placeholder={placeholder}
         disabled={disabled}
         onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
         onBlur={onBlur}
         {...attributes}
         autoComplete={props.autoComplete || 'off'}

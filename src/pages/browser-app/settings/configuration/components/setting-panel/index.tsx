@@ -240,7 +240,7 @@ const SettingPanel: FunctionComponent<SettingPanelProps> = ({ title, className, 
               typography="l"
               className={bemClass([blk, 'modal-title'])}
             >
-              Tax type
+              {title}
             </Text>
             <Toggle
               name="configItemDisabled"

@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useCallback, useReducer } from 'react'
-import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, NumberInput, Alert } from '@base'
+import { Button, Column, Panel, Row, SelectInput, TextArea, TextInput, NumberInput, Alert, DateTimeInput } from '@base'
 import { AdvancePaymentModel, StaffModel } from '@types'
 import { bemClass, nameToPath, validatePayload } from '@utils'
 import { useToast } from '@contexts/ToastContext'
@@ -430,14 +430,14 @@ const CreateAdvancePayment: FunctionComponent<CreateAdvancePaymentProps> = () =>
                       col={4}
                       className={bemClass([blk, 'margin-bottom'])}
                     >
-                      <TextInput
+                      <DateTimeInput
                         label="Payment Date"
                         name="paymentDate"
-                        type="date"
-                        value={formatDateForInput(advancePayment.paymentDate)}
+                        value={advancePayment.paymentDate}
                         changeHandler={value => {
-                          handleFieldChange('paymentDate', value.paymentDate ? new Date(value.paymentDate) : null)
+                          handleFieldChange('paymentDate', value.paymentDate as Date | null)
                         }}
+                        showTimeSelect={false}
                         required
                         errorMessage={validationErrors.paymentDate}
                         invalid={!!validationErrors.paymentDate}
