@@ -3,11 +3,11 @@
 .toast {
   &__container {
     position: fixed;
-    bottom: 30px;
+    top: 30px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
-    animation: slideUp 0.3s ease-out;
+    animation: slideDown 0.3s ease-out;
   }
 
   &__content {
@@ -85,9 +85,9 @@
   }
 }
 
-@keyframes slideUp {
+@keyframes slideDown {
   from {
-    transform: translateX(-50%) translateY(100px);
+    transform: translateX(-50%) translateY(-100px);
     opacity: 0;
   }
   to {
@@ -109,9 +109,9 @@
     }
   }
 
-  @keyframes slideUp {
+  @keyframes slideDown {
     from {
-      transform: translateY(100px);
+      transform: translateY(-100px);
       opacity: 0;
     }
     to {
