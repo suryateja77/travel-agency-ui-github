@@ -962,3 +962,40 @@ export const INITIAL_USER_GROUP: UserGroupModel = {
   isSystemGroup: false,
   isActive: true,
 }
+
+// Client Registration Types
+export interface ClientRegistrationModel {
+  agencyName: string
+  contactNumber: string
+  email: string
+  pointOfContact: {
+    name: string
+    designation: string
+    contactNumber: string
+    email: string
+  }
+  address: Address
+  password: string
+  confirmPassword: string
+}
+
+export const INITIAL_CLIENT_REGISTRATION: ClientRegistrationModel = {
+  agencyName: '',
+  contactNumber: '',
+  email: '',
+  pointOfContact: {
+    name: '',
+    designation: '',
+    email: '',
+    contactNumber: '',
+  },
+  address: {
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    pinCode: '',
+  },
+  password: '',
+  confirmPassword: '',
+}

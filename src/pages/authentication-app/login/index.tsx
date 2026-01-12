@@ -51,17 +51,17 @@ const Login = () => {
     try {
       const response = await authenticateUser(reqBody)
       const { expiresIn } = response.data
-      
+
       // Store login state and expiration time (using localStorage for multi-tab support)
       setStorageItem('local', 'isLoggedIn', 'true')
-      
+
       // Store session expiration timestamp (current time + expiresIn seconds)
-      const expirationTime = Date.now() + (expiresIn * 1000)
+      const expirationTime = Date.now() + expiresIn * 1000
       setStorageItem('local', 'sessionExpiry', expirationTime.toString())
-      
+
       // Initialize last activity timestamp
       setStorageItem('local', 'lastActivity', Date.now().toString())
-      
+
       window.location.replace('/')
     } catch (error: any) {
       console.log(error)
@@ -143,6 +143,24 @@ const Login = () => {
             Login
           </Button>
         </form>
+        <div className={bemClass([blk, 'register-link'])}>
+          <Text
+            tag="p"
+            typography="s"
+            color="gray-darker"
+          >
+            <>
+              {' '}
+              Don't have an account?{' '}
+              <NavLink
+                to="/register"
+                className={bemClass([blk, 'register-link-text'])}
+              >
+                Register here
+              </NavLink>
+            </>
+          </Text>
+        </div>
       </>
     </AuthenticationWrapper>
   )

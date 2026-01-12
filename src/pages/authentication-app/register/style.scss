@@ -1,0 +1,71 @@
+@import '~/src/sass/style.scss';
+
+.register {
+  display: flex;
+  flex-direction: column;
+  
+  &__content {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-bottom: $space-default;
+    
+    // Scrollbar styling
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: $gray-lightest;
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: $gray-light;
+      border-radius: 3px;
+      
+      &:hover {
+        background: $gray;
+      }
+    }
+  }
+  
+  &__panel {
+    margin-bottom: $space-default;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  &__margin-bottom {
+    margin-bottom: $space-default;
+  }
+  
+  &__action-items {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: $space-default;
+    border-top: 1px solid $gray-light;
+    margin-top: $space-default;
+  }
+  
+  &__login-link {
+    margin-top: $space-default;
+    text-align: center;
+  }
+  
+  &__login-link-text {
+    text-decoration: underline;
+    font-weight: 500;
+    color: $primary-light;
+  }
+}
+
+// Responsive breakpoints
+@include medium-down {
+  .register {
+    &__content {
+      max-height: 400px;
+    }
+  }
+}

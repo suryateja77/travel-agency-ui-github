@@ -20,4 +20,13 @@
     font-weight: 500;
     color: $primary-light;
   }
+  &__register-link{
+    margin-top: $space-default;
+    text-align: center;
+  }
+  &__register-link-text{
+    text-decoration: underline;
+    font-weight: 500;
+    color: $primary-light;
+  }
 }
