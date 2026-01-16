@@ -6,6 +6,7 @@ import LogOut from '@components/logout'
 
 import './style.scss'
 import Text from '@base/text'
+import Logo from '@components/logo'
 
 const blk = 'header'
 
@@ -34,13 +35,7 @@ const Header: FunctionComponent<HeaderProps> = ({ isSideNavExpanded, isNavigatio
       </div>
       <>
         <div className={bemClass([blk, 'logo'])}>
-          <Text
-            tag="p"
-            typography="xl"
-            className={bemClass([blk, 'company-name'])}
-          >
-            Levart
-          </Text>
+          <Logo />
         </div>
       </>
       <div className={bemClass([blk, 'right-section'])}>

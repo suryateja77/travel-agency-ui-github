@@ -56,6 +56,7 @@ module.exports = {
       '@images': path.resolve(__dirname, './src/images'),
       '@state': path.resolve(__dirname, './src/state'),
       '@types': path.resolve(__dirname, './src/types'),
+      '@images': path.resolve(__dirname, './src/images'), 
     },
   },
   plugins: [

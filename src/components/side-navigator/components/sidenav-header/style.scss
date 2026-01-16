@@ -10,12 +10,4 @@
   flex-shrink: 0;
   border-bottom: 1px solid $gray-light;
   box-shadow: 0 0 0px $gray-light;
-  &__company-initials{
-    color: $success;
-    font-size: 30px;
-    font-weight: 600;
-  }
-  &__company-name{
-    padding: 0px 24px;
-  }
 }
